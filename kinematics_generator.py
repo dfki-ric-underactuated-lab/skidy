@@ -229,7 +229,7 @@ class SymbolicKinDyn():
         # Block diagonal matrix b (6n x 6n) used in Coriolis matrix
         b = zeros(6*self.n, 6*self.n)
         for i in range(self.n):
-            Mb[i*6:i*6+6,i*6:i*6+6] = self.SE3adMatrix(Matrix(V[6*i:6*i+6]))
+            b[i*6:i*6+6,i*6:i*6+6] = self.SE3adMatrix(Matrix(V[6*i:6*i+6]))
             
         # Block diagonal matrix Cb (6n x 6n)
         Cb = -Mb*A*a - b.T * Mb
