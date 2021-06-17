@@ -27,23 +27,27 @@ class SymbolicKinDyn():
         self.Vh_ee = None
         self.Jb_ee = None
         self.Jh_ee = None
+        self.M = None
+        self.C = None
+        self.Qgrav = None
+        self.Q = None
         
     def generateCode(self, file= "./generated_code.py"):
         p = NumPyPrinter()
         s = ["import numpy\n"]
         # s.append("class Plant():")
         # s.append("\tdef__init__(self):")
-        functions = [self.fkin, self.J, self.Jb, self.Jh, self.Jdot, self.Vb_ee, self.Vh_ee, self.Jb_ee, self.Jh_ee] 
-        names = ["fkin", "J", "Jb", "Jh", "Jdot", "Vb_ee", "Vh_ee", "Jb_ee", "Jh_ee"]
+        functions = [self.fkin, self.J, self.Jb, self.Jh, self.Jdot, self.Vb_ee, self.Vh_ee, self.Jb_ee, self.Jh_ee, self.M, self.C, self.Qgrav, self.Q] 
+        names = ["fkin", "J", "Jb", "Jh", "Jdot", "Vb_ee", "Vh_ee", "Jb_ee", "Jh_ee", "M", "C", "Qgrav", "Q"]
         for i in range(len(functions)):
-            s.append(names[i] + " = " + p.doprint(functions[i]))
+            if functions[i] is not None:
+                s.append(names[i] + " = " + p.doprint(functions[i]))
             
         s = "\n\n".join(s)
         
         
-        if self.fkin is not None:
-            with open(file, "w+") as f:
-                f.write(s)
+        with open(file, "w+") as f:
+            f.write(s)
         
 
     def forwardKinematics(self, q, qd, q2d):
@@ -163,8 +167,116 @@ class SymbolicKinDyn():
         return T
         
         
-    def inverseDynamics(self, q, qd, qdd, WEE):
-        pass
+    def inverseDynamics(self, q, qd, q2d, WEE = zeros(6,1), simplify_expressions = True):
+        if self.A is not None:
+            print("Using absolute configuration (A) of the body frames")
+            FK_f = [self.SE3Exp(self.Y[0],q[0])]
+            FK_C = [FK_f[0]*self.A[0]]
+            for i in range(1,self.n):
+                FK_f.append(FK_f[i-1]*self.SE3Exp(self.Y[i],q[i]))
+                FK_C.append(FK_f[i]*self.A[i])
+        elif self.B is not None:
+                print('Using relative configuration (B) of the body frames')
+                FK_C = [self.B[0]*self.SE3Exp(self.X[0],q[0])]
+                for i in range(1,self.n):
+                    FK_C.append(FK_C[i-1]*self.B[i]*self.SE3Exp(self.X[i],q[i]))
+        else:
+            'Absolute (A) or Relative (B) configuration of the bodies should be provided in class!'
+            return
+        
+        # fkin = simplify(FK_C[self.n-1]*self.ee)
+        # self.fkin = fkin
+        
+        # Block diagonal matrix A (6n x 6n) of the Adjoint of body frame
+        A = Matrix(Identity(6*self.n))
+        for i in  range(self.n):
+            for j in range(i):
+                Crel = self.SE3Inv(FK_C[i])*FK_C[j]
+                AdCrel = self.SE3AdjMatrix(Crel)
+                r = 6*(i)
+                c = 6*(j)
+                A[r:r+6,c:c+6] = AdCrel
+                
+        # Block diagonal matrix X (6n x n) of the screw coordinate vector associated to all joints in the body frame (Constant)   
+        X = zeros(6*self.n,self.n)
+        for i in range(self.n):
+            X[6*i:6*i+6,i] = self.X[i]
+        
+        # System level Jacobian 
+        J = A*X
+        
+        # J_simplified = simplify(J)
+        # self.J = J_simplified
+        
+        # System twist (6n x 1)
+        V = J*qd
+        
+        # Acceleration computations
+        
+        # Block diagonal matrix a (6n x 6n)
+        a = zeros(6*self.n, 6*self.n)
+        for i in range(self.n):
+            a[6*i:6*i+6,6*i:6*i+6] = self.SE3adMatrix(self.X[i])*qd[i]
+            
+        # System acceleration (6n x 1)
+        Vd = J*q2d - A*a*V
+        
+        # Block Diagonal Mb (6n x 6n) Mass inertia matrix in body frame (Constant)
+        Mb = zeros(6*self.n, 6*self.n)
+        for i in range(self.n):
+            Mb[i*6:i*6+6,i*6:i*6+6] = self.Mb[i]
+            
+        # Block diagonal matrix b (6n x 6n) used in Coriolis matrix
+        b = zeros(6*self.n, 6*self.n)
+        for i in range(self.n):
+            Mb[i*6:i*6+6,i*6:i*6+6] = self.SE3adMatrix(Matrix(V[6*i:6*i+6]))
+            
+        # Block diagonal matrix Cb (6n x 6n)
+        Cb = -Mb*A*a - b.T * Mb
+        
+        # Lets setup the Equations of Motion
+        
+        # Mass inertia matrix in joint space (n x n)
+        M = J.T*Mb*J
+        
+        # Coriolis-Centrifugal matrix in joint space (n x n)
+        C = J.T * Cb * J
+        
+        # Gravity Term 
+        U = self.SE3AdjInvMatrix(FK_C[0])
+        for k in range(1,self.n):
+            U = U.col_join(self.SE3AdjInvMatrix(FK_C[k]))
+            
+        Vd_0 = zeros(6,1)
+        Vd_0[3:6,0] = self.gravity_vector
+        Qgrav = J.T*Mb*U*Vd_0
+        
+        # External Wrench
+        Wext = zeros(6*self.n,1)
+        Wext[-6:,0] = WEE # WEE (t) is the time varying wrench on the EE link.
+        Qext = J.T * Wext
+        
+        # Generalized forces Q
+        # Q = M*q2d + C*qd   # without gravity
+        Q = M*q2d + C*qd + Qgrav + Qext
+        
+        if simplify_expressions:
+            M = simplify(M)
+            C = simplify(C)
+            Qgrav = simplify(Qgrav)
+            Q = simplify(Q)
+            
+        self.M = M
+        self.C = C
+        self.Q = Q
+        self.Qgrav = Qgrav
+        
+        return Q
+        
+        
+        
+            
+        
 
     def SE3AdjInvMatrix(self, C):
         AdInv = Matrix([[C[0, 0], C[1, 0], C[2, 0], 0, 0, 0],
@@ -321,10 +433,14 @@ if __name__ == "__main__":
     # Declaring generalised vectors
     q = Matrix([q1,q2])
     qd = Matrix([dq1,dq2])
-    d2d = Matrix([ddq1,ddq2])
+    q2d = Matrix([ddq1,ddq2])
     s.n = len(q)
     
-    # Kinematics
-    F = s.forwardKinematics(q,qd,d2d)
     
+    # Kinematics
+    F = s.forwardKinematics(q,qd,q2d)
+    Q = s.inverseDynamics(q,qd,q2d)
     s.generateCode()
+    
+    
+    
