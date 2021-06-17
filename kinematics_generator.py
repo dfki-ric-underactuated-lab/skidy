@@ -1,6 +1,9 @@
 from sympy import *
 from sympy.physics.vector import dynamicsymbols
 from sympy.printing.numpy import NumPyPrinter
+from sympy.utilities.codegen import codegen
+    
+import os
     
 init_printing()
 
@@ -32,25 +35,86 @@ class SymbolicKinDyn():
         self.Qgrav = None
         self.Q = None
         
-    def generateCode(self, file= "./generated_code.py"):
-        p = NumPyPrinter()
-        s = ["import numpy\n"]
-        # s.append("class Plant():")
-        # s.append("\tdef__init__(self):")
-        functions = [self.fkin, self.J, self.Jb, self.Jh, self.Jdot, self.Vb_ee, self.Vh_ee, self.Jb_ee, self.Jh_ee, self.M, self.C, self.Qgrav, self.Q] 
-        names = ["fkin", "J", "Jb", "Jh", "Jdot", "Vb_ee", "Vh_ee", "Jb_ee", "Jh_ee", "M", "C", "Qgrav", "Q"]
-        for i in range(len(functions)):
-            if functions[i] is not None:
-                s.append(names[i] + " = " + p.doprint(functions[i]))
+        self.var_syms = set({})
+        
+    def generateCode(self, python = True, C = True, Matlab = True, folder = "./generated_code", use_global_vars = True, name = "plant", project="Project"):
+        all_functions = [self.fkin, self.J, self.Jb, self.Jh, self.Jdot, self.Vb_ee, self.Vh_ee, self.Jb_ee, self.Jh_ee, self.M, self.C, self.Qgrav, self.Q] 
+        # names = ["fkin", "J", "Jb", "Jh", "Jdot", "Vb_ee", "Vh_ee", "Jb_ee", "Jh_ee", "M", "C", "Qgrav", "Q"]
+        all_names = ["forward_kinematics", "system_jacobian_matrix", "body_jacobian_matrix", "hybrid_jacobian_matrix", "system_jacobian_dot", "body_twist_ee", "hybrid_twist_ee", "body_jacobian_matrix_ee", "hybrid_jacobian_matrix_ee", "generalized_mass_inertia_matrix", "coriolis_centrifugal_matrix", "gravity_vector", "inverse_dynamics"]
+        functions = []
+        names = []
+        for i in range(len(all_functions)):
+            if all_functions[i] is not None:
+                functions.append(all_functions[i])
+                names.append(all_names[i])
+        
+        
+        all_syms = set()
+        for f in functions:
+            all_syms.update(f.free_symbols)
+        if use_global_vars:
+            constant_syms = list(all_syms.difference(self.var_syms))
+        else:
+            constant_syms = []     
+        if python:
+            p = NumPyPrinter()
+            s = ["import numpy\n\n"]
+            s.append("class "+name.capitalize()+"():")
+            s.append("\tdef __init__(self, %s):"%(", ".join(sorted([str(constant_syms[i]) for i in range(len(constant_syms))]))))
+            if len(constant_syms) > 0:                
+                s.append("\t\t"+", ".join(sorted(["self."+str(constant_syms[i]) for i in range(len(constant_syms))]))
+                    + " = " + ", ".join(sorted([str(constant_syms[i]) for i in range(len(constant_syms))])))
+                
+            for i in range(len(functions)):
+                var_syms = list(self.var_syms.intersection(functions[i].free_symbols))
+                const_syms = list(set(constant_syms).intersection(functions[i].free_symbols))
+                if len(var_syms) > 0:
+                    s.append("\n\tdef "+names[i]+"(self, %s):"%(", ".join(sorted([str(var_syms[i]) for i in range(len(var_syms))]))))
+                
+                else:
+                    s.append("\n\tdef "+names[i]+"(self):")
+                if len(const_syms) > 0:                
+                    s.append("\t\t"+", ".join(sorted([str(const_syms[i]) for i in range(len(const_syms))]))
+                            + " = " + ", ".join(sorted(["self."+str(const_syms[i]) for i in range(len(const_syms))])))
+
+                s.append("\t\t"+names[i] + " = " + p.doprint(functions[i]))
+                s.append("\t\treturn "+ names[i])
+            s = "\n".join(s)
             
-        s = "\n\n".join(s)
+            
+            with open(os.path.join(folder,name +".py"), "w+") as f:
+                f.write(s)
         
-        
-        with open(file, "w+") as f:
-            f.write(s)
-        
+        if C:
+            if use_global_vars:
+                [(c_name, c_code), (h_name, c_header)] = codegen([tuple((names[i], functions[i])) for i in range(len(functions))], 
+                                                                "C99", name, project, header=False, empty=True, global_vars = constant_syms)
+            else:
+                [(c_name, c_code), (h_name, c_header)] = codegen([tuple((names[i], functions[i])) for i in range(len(functions))], 
+                                                                "C99", name, project, header=False, empty=True)
+            
+            with open(os.path.join(folder,c_name),"w+") as f:
+                f.write(c_code)
+            with open(os.path.join(folder,h_name),"w+") as f:
+                f.write(c_header)
+                               
+        if Matlab:
+            for i in range(len(functions)):
+                if use_global_vars:
+                    [(m_name, m_code)] = codegen((names[i], functions[i]), "Octave", project= project, header=False, empty=True, global_vars = constant_syms)
+                else:
+                    [(m_name, m_code)] = codegen((names[i], functions[i]), "Octave", project= project, header=False, empty=True)
+                
+                
+                with open(os.path.join(folder,m_name),"w+") as f:
+                    f.write(m_code)
+            
 
     def forwardKinematics(self, q, qd, q2d):
+        self.var_syms.update(q.free_symbols)
+        self.var_syms.update(qd.free_symbols)
+        self.var_syms.update(q2d.free_symbols)
+        
         if self.A is not None:
             print("Using absolute configuration (A) of the body frames")
             FK_f = [self.SE3Exp(self.Y[0],q[0])]
@@ -168,6 +232,11 @@ class SymbolicKinDyn():
         
         
     def inverseDynamics(self, q, qd, q2d, WEE = zeros(6,1), simplify_expressions = True):
+        self.var_syms.update(q.free_symbols)
+        self.var_syms.update(qd.free_symbols)
+        self.var_syms.update(q2d.free_symbols)
+        self.var_syms.update(WEE.free_symbols)
+        
         if self.A is not None:
             print("Using absolute configuration (A) of the body frames")
             FK_f = [self.SE3Exp(self.Y[0],q[0])]
@@ -440,7 +509,6 @@ if __name__ == "__main__":
     # Kinematics
     F = s.forwardKinematics(q,qd,q2d)
     Q = s.inverseDynamics(q,qd,q2d)
-    s.generateCode()
-    
+    s.generateCode(python=True, C=True, Matlab=True,use_global_vars=True,name="plant",project="Project")
     
     
