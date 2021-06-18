@@ -1,5 +1,4 @@
 from sympy import *
-from sympy.physics.vector import dynamicsymbols
 from sympy.printing.numpy import NumPyPrinter
 from sympy.utilities.codegen import codegen
 
@@ -114,7 +113,7 @@ class SymbolicKinDyn():
                 with open(os.path.join(folder, m_name), "w+") as f:
                     f.write(m_code)
 
-    def forwardKinematics(self, q, qd, q2d):
+    def closed_form_kinematics_body_fixed(self, q, qd, q2d):
         self.var_syms.update(q.free_symbols)
         self.var_syms.update(qd.free_symbols)
         self.var_syms.update(q2d.free_symbols)
@@ -244,7 +243,7 @@ class SymbolicKinDyn():
         T = simplify(FK_C[self.n-1]*self.ee)
         return T
 
-    def inverseDynamics(self, q, qd, q2d, WEE=zeros(6, 1), simplify_expressions=True):
+    def closed_form_inv_dyn_body_fixed(self, q, qd, q2d, WEE=zeros(6, 1), simplify_expressions=True):
         self.var_syms.update(q.free_symbols)
         self.var_syms.update(qd.free_symbols)
         self.var_syms.update(q2d.free_symbols)
@@ -443,9 +442,6 @@ if __name__ == "__main__":
     s = SymbolicKinDyn()
 
     # Declaration of symbolic variables
-    # q1, q2 = dynamicsymbols("q1 q2")
-    # dq1, dq2 = q1.diff("t"), q2.diff("t")
-    # ddq1, ddq2 = dq1.diff("t"), dq2.diff("t")
     q1, q2 = symbols("q1 q2")
     dq1, dq2 = symbols("dq1 dq2")
     ddq1, ddq2 = symbols("ddq1 ddq2")
@@ -514,7 +510,7 @@ if __name__ == "__main__":
     s.n = len(q)
 
     # Kinematics
-    F = s.forwardKinematics(q, qd, q2d)
-    Q = s.inverseDynamics(q, qd, q2d)
+    F = s.closed_form_kinematics_body_fixed(q, qd, q2d)
+    Q = s.closed_form_inv_dyn_body_fixed(q, qd, q2d)
     s.generateCode(python=True, C=True, Matlab=True,
                    use_global_vars=True, name="plant", project="Project")
