@@ -69,3 +69,43 @@ class Plant():
 		L1, L2, g, m1, m2 = self.L1, self.L2, self.g, self.m1, self.m2
 		inverse_dynamics = numpy.array([[L1**2*ddq1*m1 + L1**2*ddq1*m2 + 2*L1*L2*ddq1*m2*numpy.cos(q2) + L1*L2*ddq2*m2*numpy.cos(q2) - 2*L1*L2*dq1*dq2*m2*numpy.sin(q2) - L1*L2*dq2**2*m2*numpy.sin(q2) + L1*g*m1*numpy.cos(q1) + L1*g*m2*numpy.cos(q1) + L2**2*ddq1*m2 + L2**2*ddq2*m2 + L2*g*m2*numpy.cos(q1 + q2)], [L2*m2*(L1*ddq1*numpy.cos(q2) + L1*dq1**2*numpy.sin(q2) + L2*ddq1 + L2*ddq2 + g*numpy.cos(q1 + q2))]])
 		return inverse_dynamics
+
+	def hybrid_acceleration(self, ddq1, ddq2, dq1, q1):
+		L1 = self.L1
+		hybrid_acceleration = numpy.array([[0], [0], [ddq1 + ddq2], [-L1*(ddq1*numpy.sin(q1) + dq1**2*numpy.cos(q1))], [L1*(ddq1*numpy.cos(q1) - dq1**2*numpy.sin(q1))], [0]])
+		return hybrid_acceleration
+
+	def body_acceleration(self, ddq1, ddq2, dq1, dq2, q2):
+		L1 = self.L1
+		body_acceleration = numpy.array([[0], [0], [ddq1 + ddq2], [L1*(ddq1*numpy.sin(q2) + dq1*dq2*numpy.cos(q2))], [L1*(ddq1*numpy.cos(q2) - dq1*dq2*numpy.sin(q2))], [0]])
+		return body_acceleration
+
+	def hybrid_acceleration_ee(self, ddq1, ddq2, dq1, dq2, q1, q2):
+		L1, L2 = self.L1, self.L2
+		hybrid_acceleration_ee = numpy.array([[0], [0], [ddq1 + ddq2], [-L1*ddq1*numpy.sin(q1) - L1*dq1**2*numpy.cos(q1) - L2*ddq1*numpy.sin(q1 + q2) - L2*ddq2*numpy.sin(q1 + q2) - L2*dq1**2*numpy.cos(q1 + q2) - 2*L2*dq1*dq2*numpy.cos(q1 + q2) - L2*dq2**2*numpy.cos(q1 + q2)], [L1*ddq1*numpy.cos(q1) - L1*dq1**2*numpy.sin(q1) + L2*ddq1*numpy.cos(q1 + q2) + L2*ddq2*numpy.cos(q1 + q2) - L2*dq1**2*numpy.sin(q1 + q2) - 2*L2*dq1*dq2*numpy.sin(q1 + q2) - L2*dq2**2*numpy.sin(q1 + q2)], [0]])
+		return hybrid_acceleration_ee
+
+	def body_acceleration_ee(self, ddq1, ddq2, dq1, dq2, q2):
+		L1, L2 = self.L1, self.L2
+		body_acceleration_ee = numpy.array([[0], [0], [ddq1 + ddq2], [L1*(ddq1*numpy.sin(q2) + dq1*dq2*numpy.cos(q2))], [L1*(ddq1*numpy.cos(q2) - dq1*dq2*numpy.sin(q2)) + L2*(ddq1 + ddq2)], [0]])
+		return body_acceleration_ee
+
+	def hybrid_jacobian_matrix_dot(self, dq1, q1):
+		L1 = self.L1
+		hybrid_jacobian_matrix_dot = numpy.array([[0, 0], [0, 0], [0, 0], [-L1*dq1*numpy.cos(q1), 0], [-L1*dq1*numpy.sin(q1), 0], [0, 0]])
+		return hybrid_jacobian_matrix_dot
+
+	def body_jacobian_matrix_dot(self, dq2, q2):
+		L1 = self.L1
+		body_jacobian_matrix_dot = numpy.array([[0, 0], [0, 0], [0, 0], [L1*dq2*numpy.cos(q2), 0], [-L1*dq2*numpy.sin(q2), 0], [0, 0]])
+		return body_jacobian_matrix_dot
+
+	def hybrid_jacobian_matrix_ee_dot(self, dq1, dq2, q1, q2):
+		L1, L2 = self.L1, self.L2
+		hybrid_jacobian_matrix_ee_dot = numpy.array([[0, 0], [0, 0], [0, 0], [-L1*dq1*numpy.cos(q1) - L2*dq1*numpy.cos(q1 + q2) - L2*dq2*numpy.cos(q1 + q2), -L2*(dq1 + dq2)*numpy.cos(q1 + q2)], [-L1*dq1*numpy.sin(q1) - L2*dq1*numpy.sin(q1 + q2) - L2*dq2*numpy.sin(q1 + q2), -L2*(dq1 + dq2)*numpy.sin(q1 + q2)], [0, 0]])
+		return hybrid_jacobian_matrix_ee_dot
+
+	def body_jacobian_matrix_ee_dot(self, dq2, q2):
+		L1 = self.L1
+		body_jacobian_matrix_ee_dot = numpy.array([[0, 0], [0, 0], [0, 0], [L1*dq2*numpy.cos(q2), 0], [-L1*dq2*numpy.sin(q2), 0], [0, 0]])
+		return body_jacobian_matrix_ee_dot
