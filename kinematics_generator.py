@@ -1,7 +1,20 @@
+import queue
 from sympy import *
 from sympy.printing.numpy import NumPyPrinter
 from sympy.utilities.codegen import codegen
+from urdfpy import URDF
+from multiprocessing import Process, Queue
+from time import sleep
 
+# import multiprocessing, logging
+# mpl = multiprocessing.log_to_stderr()
+# mpl.setLevel(logging.DEBUG)
+# mpl.setLevel(logging.INFO)
+# formatter = logging.Formatter('%(asctime)s %(processName)-10s %(name)s %(levelname)-8s %(message)s')
+# fileHandler = logging.FileHandler("log.log")
+# fileHandler.setFormatter(formatter)
+# fileHandler.setLevel(logging.DEBUG)
+# mpl.addHandler(fileHandler)
 import os
 import re as regex
 
@@ -66,6 +79,10 @@ class SymbolicKinDyn():
 
         # set of variable symbols to include in generated functions as arguments
         self.var_syms = set({})
+
+        # Multiprocessing
+        self.queue_dict = {}
+        self.process_dict = {}
 
     def generateCode(self, python=True, C=True, Matlab=False, folder="./generated_code", use_global_vars=True, name="plant", project="Project"):
         """Generate code of saved Equations. 
@@ -570,6 +587,511 @@ class SymbolicKinDyn():
         print("Done")
         return Q
 
+    def set_value_as_process(self, name, target):
+        if name not in self.queue_dict:
+            self.queue_dict[name] = Queue()
+        if name in self.process_dict:
+            print("already there")
+        self.process_dict[name] = Process(
+            target=lambda: self.set_value(name, target()), args=(), name=name)
+        self.process_dict[name].start()
+
+    def set_value(self, name, var):
+        if name not in self.queue_dict:
+            self.queue_dict[name] = Queue()
+        self.queue_dict[name].put(var)
+
+    def start_simplificaton_process(self, name):
+        if name not in self.queue_dict:
+            self.queue_dict[name] = Queue()
+        if name+"_simplify" in self.process_dict:
+            print("already there")
+        self.process_dict[name+"_simplify"] = Process(
+            target=self.simplify_parallel, args=(name,), name=name+"_simplify")
+        self.process_dict[name+"_simplify"].start()
+
+    # def start_new_process(self, name, target, args=()):
+    #     if name not in self.queue_dict:
+    #         self.queue_dict[name] = Queue()
+    #     self.process_dict[name] = Process(target = target, args=args)
+    #     self.process_dict[name].start()
+
+    def get_value(self, name):
+        value = self.queue_dict[name].get()
+        self.queue_dict[name].put(value)
+        return value
+
+    def simplify_parallel(self, name):
+        value = simplify(self.queue_dict[name].get())
+        self.queue_dict[name].put(value)
+
+    # def simplify_parallel(self, queue, var):
+        # queue.put(simplify(var))
+
+    def _flush_queue(self, q):
+        try:
+            while True:
+                q.get(block=False)
+        except queue.Empty:
+            pass
+
+    def closed_form_kinematics_body_fixed_parallel(self, q, qd, q2d, simplify_expressions=True):
+        """Position, Velocity and Acceleration Kinematics using Body fixed representation of the twists in closed form.
+
+        The following functions are saved in the class and can be code generated afterwards:
+            body_acceleration
+            body_acceleration_ee
+            body_jacobian_matrix
+            body_jacobian_matrix_dot 
+            body_jacobian_matrix_ee
+            body_jacobian_matrix_ee_dot
+            body_twist_ee
+            forward_kinematics
+            hybrid_acceleration
+            hybrid_acceleration_ee
+            hybrid_jacobian_matrix
+            hybrid_jacobian_matrix_dot
+            hybrid_jacobian_matrix_ee
+            hybrid_jacobian_matrix_ee_dot
+            hybrid_twist_ee
+
+        Args:
+            q (sympy.Matrix): (n,1) Genearlized position vector.
+            qd (sympy.Matrix): (n,1 )Generalized velocity vector.
+            q2d (sympy.Matrix): (n,1) Generalized acceleration vector.
+
+        Returns:
+            sympy.Matrix: Forward kinematics (transformation matrix of ee).
+        """
+        print("Forward kinematics calculation")
+        self.var_syms.update(q.free_symbols)
+        self.var_syms.update(qd.free_symbols)
+        self.var_syms.update(q2d.free_symbols)
+
+        self.n = len(q)
+
+        if self._FK_C is not None:
+            FK_C = self._FK_C
+        elif self.A is not None:
+            print("Using absolute configuration (A) of the body frames")
+            FK_f = [self.SE3Exp(self.Y[0], q[0])]
+            FK_C = [FK_f[0]*self.A[0]]
+            for i in range(1, self.n):
+                FK_f.append(FK_f[i-1]*self.SE3Exp(self.Y[i], q[i]))
+                FK_C.append(FK_f[i]*self.A[i])
+            self._FK_C = FK_C
+        elif self.B is not None:
+            print('Using relative configuration (B) of the body frames')
+            FK_C = [self.B[0]*self.SE3Exp(self.X[0], q[0])]
+            for i in range(1, self.n):
+                FK_C.append(FK_C[i-1]*self.B[i]*self.SE3Exp(self.X[i], q[i]))
+            self._FK_C = FK_C
+        else:
+            'Absolute (A) or Relative (B) configuration of the bodies should be provided in class!'
+            return
+
+        self.set_value("fkin", FK_C[self.n-1]*self.ee)
+        if simplify_expressions:
+            self.start_simplificaton_process("fkin")
+
+        # Block diagonal matrix A (6n x 6n) of the Adjoint of body frame
+        if self._A is not None:
+            A = self._A
+        else:
+            A = Matrix(Identity(6*self.n))
+            for i in range(self.n):
+                for j in range(i):
+                    Crel = self.SE3Inv(FK_C[i])*FK_C[j]
+                    AdCrel = self.SE3AdjMatrix(Crel)
+                    r = 6*(i)
+                    c = 6*(j)
+                    A[r:r+6, c:c+6] = AdCrel
+            self._A = A
+
+        if self.J is not None:
+            self.set_value("J", self.J)
+            self.set_value("V", self._V)
+        else:
+            # Block diagonal matrix X (6n x n) of the screw coordinate vector associated to all joints in the body frame (Constant)
+            X = zeros(6*self.n, self.n)
+            for i in range(self.n):
+                X[6*i:6*i+6, i] = self.X[i]
+
+            # System level Jacobian
+            # J = A*X
+            self.set_value("J", A*X)
+            if simplify_expressions:
+                self.start_simplificaton_process("J")
+
+            # System twist (6n x 1)
+            # V = J*qd
+            self.set_value_as_process("V", lambda: self.get_value("J")*qd)
+
+        # Different Jacobians
+        self.set_value_as_process("R_i", lambda: Matrix(self.get_value("fkin")[:3, :3]).row_join(
+            zeros(3, 1)).col_join(Matrix([0, 0, 0, 1]).T))
+
+        if simplify_expressions:  # fastens later simmplifications
+            self.start_simplificaton_process("R_i")
+
+        self.set_value("R_BFn", Matrix(FK_C[-1][:3, :3]).row_join(
+            zeros(3, 1)).col_join(Matrix([0, 0, 0, 1]).T))
+
+        # Body fixed Jacobian of last moving body (This may not correspond to end-effector frame)
+        self.set_value_as_process("Jb", lambda: self.get_value("J")[-6:, :])
+        # Jb = J[-6:, :]
+        if simplify_expressions:
+            self.start_simplificaton_process("Jb")
+
+        self.set_value_as_process("Vb_BFn", lambda: self.get_value("Jb")*qd)
+        # Vb_BFn = Jb*qd  # Body fixed twist of last moving body
+        if simplify_expressions:
+            self.start_simplificaton_process("Vb_BFn")
+        # Vh_BFn = self.SE3AdjMatrix(R_BFn)*Vb_BFn
+        self.set_value_as_process("Vh_BFn", lambda: self.SE3AdjMatrix(
+            self.get_value("R_BFn"))*self.get_value("Vb_BFn"))
+        if simplify_expressions:
+            self.start_simplificaton_process("Vh_BFn")
+
+        # Body fixed twist of end-effector frame
+        # Vb_ee = self.SE3AdjMatrix(self.SE3Inv(self.ee))*Vb_BFn
+        self.set_value_as_process("Vb_ee", lambda: self.SE3AdjMatrix(
+            self.SE3Inv(self.ee))*self.get_value("Vb_BFn"))
+        if simplify_expressions:
+            self.start_simplificaton_process("Vb_ee")
+        # Hybrid twist of end-effector frame
+        # Vh_ee = self.SE3AdjMatrix(R_i)*Vb_ee
+        self.set_value_as_process("Vh_ee", lambda: self.SE3AdjMatrix(
+            self.get_value("R_i"))*self.get_value("Vb_ee"))
+        if simplify_expressions:
+            self.start_simplificaton_process("Vh_ee")
+
+        # Body fixed Jacobian of end-effector frame
+        # Jb_ee = self.SE3AdjMatrix(self.SE3Inv(self.ee))*Jb
+        self.set_value_as_process("Jb_ee", lambda: self.SE3AdjMatrix(
+            self.SE3Inv(self.ee))*self.get_value("Jb"))
+        if simplify_expressions:
+            self.start_simplificaton_process("Jb_ee")
+
+        # Hybrid Jacobian of end-effector frame
+        # Jh_ee = self.SE3AdjMatrix(R_i)*Jb_ee
+        self.set_value_as_process("Jh_ee", lambda: self.SE3AdjMatrix(
+            self.get_value("R_i"))*self.get_value("Jb_ee"))
+        # Jh = self.SE3AdjMatrix(R_i)*Jb  # Hybrid Jacobian of last moving body
+        self.set_value_as_process("Jh", lambda: self.SE3AdjMatrix(
+            self.get_value("R_i"))*self.get_value("Jb"))
+
+        if simplify_expressions:
+            self.start_simplificaton_process("Jh_ee")
+            self.start_simplificaton_process("Jh")
+
+        # Acceleration computations
+        if self._a is not None:
+            self.set_value("a", self._a)
+        else:
+            # Block diagonal matrix a (6n x 6n)
+            a = zeros(6*self.n, 6*self.n)
+            for i in range(self.n):
+                a[6*i:6*i+6, 6*i:6*i+6] = self.SE3adMatrix(self.X[i])*qd[i]
+            self.set_value("a", a)
+            if simplify_expressions:
+                self.start_simplificaton_process("a")
+
+        # System acceleration (6n x 1)
+        # Jdot = -A*a*J  # Sys-level Jacobian time derivative
+        self.set_value_as_process(
+            "Jdot", lambda: -A*self.get_value("a")*self.get_value("J"))
+        if simplify_expressions:
+            self.start_simplificaton_process("Jdot")
+
+        # self.Jdot = Jdot
+
+        # Vbd = J*q2d - A*a*V
+        self.set_value_as_process("Vbd", lambda: self.get_value(
+            "J")*q2d - A*self.get_value("a")*self.get_value("V"))
+
+        # Hybrid acceleration of the last body
+        # Vbd_BFn = Vbd[-6:, :]
+        self.set_value_as_process(
+            "Vbd_BFn", lambda: self.get_value("Vbd")[-6:, :])
+
+        if simplify_expressions:
+            self.start_simplificaton_process("Vbd_BFn")
+
+        # Vhd_BFn = self.SE3AdjMatrix(R_BFn)*Vbd_BFn + self.SE3adMatrix(Matrix(Vh_BFn[:3, :]).col_join(
+            # Matrix([0, 0, 0])))*self.SE3AdjMatrix(R_BFn)*Vb_BFn  # Hybrid twist of end-effector frame
+        self.set_value_as_process("Vhd_BFn", lambda: self.SE3AdjMatrix(self.get_value("R_BFn"))*self.get_value("Vbd_BFn") + self.SE3adMatrix(Matrix(self.get_value("Vh_BFn")[:3, :]).col_join(
+            Matrix([0, 0, 0])))*self.SE3AdjMatrix(self.get_value("R_BFn"))*self.get_value("Vb_BFn"))
+
+        if simplify_expressions:
+            self.start_simplificaton_process("Vhd_BFn")
+
+        # Body fixed twist of end-effector frame
+        # Hybrid acceleration of the EE
+        # Vbd_ee = self.SE3AdjMatrix(self.SE3Inv(self.ee))*Vbd_BFn
+        self.set_value_as_process("Vbd_ee", lambda: self.SE3AdjMatrix(
+            self.SE3Inv(self.ee))*self.get_value("Vbd_BFn"))
+        if simplify_expressions:
+            self.start_simplificaton_process("Vbd_ee")
+        # Vhd_ee = self.SE3AdjMatrix(R_i)*Vbd_ee + self.SE3adMatrix(Matrix(
+        #     Vh_ee[:3, :]).col_join(Matrix([0, 0, 0])))*self.SE3AdjMatrix(R_i)*Vb_ee  # Hybrid twist of end-effector frame
+        self.set_value_as_process("Vhd_ee", lambda: self.SE3AdjMatrix(self.get_value("R_i")) * self.get_value("Vbd_ee") + self.SE3adMatrix(Matrix(
+            self.get_value("Vh_ee")[:3, :]).col_join(Matrix([0, 0, 0])))*self.SE3AdjMatrix(self.get_value("R_i"))*self.get_value("Vb_ee"))  # Hybrid twist of end-effector frame
+
+        if simplify_expressions:
+            self.start_simplificaton_process("Vhd_ee")
+
+        # Body Jacobian time derivative
+
+        # For the last moving body
+        # Jb_dot = Jdot[-6:, :]
+        self.set_value_as_process(
+            "Jb_dot", lambda: self.get_value("Jdot")[-6:, :])
+
+        # For the EE
+        # Jb_ee_dot = self.SE3AdjMatrix(self.SE3Inv(self.ee))*Jb_dot
+        self.set_value_as_process("Jb_ee_dot", lambda: self.SE3AdjMatrix(
+            self.SE3Inv(self.ee))*self.get_value("Jb_dot"))
+        if simplify_expressions:
+            self.start_simplificaton_process("Jb_ee_dot")
+
+        # Hybrid Jacobian time derivative
+        # For the last moving body
+        # Jh_dot = self.SE3AdjMatrix(R_BFn)*Jb_dot + self.SE3adMatrix(
+        #     Matrix(Vh_BFn[:3, :]).col_join(Matrix([0, 0, 0])))*self.SE3AdjMatrix(R_BFn)*Jb
+        self.set_value_as_process("Jh_dot", lambda: self.SE3AdjMatrix(self.get_value("R_BFn"))*self.get_value("Jb_dot") + self.SE3adMatrix(
+            Matrix(self.get_value("Vh_BFn")[:3, :]).col_join(Matrix([0, 0, 0])))*self.SE3AdjMatrix(self.get_value("R_BFn"))*self.get_value("Jb"))
+        if simplify_expressions:
+            self.start_simplificaton_process("Jh_dot")
+        # self.Jh_dot = Jh_dot
+
+        # For the EE
+        # Jh_ee_dot = self.SE3AdjMatrix(R_i)*Jb_ee_dot + self.SE3adMatrix(
+        #     Matrix(Vh_ee[:3, :]).col_join(Matrix([0, 0, 0])))*self.SE3AdjMatrix(R_i)*Jb_ee
+        self.set_value_as_process("Jh_ee_dot", lambda: self.SE3AdjMatrix(self.get_value("R_i"))*self.get_value("Jb_ee_dot") + self.SE3adMatrix(
+            Matrix(self.get_value("Vh_ee")[:3, :]).col_join(Matrix([0, 0, 0])))*self.SE3AdjMatrix(self.get_value("R_i"))*self.get_value("Jb_ee"))
+        if simplify_expressions:
+            self.start_simplificaton_process("Jh_ee_dot")
+        self._a = self.get_value("a")
+        self._V = self.get_value("V")
+
+        # variables for Code Generation:
+        self.fkin = self.get_value("fkin")
+        self.J = self.get_value("J")
+        self.Jb = self.get_value("Jb")
+        self.Jh = self.get_value("Jh")
+        self.Jdot = self.get_value("Jdot")
+        self.Vb_ee = self.get_value("Vb_ee")
+        self.Vh_ee = self.get_value("Vh_ee")
+        self.Jb_ee = self.get_value("Jb_ee")
+        self.Jh_ee = self.get_value("Jh_ee")
+        self.Vh_BFn = self.get_value("Vh_BFn")
+        self.Vb_BFn = self.get_value("Vb_BFn")
+        self.Vhd_BFn = self.get_value("Vhd_BFn")
+        self.Vbd_BFn = self.get_value("Vbd_BFn")
+        self.Vhd_ee = self.get_value("Vhd_ee")
+        self.Vbd_ee = self.get_value("Vhd_ee")
+        self.Jh_dot = self.get_value("Jh_dot")
+        self.Jb_dot = self.get_value("Jb_dot")
+        self.Jh_ee_dot = self.get_value("Jh_ee_dot")
+        self.Jb_ee_dot = self.get_value("Jb_ee_dot")
+
+        # empty Queues
+        for i in self.queue_dict:
+            self._flush_queue(self.queue_dict[i])
+        self.queue_dict = {}
+
+        # join Processes
+        for i in self.process_dict:
+            self.process_dict[i].join()
+        self.process_dict = {}
+
+        print("Done")
+        return self.fkin
+
+    def closed_form_inv_dyn_body_fixed_parallel(self, q, qd, q2d, WEE=zeros(6, 1), simplify_expressions=True):
+        """Inverse Dynamics using Body fixed representation of the twists in closed form. 
+
+        The following functions are saved in the class and can be code generated afterwards:
+            coriolis_cntrifugal_matrix
+            generalized_mass_inertia_matrix
+            gravity_vector
+            inverse_dynamics
+
+        Args:
+            q (sympy.Matrix): (n,1) Genearlized position vector.
+            qd (sympy.Matrix): (n,1 )Generalized velocity vector.
+            q2d (sympy.Matrix): (n,1) Generalized acceleration vector.
+            WEE (sympy.Matrix, optional): (6,1) WEE (t) is the time varying wrench on the EE link. Defaults to zeros(6, 1).
+            simplify_expressions (bool, optional): Use simplify command on saved expressions. Defaults to True.
+
+        Returns:
+            sympy.Matrix: Generalized Forces
+        """
+        print("Inverse dynamics calculation")
+
+        self.var_syms.update(q.free_symbols)
+        self.var_syms.update(qd.free_symbols)
+        self.var_syms.update(q2d.free_symbols)
+        self.var_syms.update(WEE.free_symbols)
+
+        self.n = len(q)
+
+        if self._FK_C is not None:
+            FK_C = self._FK_C
+        elif self.A is not None:
+            print("Using absolute configuration (A) of the body frames")
+            FK_f = [self.SE3Exp(self.Y[0], q[0])]
+            FK_C = [FK_f[0]*self.A[0]]
+            for i in range(1, self.n):
+                FK_f.append(FK_f[i-1]*self.SE3Exp(self.Y[i], q[i]))
+                FK_C.append(FK_f[i]*self.A[i])
+            self._FK_C = FK_C
+        elif self.B is not None:
+            print('Using relative configuration (B) of the body frames')
+            FK_C = [self.B[0]*self.SE3Exp(self.X[0], q[0])]
+            for i in range(1, self.n):
+                FK_C.append(FK_C[i-1]*self.B[i]*self.SE3Exp(self.X[i], q[i]))
+            self._FK_C = FK_C
+        else:
+            'Absolute (A) or Relative (B) configuration of the bodies should be provided in class!'
+            return
+
+        # Block diagonal matrix A (6n x 6n) of the Adjoint of body frame
+        if self._A is not None:
+            A = self._A
+        else:
+            A = Matrix(Identity(6*self.n))
+            for i in range(self.n):
+                for j in range(i):
+                    Crel = self.SE3Inv(FK_C[i])*FK_C[j]
+                    AdCrel = self.SE3AdjMatrix(Crel)
+                    r = 6*(i)
+                    c = 6*(j)
+                    A[r:r+6, c:c+6] = AdCrel
+            self._A = A
+
+        if self.J is not None:
+            self.set_value("J", self.J)
+            self.set_value("V", self._V)
+        else:
+            # Block diagonal matrix X (6n x n) of the screw coordinate vector associated to all joints in the body frame (Constant)
+            X = zeros(6*self.n, self.n)
+            for i in range(self.n):
+                X[6*i:6*i+6, i] = self.X[i]
+
+            # System level Jacobian
+            # J = A*X
+            self.set_value("J", A*X)
+            if simplify_expressions:
+                self.start_simplificaton_process("J")
+
+            # System twist (6n x 1)
+            # V = J*qd
+            self.set_value_as_process("V", lambda: self.get_value("J")*qd)
+
+        # Acceleration computations
+
+        if self._a is not None:
+            a = self._a
+        else:
+            # Block diagonal matrix a (6n x 6n)
+            a = zeros(6*self.n, 6*self.n)
+            for i in range(self.n):
+                a[6*i:6*i+6, 6*i:6*i+6] = self.SE3adMatrix(self.X[i])*qd[i]
+            self._a = a
+
+        # System acceleration (6n x 1)
+        # Vd = J*q2d - A*a*V
+        self.set_value_as_process("Vd", lambda: self.get_value(
+            "J")*q2d - A*a*self.get_value("V"))
+
+        # Block Diagonal Mb (6n x 6n) Mass inertia matrix in body frame (Constant)
+        Mb = zeros(6*self.n, 6*self.n)
+        for i in range(self.n):
+            Mb[i*6:i*6+6, i*6:i*6+6] = self.Mb[i]
+
+        # Block diagonal matrix b (6n x 6n) used in Coriolis matrix
+        def _b():
+            nonlocal self
+            b = zeros(6*self.n, 6*self.n)
+            for i in range(self.n):
+                b[i*6:i*6+6, i*6:i*6 +
+                    6] = self.SE3adMatrix(Matrix(self.get_value("V")[6*i:6*i+6]))
+            return b
+        self.set_value_as_process("b", _b)
+
+        # Block diagonal matrix Cb (6n x 6n)
+        # Cb = -Mb*A*a - b.T * Mb
+        self.set_value_as_process(
+            "Cb", lambda: -Mb*A*a - self.get_value("b").T * Mb)
+
+        # Lets setup the Equations of Motion
+
+        # Mass inertia matrix in joint space (n x n)
+        # M = J.T*Mb*J
+        self.set_value_as_process(
+            "M", lambda: self.get_value("J").T*Mb*self.get_value("J"))
+        if simplify_expressions:
+            self.start_simplificaton_process("M")
+
+        # Coriolis-Centrifugal matrix in joint space (n x n)
+        # C = J.T * Cb * J
+        self.set_value_as_process("C", lambda: self.get_value(
+            "J").T*self.get_value("Cb")*self.get_value("J"))
+        if simplify_expressions:
+            self.start_simplificaton_process("C")
+
+        # Gravity Term
+        U = self.SE3AdjInvMatrix(FK_C[0])
+        for k in range(1, self.n):
+            U = U.col_join(self.SE3AdjInvMatrix(FK_C[k]))
+
+        Vd_0 = zeros(6, 1)
+        Vd_0[3:6, 0] = self.gravity_vector
+        # Qgrav = J.T*Mb*U*Vd_0
+        self.set_value_as_process(
+            "Qgrav", lambda: self.get_value("J").T*Mb*U*Vd_0)
+        if simplify_expressions:
+            # Qgrav = simplify(Qgrav)
+            self.start_simplificaton_process("Qgrav")
+
+        # External Wrench
+        Wext = zeros(6*self.n, 1)
+        # WEE (t) is the time varying wrench on the EE link.
+        Wext[-6:, 0] = WEE
+        # Qext = J.T * Wext
+        self.set_value_as_process("Qext", lambda: self.get_value("J").T * Wext)
+
+        # Generalized forces Q
+        # Q = M*q2d + C*qd   # without gravity
+        # Q = M*q2d + C*qd + Qgrav + Qext
+        self.set_value_as_process("Q", lambda: self.get_value(
+            "M")*q2d + self.get_value("C")*qd + self.get_value("Qgrav") + self.get_value("Qext"))
+
+        if simplify_expressions:
+            self.start_simplificaton_process("Q")
+
+        self._V = self.get_value("V")
+        self.J = self.get_value("J")
+        self.M = self.get_value("M")
+        self.C = self.get_value("C")
+        self.Qgrav = self.get_value("Qgrav")
+        self.Q = self.get_value("Q")
+
+        # empty Queues
+        for i in self.queue_dict:
+            self._flush_queue(self.queue_dict[i])
+        self.queue_dict = {}
+
+        # join Processes
+        for i in self.process_dict:
+            self.process_dict[i].join()
+        self.process_dict = {}
+
+        print("Done")
+        return self.Q
+
     def SE3AdjInvMatrix(self, C):
         """Compute Inverse of (6x6) Adjoint Matrix for SE(3)
 
@@ -741,6 +1263,25 @@ class SymbolicKinDyn():
             else:
                 self.X.append(Matrix([0, 0, 0, 0, 0, 1]))
 
+    # def load_from_urdf(self, path= "/home/hannah/DFKI/hopping_leg/model/with_rails/urdf/v7.urdf"):
+    #     robot = URDF.load("/home/hannah/DFKI/hopping_leg/model/with_rails/urdf/v7.urdf")
+    #     self.B = []
+    #     self.X = []
+    #     for joint in robot.joints:
+    #         if joint.joint_type == "revolute":
+    #             origin = joint.origin
+    #             for i in range(4):
+    #                 for j in range(4):
+    #                     origin[i,j] = nsimplify(origin[i,j], [pi], tolerance=0.00001)
+    #             self.B.append(Matrix(origin)) # Probably B
+    #             axis = joint.axis
+    #             for i in range(3):
+    #                 axis[i] = nsimplify(axis[i], [pi], tolerance=0.00001)
+    #             self.X.append(Matrix(axis).col_join(Matrix([0,0,0])))
+    #     # self.Mb = []
+    #     # for link in robot.links:
+    #     #     self.Mb.append(self.MassMatrixMixedData())
+
 
 if __name__ == "__main__":
     s = SymbolicKinDyn()
@@ -816,7 +1357,10 @@ if __name__ == "__main__":
     q2d = Matrix([ddq1, ddq2])
 
     # Kinematics
-    F = s.closed_form_kinematics_body_fixed(q, qd, q2d)
-    Q = s.closed_form_inv_dyn_body_fixed(q, qd, q2d)
-    s.generateCode(python=True, C=True, Matlab=True, 
+    # F = s.closed_form_kinematics_body_fixed(q, qd, q2d)
+    # Q = s.closed_form_inv_dyn_body_fixed(q, qd, q2d)
+    F = s.closed_form_kinematics_body_fixed_parallel(q, qd, q2d)
+    Q = s.closed_form_inv_dyn_body_fixed_parallel(q, qd, q2d)
+
+    s.generateCode(python=True, C=True, Matlab=True,
                    use_global_vars=True, name="plant", project="Project")
