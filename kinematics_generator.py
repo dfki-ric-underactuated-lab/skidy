@@ -587,48 +587,72 @@ class SymbolicKinDyn():
         print("Done")
         return Q
 
-    def set_value_as_process(self, name, target):
+    def _set_value_as_process(self, name, target):
+        """Set return value of taget as value to queue in self.queue_dict with identifier name
+
+        Args:
+            name (str): Identifier
+            target (function): function, which returns value 
+        """
         if name not in self.queue_dict:
             self.queue_dict[name] = Queue()
         if name in self.process_dict:
             print("already there")
         self.process_dict[name] = Process(
-            target=lambda: self.set_value(name, target()), args=(), name=name)
+            target=lambda: self._set_value(name, target()), args=(), name=name)
         self.process_dict[name].start()
 
-    def set_value(self, name, var):
+    def _set_value(self, name, var):
+        """Set value to queue in self.queue_dict
+
+        Args:
+            name (str): Identifier
+            var (any): Value to save
+        """
         if name not in self.queue_dict:
             self.queue_dict[name] = Queue()
         self.queue_dict[name].put(var)
 
-    def start_simplificaton_process(self, name):
+    def _start_simplificaton_process(self, name):
+        """Start Process, which simplifies and overwrites value in queue from self.queue_dict
+
+        Args:
+            name (str): Identifier
+        """
         if name not in self.queue_dict:
             self.queue_dict[name] = Queue()
-        if name+"_simplify" in self.process_dict:
-            print("already there")
         self.process_dict[name+"_simplify"] = Process(
-            target=self.simplify_parallel, args=(name,), name=name+"_simplify")
+            target=self._simplify_parallel, args=(name,), name=name+"_simplify")
         self.process_dict[name+"_simplify"].start()
 
-    # def start_new_process(self, name, target, args=()):
-    #     if name not in self.queue_dict:
-    #         self.queue_dict[name] = Queue()
-    #     self.process_dict[name] = Process(target = target, args=args)
-    #     self.process_dict[name].start()
+    def _get_value(self, name):
+        """Get value from queue in self.queue_dict and put it in again
 
-    def get_value(self, name):
+        Args:
+            name (str): Identifier
+
+        Returns:
+            any: Value
+        """
         value = self.queue_dict[name].get()
         self.queue_dict[name].put(value)
         return value
 
-    def simplify_parallel(self, name):
+    def _simplify_parallel(self, name):
+        """Take value from self.queue_dict, simplify it and put it in again.
+
+        Args:
+            name (str): Identifier
+        """
         value = simplify(self.queue_dict[name].get())
         self.queue_dict[name].put(value)
 
-    # def simplify_parallel(self, queue, var):
-        # queue.put(simplify(var))
-
     def _flush_queue(self, q):
+        """Flush all items in queue
+
+        Args:
+            q (Queue): Queue to flush
+        """
         try:
             while True:
                 q.get(block=False)
@@ -690,9 +714,9 @@ class SymbolicKinDyn():
             'Absolute (A) or Relative (B) configuration of the bodies should be provided in class!'
             return
 
-        self.set_value("fkin", FK_C[self.n-1]*self.ee)
+        self._set_value("fkin", FK_C[self.n-1]*self.ee)
         if simplify_expressions:
-            self.start_simplificaton_process("fkin")
+            self._start_simplificaton_process("fkin")
 
         # Block diagonal matrix A (6n x 6n) of the Adjoint of body frame
         if self._A is not None:
@@ -709,8 +733,8 @@ class SymbolicKinDyn():
             self._A = A
 
         if self.J is not None:
-            self.set_value("J", self.J)
-            self.set_value("V", self._V)
+            self._set_value("J", self.J)
+            self._set_value("V", self._V)
         else:
             # Block diagonal matrix X (6n x n) of the screw coordinate vector associated to all joints in the body frame (Constant)
             X = zeros(6*self.n, self.n)
@@ -719,182 +743,182 @@ class SymbolicKinDyn():
 
             # System level Jacobian
             # J = A*X
-            self.set_value("J", A*X)
+            self._set_value("J", A*X)
             if simplify_expressions:
-                self.start_simplificaton_process("J")
+                self._start_simplificaton_process("J")
 
             # System twist (6n x 1)
             # V = J*qd
-            self.set_value_as_process("V", lambda: self.get_value("J")*qd)
+            self._set_value_as_process("V", lambda: self._get_value("J")*qd)
 
         # Different Jacobians
-        self.set_value_as_process("R_i", lambda: Matrix(self.get_value("fkin")[:3, :3]).row_join(
+        self._set_value_as_process("R_i", lambda: Matrix(self._get_value("fkin")[:3, :3]).row_join(
             zeros(3, 1)).col_join(Matrix([0, 0, 0, 1]).T))
 
         if simplify_expressions:  # fastens later simmplifications
-            self.start_simplificaton_process("R_i")
+            self._start_simplificaton_process("R_i")
 
-        self.set_value("R_BFn", Matrix(FK_C[-1][:3, :3]).row_join(
+        self._set_value("R_BFn", Matrix(FK_C[-1][:3, :3]).row_join(
             zeros(3, 1)).col_join(Matrix([0, 0, 0, 1]).T))
 
         # Body fixed Jacobian of last moving body (This may not correspond to end-effector frame)
-        self.set_value_as_process("Jb", lambda: self.get_value("J")[-6:, :])
+        self._set_value_as_process("Jb", lambda: self._get_value("J")[-6:, :])
         # Jb = J[-6:, :]
         if simplify_expressions:
-            self.start_simplificaton_process("Jb")
+            self._start_simplificaton_process("Jb")
 
-        self.set_value_as_process("Vb_BFn", lambda: self.get_value("Jb")*qd)
+        self._set_value_as_process("Vb_BFn", lambda: self._get_value("Jb")*qd)
         # Vb_BFn = Jb*qd  # Body fixed twist of last moving body
         if simplify_expressions:
-            self.start_simplificaton_process("Vb_BFn")
+            self._start_simplificaton_process("Vb_BFn")
         # Vh_BFn = self.SE3AdjMatrix(R_BFn)*Vb_BFn
-        self.set_value_as_process("Vh_BFn", lambda: self.SE3AdjMatrix(
-            self.get_value("R_BFn"))*self.get_value("Vb_BFn"))
+        self._set_value_as_process("Vh_BFn", lambda: self.SE3AdjMatrix(
+            self._get_value("R_BFn"))*self._get_value("Vb_BFn"))
         if simplify_expressions:
-            self.start_simplificaton_process("Vh_BFn")
+            self._start_simplificaton_process("Vh_BFn")
 
         # Body fixed twist of end-effector frame
         # Vb_ee = self.SE3AdjMatrix(self.SE3Inv(self.ee))*Vb_BFn
-        self.set_value_as_process("Vb_ee", lambda: self.SE3AdjMatrix(
-            self.SE3Inv(self.ee))*self.get_value("Vb_BFn"))
+        self._set_value_as_process("Vb_ee", lambda: self.SE3AdjMatrix(
+            self.SE3Inv(self.ee))*self._get_value("Vb_BFn"))
         if simplify_expressions:
-            self.start_simplificaton_process("Vb_ee")
+            self._start_simplificaton_process("Vb_ee")
         # Hybrid twist of end-effector frame
         # Vh_ee = self.SE3AdjMatrix(R_i)*Vb_ee
-        self.set_value_as_process("Vh_ee", lambda: self.SE3AdjMatrix(
-            self.get_value("R_i"))*self.get_value("Vb_ee"))
+        self._set_value_as_process("Vh_ee", lambda: self.SE3AdjMatrix(
+            self._get_value("R_i"))*self._get_value("Vb_ee"))
         if simplify_expressions:
-            self.start_simplificaton_process("Vh_ee")
+            self._start_simplificaton_process("Vh_ee")
 
         # Body fixed Jacobian of end-effector frame
         # Jb_ee = self.SE3AdjMatrix(self.SE3Inv(self.ee))*Jb
-        self.set_value_as_process("Jb_ee", lambda: self.SE3AdjMatrix(
-            self.SE3Inv(self.ee))*self.get_value("Jb"))
+        self._set_value_as_process("Jb_ee", lambda: self.SE3AdjMatrix(
+            self.SE3Inv(self.ee))*self._get_value("Jb"))
         if simplify_expressions:
-            self.start_simplificaton_process("Jb_ee")
+            self._start_simplificaton_process("Jb_ee")
 
         # Hybrid Jacobian of end-effector frame
         # Jh_ee = self.SE3AdjMatrix(R_i)*Jb_ee
-        self.set_value_as_process("Jh_ee", lambda: self.SE3AdjMatrix(
-            self.get_value("R_i"))*self.get_value("Jb_ee"))
+        self._set_value_as_process("Jh_ee", lambda: self.SE3AdjMatrix(
+            self._get_value("R_i"))*self._get_value("Jb_ee"))
         # Jh = self.SE3AdjMatrix(R_i)*Jb  # Hybrid Jacobian of last moving body
-        self.set_value_as_process("Jh", lambda: self.SE3AdjMatrix(
-            self.get_value("R_i"))*self.get_value("Jb"))
+        self._set_value_as_process("Jh", lambda: self.SE3AdjMatrix(
+            self._get_value("R_i"))*self._get_value("Jb"))
 
         if simplify_expressions:
-            self.start_simplificaton_process("Jh_ee")
-            self.start_simplificaton_process("Jh")
+            self._start_simplificaton_process("Jh_ee")
+            self._start_simplificaton_process("Jh")
 
         # Acceleration computations
         if self._a is not None:
-            self.set_value("a", self._a)
+            self._set_value("a", self._a)
         else:
             # Block diagonal matrix a (6n x 6n)
             a = zeros(6*self.n, 6*self.n)
             for i in range(self.n):
                 a[6*i:6*i+6, 6*i:6*i+6] = self.SE3adMatrix(self.X[i])*qd[i]
-            self.set_value("a", a)
+            self._set_value("a", a)
             if simplify_expressions:
-                self.start_simplificaton_process("a")
+                self._start_simplificaton_process("a")
 
         # System acceleration (6n x 1)
         # Jdot = -A*a*J  # Sys-level Jacobian time derivative
-        self.set_value_as_process(
-            "Jdot", lambda: -A*self.get_value("a")*self.get_value("J"))
+        self._set_value_as_process(
+            "Jdot", lambda: -A*self._get_value("a")*self._get_value("J"))
         if simplify_expressions:
-            self.start_simplificaton_process("Jdot")
+            self._start_simplificaton_process("Jdot")
 
         # self.Jdot = Jdot
 
         # Vbd = J*q2d - A*a*V
-        self.set_value_as_process("Vbd", lambda: self.get_value(
-            "J")*q2d - A*self.get_value("a")*self.get_value("V"))
+        self._set_value_as_process("Vbd", lambda: self._get_value(
+            "J")*q2d - A*self._get_value("a")*self._get_value("V"))
 
         # Hybrid acceleration of the last body
         # Vbd_BFn = Vbd[-6:, :]
-        self.set_value_as_process(
-            "Vbd_BFn", lambda: self.get_value("Vbd")[-6:, :])
+        self._set_value_as_process(
+            "Vbd_BFn", lambda: self._get_value("Vbd")[-6:, :])
 
         if simplify_expressions:
-            self.start_simplificaton_process("Vbd_BFn")
+            self._start_simplificaton_process("Vbd_BFn")
 
         # Vhd_BFn = self.SE3AdjMatrix(R_BFn)*Vbd_BFn + self.SE3adMatrix(Matrix(Vh_BFn[:3, :]).col_join(
             # Matrix([0, 0, 0])))*self.SE3AdjMatrix(R_BFn)*Vb_BFn  # Hybrid twist of end-effector frame
-        self.set_value_as_process("Vhd_BFn", lambda: self.SE3AdjMatrix(self.get_value("R_BFn"))*self.get_value("Vbd_BFn") + self.SE3adMatrix(Matrix(self.get_value("Vh_BFn")[:3, :]).col_join(
-            Matrix([0, 0, 0])))*self.SE3AdjMatrix(self.get_value("R_BFn"))*self.get_value("Vb_BFn"))
+        self._set_value_as_process("Vhd_BFn", lambda: self.SE3AdjMatrix(self._get_value("R_BFn"))*self._get_value("Vbd_BFn") + self.SE3adMatrix(Matrix(self._get_value("Vh_BFn")[:3, :]).col_join(
+            Matrix([0, 0, 0])))*self.SE3AdjMatrix(self._get_value("R_BFn"))*self._get_value("Vb_BFn"))
 
         if simplify_expressions:
-            self.start_simplificaton_process("Vhd_BFn")
+            self._start_simplificaton_process("Vhd_BFn")
 
         # Body fixed twist of end-effector frame
         # Hybrid acceleration of the EE
         # Vbd_ee = self.SE3AdjMatrix(self.SE3Inv(self.ee))*Vbd_BFn
-        self.set_value_as_process("Vbd_ee", lambda: self.SE3AdjMatrix(
-            self.SE3Inv(self.ee))*self.get_value("Vbd_BFn"))
+        self._set_value_as_process("Vbd_ee", lambda: self.SE3AdjMatrix(
+            self.SE3Inv(self.ee))*self._get_value("Vbd_BFn"))
         if simplify_expressions:
-            self.start_simplificaton_process("Vbd_ee")
+            self._start_simplificaton_process("Vbd_ee")
         # Vhd_ee = self.SE3AdjMatrix(R_i)*Vbd_ee + self.SE3adMatrix(Matrix(
         #     Vh_ee[:3, :]).col_join(Matrix([0, 0, 0])))*self.SE3AdjMatrix(R_i)*Vb_ee  # Hybrid twist of end-effector frame
-        self.set_value_as_process("Vhd_ee", lambda: self.SE3AdjMatrix(self.get_value("R_i")) * self.get_value("Vbd_ee") + self.SE3adMatrix(Matrix(
-            self.get_value("Vh_ee")[:3, :]).col_join(Matrix([0, 0, 0])))*self.SE3AdjMatrix(self.get_value("R_i"))*self.get_value("Vb_ee"))  # Hybrid twist of end-effector frame
+        self._set_value_as_process("Vhd_ee", lambda: self.SE3AdjMatrix(self._get_value("R_i")) * self._get_value("Vbd_ee") + self.SE3adMatrix(Matrix(
+            self._get_value("Vh_ee")[:3, :]).col_join(Matrix([0, 0, 0])))*self.SE3AdjMatrix(self._get_value("R_i"))*self._get_value("Vb_ee"))  # Hybrid twist of end-effector frame
 
         if simplify_expressions:
-            self.start_simplificaton_process("Vhd_ee")
+            self._start_simplificaton_process("Vhd_ee")
 
         # Body Jacobian time derivative
 
         # For the last moving body
         # Jb_dot = Jdot[-6:, :]
-        self.set_value_as_process(
-            "Jb_dot", lambda: self.get_value("Jdot")[-6:, :])
+        self._set_value_as_process(
+            "Jb_dot", lambda: self._get_value("Jdot")[-6:, :])
 
         # For the EE
         # Jb_ee_dot = self.SE3AdjMatrix(self.SE3Inv(self.ee))*Jb_dot
-        self.set_value_as_process("Jb_ee_dot", lambda: self.SE3AdjMatrix(
-            self.SE3Inv(self.ee))*self.get_value("Jb_dot"))
+        self._set_value_as_process("Jb_ee_dot", lambda: self.SE3AdjMatrix(
+            self.SE3Inv(self.ee))*self._get_value("Jb_dot"))
         if simplify_expressions:
-            self.start_simplificaton_process("Jb_ee_dot")
+            self._start_simplificaton_process("Jb_ee_dot")
 
         # Hybrid Jacobian time derivative
         # For the last moving body
         # Jh_dot = self.SE3AdjMatrix(R_BFn)*Jb_dot + self.SE3adMatrix(
         #     Matrix(Vh_BFn[:3, :]).col_join(Matrix([0, 0, 0])))*self.SE3AdjMatrix(R_BFn)*Jb
-        self.set_value_as_process("Jh_dot", lambda: self.SE3AdjMatrix(self.get_value("R_BFn"))*self.get_value("Jb_dot") + self.SE3adMatrix(
-            Matrix(self.get_value("Vh_BFn")[:3, :]).col_join(Matrix([0, 0, 0])))*self.SE3AdjMatrix(self.get_value("R_BFn"))*self.get_value("Jb"))
+        self._set_value_as_process("Jh_dot", lambda: self.SE3AdjMatrix(self._get_value("R_BFn"))*self._get_value("Jb_dot") + self.SE3adMatrix(
+            Matrix(self._get_value("Vh_BFn")[:3, :]).col_join(Matrix([0, 0, 0])))*self.SE3AdjMatrix(self._get_value("R_BFn"))*self._get_value("Jb"))
         if simplify_expressions:
-            self.start_simplificaton_process("Jh_dot")
+            self._start_simplificaton_process("Jh_dot")
         # self.Jh_dot = Jh_dot
 
         # For the EE
         # Jh_ee_dot = self.SE3AdjMatrix(R_i)*Jb_ee_dot + self.SE3adMatrix(
         #     Matrix(Vh_ee[:3, :]).col_join(Matrix([0, 0, 0])))*self.SE3AdjMatrix(R_i)*Jb_ee
-        self.set_value_as_process("Jh_ee_dot", lambda: self.SE3AdjMatrix(self.get_value("R_i"))*self.get_value("Jb_ee_dot") + self.SE3adMatrix(
-            Matrix(self.get_value("Vh_ee")[:3, :]).col_join(Matrix([0, 0, 0])))*self.SE3AdjMatrix(self.get_value("R_i"))*self.get_value("Jb_ee"))
+        self._set_value_as_process("Jh_ee_dot", lambda: self.SE3AdjMatrix(self._get_value("R_i"))*self._get_value("Jb_ee_dot") + self.SE3adMatrix(
+            Matrix(self._get_value("Vh_ee")[:3, :]).col_join(Matrix([0, 0, 0])))*self.SE3AdjMatrix(self._get_value("R_i"))*self._get_value("Jb_ee"))
         if simplify_expressions:
-            self.start_simplificaton_process("Jh_ee_dot")
-        self._a = self.get_value("a")
-        self._V = self.get_value("V")
+            self._start_simplificaton_process("Jh_ee_dot")
+        self._a = self._get_value("a")
+        self._V = self._get_value("V")
 
         # variables for Code Generation:
-        self.fkin = self.get_value("fkin")
-        self.J = self.get_value("J")
-        self.Jb = self.get_value("Jb")
-        self.Jh = self.get_value("Jh")
-        self.Jdot = self.get_value("Jdot")
-        self.Vb_ee = self.get_value("Vb_ee")
-        self.Vh_ee = self.get_value("Vh_ee")
-        self.Jb_ee = self.get_value("Jb_ee")
-        self.Jh_ee = self.get_value("Jh_ee")
-        self.Vh_BFn = self.get_value("Vh_BFn")
-        self.Vb_BFn = self.get_value("Vb_BFn")
-        self.Vhd_BFn = self.get_value("Vhd_BFn")
-        self.Vbd_BFn = self.get_value("Vbd_BFn")
-        self.Vhd_ee = self.get_value("Vhd_ee")
-        self.Vbd_ee = self.get_value("Vhd_ee")
-        self.Jh_dot = self.get_value("Jh_dot")
-        self.Jb_dot = self.get_value("Jb_dot")
-        self.Jh_ee_dot = self.get_value("Jh_ee_dot")
-        self.Jb_ee_dot = self.get_value("Jb_ee_dot")
+        self.fkin = self._get_value("fkin")
+        self.J = self._get_value("J")
+        self.Jb = self._get_value("Jb")
+        self.Jh = self._get_value("Jh")
+        self.Jdot = self._get_value("Jdot")
+        self.Vb_ee = self._get_value("Vb_ee")
+        self.Vh_ee = self._get_value("Vh_ee")
+        self.Jb_ee = self._get_value("Jb_ee")
+        self.Jh_ee = self._get_value("Jh_ee")
+        self.Vh_BFn = self._get_value("Vh_BFn")
+        self.Vb_BFn = self._get_value("Vb_BFn")
+        self.Vhd_BFn = self._get_value("Vhd_BFn")
+        self.Vbd_BFn = self._get_value("Vbd_BFn")
+        self.Vhd_ee = self._get_value("Vhd_ee")
+        self.Vbd_ee = self._get_value("Vhd_ee")
+        self.Jh_dot = self._get_value("Jh_dot")
+        self.Jb_dot = self._get_value("Jb_dot")
+        self.Jh_ee_dot = self._get_value("Jh_ee_dot")
+        self.Jb_ee_dot = self._get_value("Jb_ee_dot")
 
         # empty Queues
         for i in self.queue_dict:
@@ -972,8 +996,8 @@ class SymbolicKinDyn():
             self._A = A
 
         if self.J is not None:
-            self.set_value("J", self.J)
-            self.set_value("V", self._V)
+            self._set_value("J", self.J)
+            self._set_value("V", self._V)
         else:
             # Block diagonal matrix X (6n x n) of the screw coordinate vector associated to all joints in the body frame (Constant)
             X = zeros(6*self.n, self.n)
@@ -982,13 +1006,13 @@ class SymbolicKinDyn():
 
             # System level Jacobian
             # J = A*X
-            self.set_value("J", A*X)
+            self._set_value("J", A*X)
             if simplify_expressions:
-                self.start_simplificaton_process("J")
+                self._start_simplificaton_process("J")
 
             # System twist (6n x 1)
             # V = J*qd
-            self.set_value_as_process("V", lambda: self.get_value("J")*qd)
+            self._set_value_as_process("V", lambda: self._get_value("J")*qd)
 
         # Acceleration computations
 
@@ -1003,8 +1027,8 @@ class SymbolicKinDyn():
 
         # System acceleration (6n x 1)
         # Vd = J*q2d - A*a*V
-        self.set_value_as_process("Vd", lambda: self.get_value(
-            "J")*q2d - A*a*self.get_value("V"))
+        self._set_value_as_process("Vd", lambda: self._get_value(
+            "J")*q2d - A*a*self._get_value("V"))
 
         # Block Diagonal Mb (6n x 6n) Mass inertia matrix in body frame (Constant)
         Mb = zeros(6*self.n, 6*self.n)
@@ -1017,30 +1041,30 @@ class SymbolicKinDyn():
             b = zeros(6*self.n, 6*self.n)
             for i in range(self.n):
                 b[i*6:i*6+6, i*6:i*6 +
-                    6] = self.SE3adMatrix(Matrix(self.get_value("V")[6*i:6*i+6]))
+                    6] = self.SE3adMatrix(Matrix(self._get_value("V")[6*i:6*i+6]))
             return b
-        self.set_value_as_process("b", _b)
+        self._set_value_as_process("b", _b)
 
         # Block diagonal matrix Cb (6n x 6n)
         # Cb = -Mb*A*a - b.T * Mb
-        self.set_value_as_process(
-            "Cb", lambda: -Mb*A*a - self.get_value("b").T * Mb)
+        self._set_value_as_process(
+            "Cb", lambda: -Mb*A*a - self._get_value("b").T * Mb)
 
         # Lets setup the Equations of Motion
 
         # Mass inertia matrix in joint space (n x n)
         # M = J.T*Mb*J
-        self.set_value_as_process(
-            "M", lambda: self.get_value("J").T*Mb*self.get_value("J"))
+        self._set_value_as_process(
+            "M", lambda: self._get_value("J").T*Mb*self._get_value("J"))
         if simplify_expressions:
-            self.start_simplificaton_process("M")
+            self._start_simplificaton_process("M")
 
         # Coriolis-Centrifugal matrix in joint space (n x n)
         # C = J.T * Cb * J
-        self.set_value_as_process("C", lambda: self.get_value(
-            "J").T*self.get_value("Cb")*self.get_value("J"))
+        self._set_value_as_process("C", lambda: self._get_value(
+            "J").T*self._get_value("Cb")*self._get_value("J"))
         if simplify_expressions:
-            self.start_simplificaton_process("C")
+            self._start_simplificaton_process("C")
 
         # Gravity Term
         U = self.SE3AdjInvMatrix(FK_C[0])
@@ -1050,34 +1074,34 @@ class SymbolicKinDyn():
         Vd_0 = zeros(6, 1)
         Vd_0[3:6, 0] = self.gravity_vector
         # Qgrav = J.T*Mb*U*Vd_0
-        self.set_value_as_process(
-            "Qgrav", lambda: self.get_value("J").T*Mb*U*Vd_0)
+        self._set_value_as_process(
+            "Qgrav", lambda: self._get_value("J").T*Mb*U*Vd_0)
         if simplify_expressions:
             # Qgrav = simplify(Qgrav)
-            self.start_simplificaton_process("Qgrav")
+            self._start_simplificaton_process("Qgrav")
 
         # External Wrench
         Wext = zeros(6*self.n, 1)
         # WEE (t) is the time varying wrench on the EE link.
         Wext[-6:, 0] = WEE
         # Qext = J.T * Wext
-        self.set_value_as_process("Qext", lambda: self.get_value("J").T * Wext)
+        self._set_value_as_process("Qext", lambda: self._get_value("J").T * Wext)
 
         # Generalized forces Q
         # Q = M*q2d + C*qd   # without gravity
         # Q = M*q2d + C*qd + Qgrav + Qext
-        self.set_value_as_process("Q", lambda: self.get_value(
-            "M")*q2d + self.get_value("C")*qd + self.get_value("Qgrav") + self.get_value("Qext"))
+        self._set_value_as_process("Q", lambda: self._get_value(
+            "M")*q2d + self._get_value("C")*qd + self._get_value("Qgrav") + self._get_value("Qext"))
 
         if simplify_expressions:
-            self.start_simplificaton_process("Q")
+            self._start_simplificaton_process("Q")
 
-        self._V = self.get_value("V")
-        self.J = self.get_value("J")
-        self.M = self.get_value("M")
-        self.C = self.get_value("C")
-        self.Qgrav = self.get_value("Qgrav")
-        self.Q = self.get_value("Q")
+        self._V = self._get_value("V")
+        self.J = self._get_value("J")
+        self.M = self._get_value("M")
+        self.C = self._get_value("C")
+        self.Qgrav = self._get_value("Qgrav")
+        self.Q = self._get_value("Q")
 
         # empty Queues
         for i in self.queue_dict:
