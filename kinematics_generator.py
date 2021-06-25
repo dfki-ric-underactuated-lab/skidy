@@ -2,11 +2,11 @@ import queue
 from sympy import *
 from sympy.printing.numpy import NumPyPrinter
 from sympy.utilities.codegen import codegen
-from urdfpy import URDF
+from urdfpy import URDF, matrix_to_xyz_rpy
 from multiprocessing import Process, Queue
 from time import sleep
 
-# import multiprocessing, logging
+import multiprocessing, logging
 # mpl = multiprocessing.log_to_stderr()
 # mpl.setLevel(logging.DEBUG)
 # mpl.setLevel(logging.INFO)
@@ -83,6 +83,9 @@ class SymbolicKinDyn():
         # Multiprocessing
         self.queue_dict = {}
         self.process_dict = {}
+        
+        # Value assignment
+        self.assignment_dict = {}
 
     def generateCode(self, python=True, C=True, Matlab=False, folder="./generated_code", use_global_vars=True, name="plant", project="Project"):
         """Generate code of saved Equations. 
@@ -1191,8 +1194,8 @@ class SymbolicKinDyn():
                         [X[2], 0, -X[0]],
                         [-X[1], X[0], 0]])
         R = Matrix(Identity(3)) + sin(t)*xihat + (1-cos(t))*(xihat*xihat)
-        if xi == zeros(1, 3):
-            p = eta.T * t
+        if xi == zeros(3, 1):
+            p = eta * t
         else:
             p = (Matrix(Identity(3))-R)*(xihat*eta) + xi*(xi.T*eta)*t
         C = R.row_join(p).col_join(Matrix([0, 0, 0, 1]).T)
@@ -1236,6 +1239,20 @@ class SymbolicKinDyn():
                     [Ixy, Iyy, Iyz],
                     [Ixz, Iyz, Izz]])
         return I
+    
+    def TransformationMatrix(self,r = Matrix(Identity(3)),t = zeros(3,1)):
+        """Build Transformation matrix from rotation and translation
+
+        Args:
+            r (sympy.Matrix): SO(3) Rotation matrix (3,3). Defaults to sympy.Matrix(Identity(3))
+            t (sympy.Matrix): Translation vector (3,1). Defaults to sympy.zeros(3,1)
+
+        Returns:
+            sympy.Matrix: Transformation matrix
+        """
+        T =  r.row_join(t).col_join(Matrix([[0,0,0,1]]))
+        return T
+
 
     def MassMatrixMixedData(self, m, Theta, COM):
         """Build mass-inertia matrix in SE(3) from mass, inertia and center of mass information.
@@ -1287,25 +1304,151 @@ class SymbolicKinDyn():
             else:
                 self.X.append(Matrix([0, 0, 0, 0, 0, 1]))
 
-    # def load_from_urdf(self, path= "/home/hannah/DFKI/hopping_leg/model/with_rails/urdf/v7.urdf"):
-    #     robot = URDF.load("/home/hannah/DFKI/hopping_leg/model/with_rails/urdf/v7.urdf")
-    #     self.B = []
-    #     self.X = []
-    #     for joint in robot.joints:
-    #         if joint.joint_type == "revolute":
-    #             origin = joint.origin
-    #             for i in range(4):
-    #                 for j in range(4):
-    #                     origin[i,j] = nsimplify(origin[i,j], [pi], tolerance=0.00001)
-    #             self.B.append(Matrix(origin)) # Probably B
-    #             axis = joint.axis
-    #             for i in range(3):
-    #                 axis[i] = nsimplify(axis[i], [pi], tolerance=0.00001)
-    #             self.X.append(Matrix(axis).col_join(Matrix([0,0,0])))
-    #     # self.Mb = []
-    #     # for link in robot.links:
-    #     #     self.Mb.append(self.MassMatrixMixedData())
+    def rpy_to_matrix(self, coords):
+        """Convert roll-pitch-yaw coordinates to a 3x3 homogenous rotation matrix.
+        
+        Adapted from urdfpy_package
 
+        The roll-pitch-yaw axes in a typical URDF are defined as a
+        rotation of ``r`` radians around the x-axis followed by a rotation of
+        ``p`` radians around the y-axis followed by a rotation of ``y`` radians
+        around the z-axis. These are the Z1-Y2-X3 Tait-Bryan angles. See
+        Wikipedia_ for more information.
+
+        .. _Wikipedia: https://en.wikipedia.org/wiki/Euler_angles#Rotation_matrix
+
+        Parameters
+        ----------
+        coords : (3,) float
+            The roll-pitch-yaw coordinates in order (x-rot, y-rot, z-rot).
+
+        Returns
+        -------
+        R : (3,3) float
+            The corresponding homogenous 3x3 rotation matrix.
+        """
+        # coords = np.asanyarray(coords)
+        c3 = cos(coords[0])
+        c2 = cos(coords[1])
+        c1 = cos(coords[2])
+        s3 = sin(coords[0])
+        s2 = sin(coords[1])
+        s1 = sin(coords[2])
+
+        return Matrix([
+            [c1 * c2, (c1 * s2 * s3) - (c3 * s1), (s1 * s3) + (c1 * c3 * s2)],
+            [c2 * s1, (c1 * c3) + (s1 * s2 * s3), (c3 * s1 * s2) - (c1 * s3)],
+            [-s2, c2 * s3, c2 * c3]
+        ])
+        
+    def xyz_rpy_to_matrix(self,xyz_rpy):
+        """Convert xyz_rpy coordinates to a 4x4 homogenous matrix.
+        
+        Adapted from urdfpy
+
+        Parameters
+        ----------
+        xyz_rpy : (6,) float
+            The xyz_rpy vector.
+
+        Returns
+        -------
+        matrix : (4,4) float
+            The homogenous transform matrix.
+        """
+        matrix = Matrix(Identity(4))
+        matrix[:3,3] = xyz_rpy[:3]
+        matrix[:3,:3] = self.rpy_to_matrix(xyz_rpy[3:])
+        return matrix
+    
+    
+    # TODO: Implement planar and flaoting joints
+    def load_from_urdf(self, path= "/home/hannah/DFKI/hopping_leg/model/with_rails/urdf/v7.urdf", symbolic = True, simplify_numbers = True, tolerance = 0.0001):
+        robot = URDF.load(path)
+        self.B = []
+        self.X = []
+        fixed_origin = None
+        fixed_links = []
+        DOF = 0
+        xyz_rpy_syms = [] 
+        for joint in robot.joints:
+            if joint.joint_type in ["revolute","continuous","prismatic"]:
+                DOF += 1
+            elif joint.joint_type in ["fixed"]:
+                pass
+            else: 
+                raise NotImplementedError("Joint type '" +joint.joint_type+"' not implemented yet")
+
+        jn = 0 # joint index of used joints
+        jna = 0 # joint index of all joints
+        for joint in robot.joints:#
+            name = joint.name
+            origin = Matrix(joint.origin)
+            if symbolic:
+                xyz_rpy = matrix_to_xyz_rpy(joint.origin)
+                xyz_rpy_syms.append(symbols(" ".join([name+"_%s"%s for s in ["x","y","z","r","p","y"]])))
+                xyzrpylist = []
+                if simplify_numbers:
+                    for i in range(6):
+                        if nsimplify(xyz_rpy[i],tolerance=tolerance) in [0,-1,1,pi,-pi,pi/2,-pi/2,3*pi/2,-3*pi/2]:
+                            xyzrpylist.append(nsimplify(xyz_rpy[i],tolerance=tolerance))
+                        # elif nsimplify(xyz_rpy[i],tolerance=tolerance) == 1:
+                            # xyzrpylist.append(1)
+                        # elif nsimplify(xyz_rpy[i],tolerance=tolerance) == -1:
+                            # xyzrpylist.append(-1)
+                        else:
+                            xyzrpylist.append(xyz_rpy_syms[jna][i])
+                            self.assignment_dict[xyz_rpy_syms[jna][i]] = xyz_rpy[i]
+                else:
+                    for i in range(6):
+                        if xyz_rpy[i] == 0:
+                            xyzrpylist.append(0)
+                        elif xyz_rpy[i] == 1:
+                            xyzrpylist.append(1)
+                        elif xyz_rpy[i] == -1:
+                            xyzrpylist.append(-1)
+                        else:
+                            xyzrpylist.append(xyz_rpy_syms[jna][i])
+                            self.assignment_dict[xyz_rpy_syms[jna][i]] = xyz_rpy[i]
+                origin = self.xyz_rpy_to_matrix(xyzrpylist)
+            elif simplify_numbers:
+                for i in range(4):
+                    for j in range(4):
+                        origin[i,j] = nsimplify(origin[i,j], [pi], tolerance=tolerance)
+            
+            if joint.joint_type in ["revolute","continuous","prismatic"]:
+                # origin = Matrix(joint.origin)
+                axis = Matrix(joint.axis)
+                if simplify_numbers:
+                    for i in range(3):
+                        axis[i] = nsimplify(axis[i], [pi], tolerance=tolerance)
+                if fixed_origin:
+                    origin *= fixed_origin
+                    fixed_origin = None
+                self.B.append(Matrix(origin))
+                
+                if joint.joint_type in ["revolute", "continuous"]:
+                    self.X.append(Matrix(axis).col_join(Matrix([0,0,0])))
+                else:
+                    self.X.append(Matrix(Matrix([0,0,0])).col_join(axis))
+                jn += 1  
+            elif joint.joint_type == "fixed":
+                if fixed_origin:
+                    fixed_origin *= origin
+                else:
+                    fixed_origin = origin
+                fixed_links.append((joint.parent, joint.child))
+            jna += 1    
+                
+        self.Mb = []
+        I_syms = [symbols("I%dxx I%dxy I%dxz I%dyy I%dyz I%dzz"%(i,i,i,i,i,i)) for i in range(DOF)]
+        m_syms = [symbols("m%dxx cx%d cy%d cz%d"%(i,i,i,i)) for i in range(DOF)]
+        for i in range(1,DOF+1):
+            link = robot.links[i]
+              
+        # for link in robot.links:
+        #     self.Mb.append(self.MassMatrixMixedData())
+        return 
 
 if __name__ == "__main__":
     s = SymbolicKinDyn()
