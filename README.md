@@ -9,5 +9,5 @@ python3 -m pip install --upgrade sympy
 ```
 urdfpy
 ```
-python -m pip install urdfpy
+python3 -m pip install urdfpy
 ```
