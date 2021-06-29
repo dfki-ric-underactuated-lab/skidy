@@ -1,11 +1,73 @@
 import unittest
-import sys
 import kinematics_generator
-from sympy import *
+from sympy import Matrix, cos, sin, symbols, Identity, simplify, zeros
 import random
 
 
+
+
+def prepare(cls):
+    cls.s = kinematics_generator.SymbolicKinDyn()
+    cls.q1, cls.q2 = symbols("q1 q2")
+    cls.dq1, cls.dq2 = symbols("dq1 dq2")
+    cls.ddq1, cls.ddq2 = symbols("ddq1 ddq2")
+
     
+    cls.m1, cls.m2, cls.I1, cls.I2 = symbols("m1 m2 I1 I2", real=1, constant=1)
+    cls.cg1, cls.cg2, cls.g = symbols("cg1 cg2 g", real=1, constant=1)
+    cls.L1, cls.L2 = symbols("L1 L2", real=1, constant=1)
+    
+    cls.s.gravity_vector = Matrix([0, cls.g, 0])
+
+    # Joint screw coordinates in spatial representation
+
+    cls.s.Y = []
+    e1 = Matrix([0, 0, 1])  # joint axis of revolute joint
+    y1 = Matrix([0, 0, 0])  # Vector to joint axis from inertial Frame
+    # Joint screw coordinates in spacial representation
+    cls.s.Y.append(Matrix([e1, y1.cross(e1)]))
+
+    e2 = Matrix([0, 0, 1])  # joint axis of revolute joint
+    y2 = Matrix([cls.L1, 0, 0])  # Vector to joint axis from inertial Frame
+    # Joint screw coordinates in spacial representation
+    cls.s.Y.append(Matrix([e2, y2.cross(e2)]))
+
+    # Reference configurations of bodies (i.e. of body-fixed reference frames)
+
+    r1 = Matrix([0, 0, 0])
+    r2 = Matrix([cls.L1, 0, 0])
+
+    cls.s.A = []
+    cls.s.A.append(Matrix(Identity(3)).row_join(
+        r1).col_join(Matrix([0, 0, 0, 1]).T))
+    cls.s.A.append(Matrix(Identity(3)).row_join(
+        r2).col_join(Matrix([0, 0, 0, 1]).T))
+
+    # End-effector configuration wrt last link body fixed frame in the chain
+    re = Matrix([cls.L2, 0, 0])
+    cls.s.ee = Matrix(Identity(3)).row_join(re).col_join(Matrix([0, 0, 0, 1]).T)
+
+    # Joint screw coordinates in body-fixed representation computed from screw coordinates in IFR
+    cls.s.X = []
+    cls.s.X.append(cls.s.SE3AdjInvMatrix(cls.s.A[0])*cls.s.Y[0])
+    cls.s.X.append(cls.s.SE3AdjInvMatrix(cls.s.A[1])*cls.s.Y[1])
+
+    # Mass-Inertia parameters
+    cg1 = Matrix([cls.L1, 0, 0]).T
+    cg2 = Matrix([cls.L2, 0, 0]).T
+    I1 = cls.m1*cls.L1**2
+    I2 = cls.m2*cls.L2**2
+
+    cls.s.Mb = []
+    cls.s.Mb.append(cls.s.MassMatrixMixedData(cls.m1, I1*Identity(3), cg1))
+    cls.s.Mb.append(cls.s.MassMatrixMixedData(cls.m2, I2*Identity(3), cg2))
+
+    # Declaring generalised vectors
+    cls.q = Matrix([cls.q1, cls.q2])
+    cls.qd = Matrix([cls.dq1, cls.dq2])
+    cls.q2d = Matrix([cls.ddq1, cls.ddq2])
+        
+
 class abstractFKinTest():
     def testfkin(self):
         self.assertEqual(
@@ -35,110 +97,16 @@ class abstractFKinTest():
 
 
 class TestFKin(abstractFKinTest, unittest.TestCase):
-    # @classmethod
-    # def setUpTestData(cls):
-    #     # Set up data for the whole TestCase
-    #     cls.foo = Foo.objects.create(bar="Test")
     @classmethod
     def setUpClass(self):
-        self.s = kinematics_generator.SymbolicKinDyn()
-        self.q1, self.q2 = symbols("q1 q2")
-        self.dq1, self.dq2 = symbols("dq1 dq2")
-        self.ddq1, self.ddq2 = symbols("ddq1 ddq2")
-
-        self.L1, self.L2 = symbols("L1 L2", real=1, constant=1)
-        
-        # Joint screw coordinates in spatial representation
-
-        self.s.Y = []
-        e1 = Matrix([0, 0, 1])  # joint axis of revolute joint
-        y1 = Matrix([0, 0, 0])  # Vector to joint axis from inertial Frame
-        # Joint screw coordinates in spacial representation
-        self.s.Y.append(Matrix([e1, y1.cross(e1)]))
-
-        e2 = Matrix([0, 0, 1])  # joint axis of revolute joint
-        y2 = Matrix([self.L1, 0, 0])  # Vector to joint axis from inertial Frame
-        # Joint screw coordinates in spacial representation
-        self.s.Y.append(Matrix([e2, y2.cross(e2)]))
-
-        # Reference configurations of bodies (i.e. of body-fixed reference frames)
-
-        r1 = Matrix([0, 0, 0])
-        r2 = Matrix([self.L1, 0, 0])
-
-        self.s.A = []
-        self.s.A.append(Matrix(Identity(3)).row_join(
-            r1).col_join(Matrix([0, 0, 0, 1]).T))
-        self.s.A.append(Matrix(Identity(3)).row_join(
-            r2).col_join(Matrix([0, 0, 0, 1]).T))
-
-        # End-effector configuration wrt last link body fixed frame in the chain
-        re = Matrix([self.L2, 0, 0])
-        self.s.ee = Matrix(Identity(3)).row_join(re).col_join(Matrix([0, 0, 0, 1]).T)
-
-        # Joint screw coordinates in body-fixed representation computed from screw coordinates in IFR
-        self.s.X = []
-        self.s.X.append(self.s.SE3AdjInvMatrix(self.s.A[0])*self.s.Y[0])
-        self.s.X.append(self.s.SE3AdjInvMatrix(self.s.A[1])*self.s.Y[1])
-
-        # Declaring generalised vectors
-        self.q = Matrix([self.q1, self.q2])
-        self.qd = Matrix([self.dq1, self.dq2])
-        self.q2d = Matrix([self.ddq1, self.ddq2])
+        prepare(self)
         T = self.s.closed_form_kinematics_body_fixed(self.q,self.qd,self.q2d)
 
 
 class TestFKin_parallel(abstractFKinTest, unittest.TestCase):
-    # @classmethod
-    # def setUpTestData(cls):
-    #     # Set up data for the whole TestCase
-    #     cls.foo = Foo.objects.create(bar="Test")
     @classmethod
     def setUpClass(self):
-        self.s = kinematics_generator.SymbolicKinDyn()
-        self.q1, self.q2 = symbols("q1 q2")
-        self.dq1, self.dq2 = symbols("dq1 dq2")
-        self.ddq1, self.ddq2 = symbols("ddq1 ddq2")
-
-        self.L1, self.L2 = symbols("L1 L2", real=1, constant=1)
-        
-        # Joint screw coordinates in spatial representation
-
-        self.s.Y = []
-        e1 = Matrix([0, 0, 1])  # joint axis of revolute joint
-        y1 = Matrix([0, 0, 0])  # Vector to joint axis from inertial Frame
-        # Joint screw coordinates in spacial representation
-        self.s.Y.append(Matrix([e1, y1.cross(e1)]))
-
-        e2 = Matrix([0, 0, 1])  # joint axis of revolute joint
-        y2 = Matrix([self.L1, 0, 0])  # Vector to joint axis from inertial Frame
-        # Joint screw coordinates in spacial representation
-        self.s.Y.append(Matrix([e2, y2.cross(e2)]))
-
-        # Reference configurations of bodies (i.e. of body-fixed reference frames)
-
-        r1 = Matrix([0, 0, 0])
-        r2 = Matrix([self.L1, 0, 0])
-
-        self.s.A = []
-        self.s.A.append(Matrix(Identity(3)).row_join(
-            r1).col_join(Matrix([0, 0, 0, 1]).T))
-        self.s.A.append(Matrix(Identity(3)).row_join(
-            r2).col_join(Matrix([0, 0, 0, 1]).T))
-
-        # End-effector configuration wrt last link body fixed frame in the chain
-        re = Matrix([self.L2, 0, 0])
-        self.s.ee = Matrix(Identity(3)).row_join(re).col_join(Matrix([0, 0, 0, 1]).T)
-
-        # Joint screw coordinates in body-fixed representation computed from screw coordinates in IFR
-        self.s.X = []
-        self.s.X.append(self.s.SE3AdjInvMatrix(self.s.A[0])*self.s.Y[0])
-        self.s.X.append(self.s.SE3AdjInvMatrix(self.s.A[1])*self.s.Y[1])
-
-        # Declaring generalised vectors
-        self.q = Matrix([self.q1, self.q2])
-        self.qd = Matrix([self.dq1, self.dq2])
-        self.q2d = Matrix([self.ddq1, self.ddq2])
+        prepare(self)
         T = self.s.closed_form_kinematics_body_fixed_parallel(self.q,self.qd,self.q2d)
 
 
@@ -192,138 +160,16 @@ class AbstractInvDyn():
 class TestInvDyn(AbstractInvDyn,unittest.TestCase):
     @classmethod
     def setUpClass(self):
-        self.s = kinematics_generator.SymbolicKinDyn()
-        self.q1, self.q2 = symbols("q1 q2")
-        self.dq1, self.dq2 = symbols("dq1 dq2")
-        self.ddq1, self.ddq2 = symbols("ddq1 ddq2")
-
-        
-        self.m1, self.m2, self.I1, self.I2 = symbols("m1 m2 I1 I2", real=1, constant=1)
-        self.cg1, self.cg2, self.g = symbols("cg1 cg2 g", real=1, constant=1)
-        self.L1, self.L2 = symbols("L1 L2", real=1, constant=1)
-        
-        self.s.gravity_vector = Matrix([0, self.g, 0])
-
-        # Joint screw coordinates in spatial representation
-
-        self.s.Y = []
-        e1 = Matrix([0, 0, 1])  # joint axis of revolute joint
-        y1 = Matrix([0, 0, 0])  # Vector to joint axis from inertial Frame
-        # Joint screw coordinates in spacial representation
-        self.s.Y.append(Matrix([e1, y1.cross(e1)]))
-
-        e2 = Matrix([0, 0, 1])  # joint axis of revolute joint
-        y2 = Matrix([self.L1, 0, 0])  # Vector to joint axis from inertial Frame
-        # Joint screw coordinates in spacial representation
-        self.s.Y.append(Matrix([e2, y2.cross(e2)]))
-
-        # Reference configurations of bodies (i.e. of body-fixed reference frames)
-
-        r1 = Matrix([0, 0, 0])
-        r2 = Matrix([self.L1, 0, 0])
-
-        self.s.A = []
-        self.s.A.append(Matrix(Identity(3)).row_join(
-            r1).col_join(Matrix([0, 0, 0, 1]).T))
-        self.s.A.append(Matrix(Identity(3)).row_join(
-            r2).col_join(Matrix([0, 0, 0, 1]).T))
-
-        # End-effector configuration wrt last link body fixed frame in the chain
-        re = Matrix([self.L2, 0, 0])
-        self.s.ee = Matrix(Identity(3)).row_join(re).col_join(Matrix([0, 0, 0, 1]).T)
-
-        # Joint screw coordinates in body-fixed representation computed from screw coordinates in IFR
-        self.s.X = []
-        self.s.X.append(self.s.SE3AdjInvMatrix(self.s.A[0])*self.s.Y[0])
-        self.s.X.append(self.s.SE3AdjInvMatrix(self.s.A[1])*self.s.Y[1])
-
-        # Mass-Inertia parameters
-        cg1 = Matrix([self.L1, 0, 0]).T
-        cg2 = Matrix([self.L2, 0, 0]).T
-        I1 = self.m1*self.L1**2
-        I2 = self.m2*self.L2**2
-
-        self.s.Mb = []
-        self.s.Mb.append(self.s.MassMatrixMixedData(self.m1, I1*Identity(3), cg1))
-        self.s.Mb.append(self.s.MassMatrixMixedData(self.m2, I2*Identity(3), cg2))
-
-        # Declaring generalised vectors
-        self.q = Matrix([self.q1, self.q2])
-        self.qd = Matrix([self.dq1, self.dq2])
-        self.q2d = Matrix([self.ddq1, self.ddq2])
+        prepare(self)
         Q = self.s.closed_form_inv_dyn_body_fixed(self.q,self.qd,self.q2d)
 
 
 class TestInvDynParallel(AbstractInvDyn,unittest.TestCase):
     @classmethod
     def setUpClass(self):
-        self.s = kinematics_generator.SymbolicKinDyn()
-        self.q1, self.q2 = symbols("q1 q2")
-        self.dq1, self.dq2 = symbols("dq1 dq2")
-        self.ddq1, self.ddq2 = symbols("ddq1 ddq2")
-
-        
-        self.m1, self.m2, self.I1, self.I2 = symbols("m1 m2 I1 I2", real=1, constant=1)
-        self.cg1, self.cg2, self.g = symbols("cg1 cg2 g", real=1, constant=1)
-        self.L1, self.L2 = symbols("L1 L2", real=1, constant=1)
-        
-        self.s.gravity_vector = Matrix([0, self.g, 0])
-
-        # Joint screw coordinates in spatial representation
-
-        self.s.Y = []
-        e1 = Matrix([0, 0, 1])  # joint axis of revolute joint
-        y1 = Matrix([0, 0, 0])  # Vector to joint axis from inertial Frame
-        # Joint screw coordinates in spacial representation
-        self.s.Y.append(Matrix([e1, y1.cross(e1)]))
-
-        e2 = Matrix([0, 0, 1])  # joint axis of revolute joint
-        y2 = Matrix([self.L1, 0, 0])  # Vector to joint axis from inertial Frame
-        # Joint screw coordinates in spacial representation
-        self.s.Y.append(Matrix([e2, y2.cross(e2)]))
-
-        # Reference configurations of bodies (i.e. of body-fixed reference frames)
-
-        r1 = Matrix([0, 0, 0])
-        r2 = Matrix([self.L1, 0, 0])
-
-        self.s.A = []
-        self.s.A.append(Matrix(Identity(3)).row_join(
-            r1).col_join(Matrix([0, 0, 0, 1]).T))
-        self.s.A.append(Matrix(Identity(3)).row_join(
-            r2).col_join(Matrix([0, 0, 0, 1]).T))
-
-        # End-effector configuration wrt last link body fixed frame in the chain
-        re = Matrix([self.L2, 0, 0])
-        self.s.ee = Matrix(Identity(3)).row_join(re).col_join(Matrix([0, 0, 0, 1]).T)
-
-        # Joint screw coordinates in body-fixed representation computed from screw coordinates in IFR
-        self.s.X = []
-        self.s.X.append(self.s.SE3AdjInvMatrix(self.s.A[0])*self.s.Y[0])
-        self.s.X.append(self.s.SE3AdjInvMatrix(self.s.A[1])*self.s.Y[1])
-
-        # Mass-Inertia parameters
-        cg1 = Matrix([self.L1, 0, 0]).T
-        cg2 = Matrix([self.L2, 0, 0]).T
-        I1 = self.m1*self.L1**2
-        I2 = self.m2*self.L2**2
-
-        self.s.Mb = []
-        self.s.Mb.append(self.s.MassMatrixMixedData(self.m1, I1*Identity(3), cg1))
-        self.s.Mb.append(self.s.MassMatrixMixedData(self.m2, I2*Identity(3), cg2))
-
-        # Declaring generalised vectors
-        self.q = Matrix([self.q1, self.q2])
-        self.qd = Matrix([self.dq1, self.dq2])
-        self.q2d = Matrix([self.ddq1, self.ddq2])
+        prepare(self)
         Q = self.s.closed_form_inv_dyn_body_fixed_parallel(self.q,self.qd,self.q2d)
 
-
-    # def testClosed_form_inv_dyn_body_fixed(self):
-    #     pass
-    
-    # def testClosed_form_inv_dyn_body_fixed_parallel(self):
-        # pass
 
 class TestKinGen(unittest.TestCase):
     
