@@ -2,10 +2,13 @@ import queue
 from sympy import *
 from sympy.printing.numpy import NumPyPrinter
 from sympy.utilities.codegen import codegen
+from sympy.codegen.ast import Assignment
 from urdfpy import URDF, matrix_to_xyz_rpy
-from multiprocessing import Process, Queue
+from multiprocessing import Process, Queue, Pool
 from time import sleep
-
+from sympy.simplify.cse_main import opt_cse, tree_cse, numbered_symbols
+from sympy.simplify.fu import fu
+import sympy
 import multiprocessing, logging
 # mpl = multiprocessing.log_to_stderr()
 # mpl.setLevel(logging.DEBUG)
@@ -86,27 +89,24 @@ class SymbolicKinDyn():
         
         # Value assignment
         self.assignment_dict = {}
+        
+        # CSE
+        self.all_symbols = set()
+        self.cse_expressions_dict = {}
+        self.cse_expressions = []
+        self.cse_replacements = []
 
-    def generateCode(self, python=True, C=True, Matlab=False, folder="./generated_code", use_global_vars=True, name="plant", project="Project"):
-        """Generate code of saved Equations. 
-        Needs closed_form_inv_dyn_body_fixed and/or closed_form_kinematics_body_fixed to run first.
-
-
-        Args:
-            python (bool, optional): Generate Python code. Defaults to True.
-            C (bool, optional): Generate C99 code. Defaults to True.
-            Matlab (bool, optional): Generate Matlab/Octav code. Defaults to False.
-            folder (str, optional): Folder where to save code. Defaults to "./generated_code".
-            use_global_vars (bool, optional): Constant vars like mass etc are no arguments of the functions. Defaults to True.
-            name (str, optional): Name of Class and file (for Python and C). Defaults to "plant".
-            project (str, optional): Project name in C header. Defaults to "Project".
-
-        """
-        # create Folder
-        if not os.path.exists(folder):
-            os.mkdir(folder)
-
-        # dict of function names and functions
+    def simplify(self,exp):
+        if type(exp) == sympy.matrices.dense.MutableDenseMatrix:
+            exp = exp.as_immutable()
+        exp = fu(exp)
+        exp = cancel(exp)
+        exp = factor(exp)
+        exp = powsimp(exp)
+        return exp
+        
+    
+    def get_functions_dict(self, filterNone=True):
         all_functions = {"forward_kinematics": self.fkin,
                          "system_jacobian_matrix": self.J,
                          "body_jacobian_matrix": self.Jb,
@@ -128,6 +128,74 @@ class SymbolicKinDyn():
                          "body_jacobian_matrix_dot": self.Jb_dot,
                          "hybrid_jacobian_matrix_ee_dot": self.Jh_ee_dot,
                          "body_jacobian_matrix_ee_dot": self.Jb_ee_dot}  # not included: self.Vh_BFn, self.Vb_BFn,
+        if filterNone:
+            filtered = {k: v for k, v in all_functions.items() if v is not None}
+            return filtered
+        return all_functions
+    
+    def get_functions(self):
+        funcdict = self.get_functions_dict()
+        funcs = [funcdict[i] for i in funcdict]
+        return funcs
+    
+    
+    def simplify_expressions(self, expressions):
+        with Pool() as p:
+            ex = p.map(self.simplify,expressions)
+        return ex
+    
+    
+    def cse_function(self, f):
+        r, e = cse([f,f],numbered_symbols(exclude=self.all_symbols), order="canonical", ignore=self.var_syms)
+        for (sym,val) in r:    
+            self.assignment_dict[sym] = val
+            self.all_symbols.update({sym})
+        return e[0]
+        
+    
+    def cse_saved(self, simplify_expressions=True):
+        funcs = self.get_functions()
+        funcdict = self.get_functions_dict()
+    
+        # exclude = set()
+        # for f in funcs:
+        #     exclude.update(f.free_symbols)
+        # for sym in self.assignment_dict:
+        #     try:
+        #         exclude.update(sym.free_symbols)
+        #     except:
+        #         pass
+        r, e = cse(funcs+funcs,numbered_symbols(exclude=self.all_symbols), order="canonical", ignore=self.var_syms)
+        e = e[:len(funcs)]
+        if simplify_expressions:
+            e = self.simplify_expressions(e)
+        for (sym,val) in r:    
+            self.assignment_dict[sym] = val
+            self.all_symbols.update({sym})
+        for i,n in enumerate(funcdict):
+            self.cse_expressions_dict[n] = e[i]
+        
+    def generateCode(self, python=True, C=True, Matlab=False, folder="./generated_code", use_global_vars=True, name="plant", project="Project"):
+        """Generate code of saved Equations. 
+        Needs closed_form_inv_dyn_body_fixed and/or closed_form_kinematics_body_fixed to run first.
+
+
+        Args:
+            python (bool, optional): Generate Python code. Defaults to True.
+            C (bool, optional): Generate C99 code. Defaults to True.
+            Matlab (bool, optional): Generate Matlab/Octav code. Defaults to False.
+            folder (str, optional): Folder where to save code. Defaults to "./generated_code".
+            use_global_vars (bool, optional): Constant vars like mass etc are no arguments of the functions. Defaults to True.
+            name (str, optional): Name of Class and file (for Python and C). Defaults to "plant".
+            project (str, optional): Project name in C header. Defaults to "Project".
+
+        """
+        # create Folder
+        if not os.path.exists(folder):
+            os.mkdir(folder)
+
+        # dict of function names and functions
+        all_functions = self.get_functions_dict()
 
         functions = []
         names = []
@@ -262,7 +330,7 @@ class SymbolicKinDyn():
             for i in range(1, self.n):
                 FK_C.append(FK_C[i-1]*self.B[i]*self.SE3Exp(self.X[i], q[i]))
             # if simplify_expressions:
-            #     FK_C = simplify(FK_C)
+            #     FK_C = self.simplify(FK_C)
             self._FK_C = FK_C
         else:
             'Absolute (A) or Relative (B) configuration of the bodies should be provided in class!'
@@ -270,7 +338,7 @@ class SymbolicKinDyn():
 
         fkin = FK_C[self.n-1]*self.ee
         if simplify_expressions:
-            fkin = simplify(fkin)
+            fkin = self.simplify(fkin)
         self.fkin = fkin
 
         # Block diagonal matrix A (6n x 6n) of the Adjoint of body frame
@@ -286,7 +354,7 @@ class SymbolicKinDyn():
                     c = 6*(j)
                     A[r:r+6, c:c+6] = AdCrel
             # if simplify_expressions:
-                # A = simplify(A)
+                # A = self.simplify(A)
             self._A = A
 
         if self.J is not None:
@@ -301,7 +369,7 @@ class SymbolicKinDyn():
             # System level Jacobian
             J = A*X
             if simplify_expressions:
-                J = simplify(J)
+                J = self.simplify(J)
             self.J = J
 
             # System twist (6n x 1)
@@ -312,7 +380,7 @@ class SymbolicKinDyn():
         R_i = Matrix(fkin[:3, :3]).row_join(
             zeros(3, 1)).col_join(Matrix([0, 0, 0, 1]).T)
         if simplify_expressions:  # fastens later simmplifications
-            R_i = simplify(R_i)
+            R_i = self.simplify(R_i)
 
         R_BFn = Matrix(FK_C[-1][:3, :3]).row_join(
             zeros(3, 1)).col_join(Matrix([0, 0, 0, 1]).T)
@@ -320,25 +388,25 @@ class SymbolicKinDyn():
         # Body fixed Jacobian of last moving body (This may not correspond to end-effector frame)
         Jb = J[-6:, :]
         if simplify_expressions:
-            Jb = simplify(Jb)
+            Jb = self.simplify(Jb)
 
         Vb_BFn = Jb*qd  # Body fixed twist of last moving body
         if simplify_expressions:
-            Vb_BFn = simplify(Vb_BFn)
+            Vb_BFn = self.simplify(Vb_BFn)
         Vh_BFn = self.SE3AdjMatrix(R_BFn)*Vb_BFn
         if simplify_expressions:
-            Vh_BFn = simplify(Vh_BFn)
+            Vh_BFn = self.simplify(Vh_BFn)
         self.Vb_BFn = Vb_BFn
         self.Vh_BFn = Vh_BFn
 
         # Body fixed twist of end-effector frame
         Vb_ee = self.SE3AdjMatrix(self.SE3Inv(self.ee))*Vb_BFn
         if simplify_expressions:
-            Vb_ee = simplify(Vb_ee)
+            Vb_ee = self.simplify(Vb_ee)
         # Hybrid twist of end-effector frame
         Vh_ee = self.SE3AdjMatrix(R_i)*Vb_ee
         if simplify_expressions:
-            Vh_ee = simplify(Vh_ee)
+            Vh_ee = self.simplify(Vh_ee)
 
         self.Vb_ee = Vb_ee
         self.Vh_ee = Vh_ee
@@ -346,15 +414,15 @@ class SymbolicKinDyn():
         # Body fixed Jacobian of end-effector frame
         Jb_ee = self.SE3AdjMatrix(self.SE3Inv(self.ee))*Jb
         if simplify_expressions:
-            Jb_ee = simplify(Jb_ee)
+            Jb_ee = self.simplify(Jb_ee)
 
         # Hybrid Jacobian of end-effector frame
         Jh_ee = self.SE3AdjMatrix(R_i)*Jb_ee
         Jh = self.SE3AdjMatrix(R_i)*Jb  # Hybrid Jacobian of last moving body
 
         if simplify_expressions:
-            Jh_ee = simplify(Jh_ee)
-            Jh = simplify(Jh)
+            Jh_ee = self.simplify(Jh_ee)
+            Jh = self.simplify(Jh)
 
         self.Jh_ee = Jh_ee
         self.Jb_ee = Jb_ee
@@ -370,13 +438,13 @@ class SymbolicKinDyn():
             for i in range(self.n):
                 a[6*i:6*i+6, 6*i:6*i+6] = self.SE3adMatrix(self.X[i])*qd[i]
             if simplify_expressions:
-                a = simplify(a)
+                a = self.simplify(a)
             self._a = a
 
         # System acceleration (6n x 1)
         Jdot = -A*a*J  # Sys-level Jacobian time derivative
         if simplify_expressions:
-            Jdot = simplify(Jdot)
+            Jdot = self.simplify(Jdot)
 
         self.Jdot = Jdot
 
@@ -385,12 +453,12 @@ class SymbolicKinDyn():
         # Hybrid acceleration of the last body
         Vbd_BFn = Vbd[-6:, :]
         if simplify_expressions:
-            Vbd_BFn = simplify(Vbd_BFn)
+            Vbd_BFn = self.simplify(Vbd_BFn)
         Vhd_BFn = self.SE3AdjMatrix(R_BFn)*Vbd_BFn + self.SE3adMatrix(Matrix(Vh_BFn[:3, :]).col_join(
             Matrix([0, 0, 0])))*self.SE3AdjMatrix(R_BFn)*Vb_BFn  # Hybrid twist of end-effector frame
 
         if simplify_expressions:
-            Vhd_BFn = simplify(Vhd_BFn)
+            Vhd_BFn = self.simplify(Vhd_BFn)
 
         self.Vbd_BFn = Vbd_BFn
         self.Vhd_BFn = Vhd_BFn
@@ -399,11 +467,11 @@ class SymbolicKinDyn():
         # Hybrid acceleration of the EE
         Vbd_ee = self.SE3AdjMatrix(self.SE3Inv(self.ee))*Vbd_BFn
         if simplify_expressions:
-            Vbd_ee = simplify(Vbd_ee)
+            Vbd_ee = self.simplify(Vbd_ee)
         Vhd_ee = self.SE3AdjMatrix(R_i)*Vbd_ee + self.SE3adMatrix(Matrix(
             Vh_ee[:3, :]).col_join(Matrix([0, 0, 0])))*self.SE3AdjMatrix(R_i)*Vb_ee  # Hybrid twist of end-effector frame
         if simplify_expressions:
-            Vhd_ee = simplify(Vhd_ee)
+            Vhd_ee = self.simplify(Vhd_ee)
 
         self.Vbd_ee = Vbd_ee
         self.Vhd_ee = Vhd_ee
@@ -417,7 +485,7 @@ class SymbolicKinDyn():
         # For the EE
         Jb_ee_dot = self.SE3AdjMatrix(self.SE3Inv(self.ee))*Jb_dot
         if simplify_expressions:
-            Jb_ee_dot = simplify(Jb_ee_dot)
+            Jb_ee_dot = self.simplify(Jb_ee_dot)
         self.Jb_ee_dot = Jb_ee_dot
 
         # Hybrid Jacobian time derivative
@@ -425,16 +493,19 @@ class SymbolicKinDyn():
         Jh_dot = self.SE3AdjMatrix(R_BFn)*Jb_dot + self.SE3adMatrix(
             Matrix(Vh_BFn[:3, :]).col_join(Matrix([0, 0, 0])))*self.SE3AdjMatrix(R_BFn)*Jb
         if simplify_expressions:
-            Jh_dot = simplify(Jh_dot)
+            Jh_dot = self.simplify(Jh_dot)
         self.Jh_dot = Jh_dot
 
         # For the EE
         Jh_ee_dot = self.SE3AdjMatrix(R_i)*Jb_ee_dot + self.SE3adMatrix(
             Matrix(Vh_ee[:3, :]).col_join(Matrix([0, 0, 0])))*self.SE3AdjMatrix(R_i)*Jb_ee
         if simplify_expressions:
-            Jh_ee_dot = simplify(Jh_ee_dot)
+            Jh_ee_dot = self.simplify(Jh_ee_dot)
         self.Jh_ee_dot = Jh_ee_dot
-
+        
+        for f in self.get_functions():
+            self.all_symbols.update(f.free_symbols)
+        
         print("Done")
         return fkin
 
@@ -512,7 +583,7 @@ class SymbolicKinDyn():
             # System level Jacobian
             J = A*X
             if simplify_expressions:
-                J = simplify(J)
+                J = self.simplify(J)
             self.J = J
 
             # System twist (6n x 1)
@@ -551,12 +622,12 @@ class SymbolicKinDyn():
         # Mass inertia matrix in joint space (n x n)
         M = J.T*Mb*J
         if simplify_expressions:
-            M = simplify(M)
+            M = self.simplify(M)
 
         # Coriolis-Centrifugal matrix in joint space (n x n)
         C = J.T * Cb * J
         if simplify_expressions:
-            C = simplify(C)
+            C = self.simplify(C)
 
         # Gravity Term
         U = self.SE3AdjInvMatrix(FK_C[0])
@@ -567,7 +638,7 @@ class SymbolicKinDyn():
         Vd_0[3:6, 0] = self.gravity_vector
         Qgrav = J.T*Mb*U*Vd_0
         if simplify_expressions:
-            Qgrav = simplify(Qgrav)
+            Qgrav = self.simplify(Qgrav)
 
         # External Wrench
         Wext = zeros(6*self.n, 1)
@@ -580,13 +651,16 @@ class SymbolicKinDyn():
         Q = M*q2d + C*qd + Qgrav + Qext
 
         if simplify_expressions:
-            Q = simplify(Q)
+            Q = self.simplify(Q)
 
         self.M = M
         self.C = C
         self.Q = Q
         self.Qgrav = Qgrav
 
+        for f in self.get_functions():
+            self.all_symbols.update(f.free_symbols)
+        
         print("Done")
         return Q
 
@@ -647,7 +721,7 @@ class SymbolicKinDyn():
         Args:
             name (str): Identifier
         """
-        value = simplify(self.queue_dict[name].get())
+        value = self.simplify(self.queue_dict[name].get())
         self.queue_dict[name].put(value)
 
     def _flush_queue(self, q):
@@ -933,6 +1007,9 @@ class SymbolicKinDyn():
             self.process_dict[i].join()
         self.process_dict = {}
 
+        for f in self.get_functions():
+            self.all_symbols.update(f.free_symbols)
+        
         print("Done")
         return self.fkin
 
@@ -1080,7 +1157,6 @@ class SymbolicKinDyn():
         self._set_value_as_process(
             "Qgrav", lambda: self._get_value("J").T*Mb*U*Vd_0)
         if simplify_expressions:
-            # Qgrav = simplify(Qgrav)
             self._start_simplificaton_process("Qgrav")
 
         # External Wrench
@@ -1116,6 +1192,9 @@ class SymbolicKinDyn():
             self.process_dict[i].join()
         self.process_dict = {}
 
+        for f in self.get_functions():
+            self.all_symbols.update(f.free_symbols)
+        
         print("Done")
         return self.Q
 
@@ -1219,14 +1298,14 @@ class SymbolicKinDyn():
         return CInv
 
     def SO3Exp(self, x, t):
-        """Compute exponential mapping for SO(3).
+        """Compute exponential mapping for SO(3) (Rotation Matrix).
 
         Args:
-            x ([type]): [description]
-            t ([type]): [description]
+            x (sympy.Matrix): Rotation axis
+            t (double): Rotation angle
 
         Returns:
-            [type]: [description]
+            sympy.Matrix: Rotation Matrix
         """
         xhat = Matrix([[0, -x[2, 0], x[1, 0]],
                        [x[2, 0], 0, -x[0, 0]],
@@ -1363,7 +1442,7 @@ class SymbolicKinDyn():
     
     
     # TODO: Implement planar and flaoting joints
-    def load_from_urdf(self, path= "/home/hannah/DFKI/hopping_leg/model/with_rails/urdf/v7.urdf", symbolic = True, simplify_numbers = True, tolerance = 0.0001):
+    def load_from_urdf(self, path, symbolic = True, simplify_numbers = True, cse_ex = True, tolerance = 0.0001):
         robot = URDF.load(path)
         self.B = []
         self.X = []
@@ -1411,6 +1490,8 @@ class SymbolicKinDyn():
                             xyzrpylist.append(xyz_rpy_syms[jna][i])
                             self.assignment_dict[xyz_rpy_syms[jna][i]] = xyz_rpy[i]
                 origin = self.xyz_rpy_to_matrix(xyzrpylist)
+                if cse_ex:
+                    origin = self.cse_function(origin)
             elif simplify_numbers:
                 for i in range(4):
                     for j in range(4):
@@ -1526,8 +1607,13 @@ if __name__ == "__main__":
     # Kinematics
     # F = s.closed_form_kinematics_body_fixed(q, qd, q2d)
     # Q = s.closed_form_inv_dyn_body_fixed(q, qd, q2d)
-    F = s.closed_form_kinematics_body_fixed_parallel(q, qd, q2d)
-    Q = s.closed_form_inv_dyn_body_fixed_parallel(q, qd, q2d)
-
+    import time
+    start = time.time()
+    F = s.closed_form_kinematics_body_fixed_parallel(q, qd, q2d,True)
+    Q = s.closed_form_inv_dyn_body_fixed_parallel(q, qd, q2d,simplify_expressions=True)
+    end = time.time()
+    print(end-start)
     s.generateCode(python=True, C=True, Matlab=True,
                    use_global_vars=True, name="plant", project="Project")
+
+    
