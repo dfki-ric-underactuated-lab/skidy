@@ -20,13 +20,15 @@ import multiprocessing, logging
 # mpl.addHandler(fileHandler)
 import os
 import re as regex
+import random
+import numpy
 
 init_printing()
 
 
 class SymbolicKinDyn():
 
-    def __init__(self, n=None, gravity_vector=None, ee=None, A=None, B=None, X=None, Y=None, Mb=None):
+    def __init__(self, n=None, gravity_vector=None, ee=None, A=[], B=[], X=[], Y=[], Mb=[]):
         """[summary]
 
         Args:
@@ -97,9 +99,41 @@ class SymbolicKinDyn():
         self.cse_replacements = []
 
     def simplify(self,exp):
+        """Faster simplify implementation for Sympy.
+        Expressions can be slightly less simplified as with sympy.simplify.
+
+        Args:
+            exp (sympy expression): Expression to simplify.
+
+        Returns:
+            sympy expression: Simplified expression.
+        """
         if type(exp) == sympy.matrices.dense.MutableDenseMatrix:
             exp = exp.as_immutable()
-        exp = fu(exp)
+        if type(exp) == sympy.matrices.immutable.ImmutableDenseMatrix:
+            # fasten simplification of symmetric matrices
+            if exp.is_square:
+                # numeric test is faster than is_symmetric method  for long expressions
+                num = lambdify(list(exp.free_symbols),exp, "numpy")(*(random.random() for i in exp.free_symbols)) 
+                if numpy.allclose(num,num.T):
+                    shape = exp.shape
+                    m_exp = exp.as_mutable()
+                    for i in range(shape[0]):
+                        for j in range(i):
+                            m_exp[i,j] = self.simplify(exp[i,j])
+                            if i != j:
+                                m_exp[j,i] = exp[j,i]
+                    return Matrix(m_exp)
+                elif Matrix(num + num.T).is_diagonal():
+                    shape = exp.shape
+                    m_exp = exp.as_mutable()
+                    for i in range(shape[0]):
+                        for j in range(i):
+                            m_exp[i,j] = self.simplify(exp[i,j])
+                            if i != j:
+                                m_exp[j,i] = -exp[j,i]
+                    return Matrix(m_exp)
+        exp = fu(exp) # fast function to simplify sin and cos expressions
         exp = cancel(exp)
         exp = factor(exp)
         exp = powsimp(exp)
@@ -316,7 +350,7 @@ class SymbolicKinDyn():
 
         if self._FK_C is not None:
             FK_C = self._FK_C
-        elif self.A is not None:
+        elif self.A:
             print("Using absolute configuration (A) of the body frames")
             FK_f = [self.SE3Exp(self.Y[0], q[0])]
             FK_C = [FK_f[0]*self.A[0]]
@@ -324,7 +358,7 @@ class SymbolicKinDyn():
                 FK_f.append(FK_f[i-1]*self.SE3Exp(self.Y[i], q[i]))
                 FK_C.append(FK_f[i]*self.A[i])
             self._FK_C = FK_C
-        elif self.B is not None:
+        elif self.B:
             print('Using relative configuration (B) of the body frames')
             FK_C = [self.B[0]*self.SE3Exp(self.X[0], q[0])]
             for i in range(1, self.n):
@@ -539,7 +573,7 @@ class SymbolicKinDyn():
 
         if self._FK_C is not None:
             FK_C = self._FK_C
-        elif self.A is not None:
+        elif self.A:
             print("Using absolute configuration (A) of the body frames")
             FK_f = [self.SE3Exp(self.Y[0], q[0])]
             FK_C = [FK_f[0]*self.A[0]]
@@ -547,7 +581,7 @@ class SymbolicKinDyn():
                 FK_f.append(FK_f[i-1]*self.SE3Exp(self.Y[i], q[i]))
                 FK_C.append(FK_f[i]*self.A[i])
             self._FK_C = FK_C
-        elif self.B is not None:
+        elif self.B:
             print('Using relative configuration (B) of the body frames')
             FK_C = [self.B[0]*self.SE3Exp(self.X[0], q[0])]
             for i in range(1, self.n):
@@ -773,7 +807,7 @@ class SymbolicKinDyn():
 
         if self._FK_C is not None:
             FK_C = self._FK_C
-        elif self.A is not None:
+        elif self.A:
             print("Using absolute configuration (A) of the body frames")
             FK_f = [self.SE3Exp(self.Y[0], q[0])]
             FK_C = [FK_f[0]*self.A[0]]
@@ -781,7 +815,7 @@ class SymbolicKinDyn():
                 FK_f.append(FK_f[i-1]*self.SE3Exp(self.Y[i], q[i]))
                 FK_C.append(FK_f[i]*self.A[i])
             self._FK_C = FK_C
-        elif self.B is not None:
+        elif self.B:
             print('Using relative configuration (B) of the body frames')
             FK_C = [self.B[0]*self.SE3Exp(self.X[0], q[0])]
             for i in range(1, self.n):
@@ -1043,7 +1077,7 @@ class SymbolicKinDyn():
 
         if self._FK_C is not None:
             FK_C = self._FK_C
-        elif self.A is not None:
+        elif self.A:
             print("Using absolute configuration (A) of the body frames")
             FK_f = [self.SE3Exp(self.Y[0], q[0])]
             FK_C = [FK_f[0]*self.A[0]]
@@ -1051,7 +1085,7 @@ class SymbolicKinDyn():
                 FK_f.append(FK_f[i-1]*self.SE3Exp(self.Y[i], q[i]))
                 FK_C.append(FK_f[i]*self.A[i])
             self._FK_C = FK_C
-        elif self.B is not None:
+        elif self.B:
             print('Using relative configuration (B) of the body frames')
             FK_C = [self.B[0]*self.SE3Exp(self.X[0], q[0])]
             for i in range(1, self.n):
@@ -1460,6 +1494,7 @@ class SymbolicKinDyn():
 
         jn = 0 # joint index of used joints
         jna = 0 # joint index of all joints
+        joint_origins = []
         for joint in robot.joints:#
             name = joint.name
             origin = Matrix(joint.origin)
@@ -1496,7 +1531,7 @@ class SymbolicKinDyn():
                 for i in range(4):
                     for j in range(4):
                         origin[i,j] = nsimplify(origin[i,j], [pi], tolerance=tolerance)
-            
+            joint_origins.append(origin)
             if joint.joint_type in ["revolute","continuous","prismatic"]:
                 # origin = Matrix(joint.origin)
                 axis = Matrix(joint.axis)
@@ -1522,10 +1557,46 @@ class SymbolicKinDyn():
             jna += 1    
                 
         self.Mb = []
-        I_syms = [symbols("I%dxx I%dxy I%dxz I%dyy I%dyz I%dzz"%(i,i,i,i,i,i)) for i in range(DOF)]
-        m_syms = [symbols("m%dxx cx%d cy%d cz%d"%(i,i,i,i)) for i in range(DOF)]
-        for i in range(1,DOF+1):
-            link = robot.links[i]
+        I_syms = []
+        m_syms = []
+        # I_syms = [symbols("I%dxx I%dxy I%dxz I%dyy I%dyz I%dzz"%(i,i,i,i,i,i)) for i in range(DOF)]
+        # m_syms = [symbols("m%d cx%d cy%d cz%d"%(i,i,i,i)) for i in range(DOF)]
+        i = 0
+        first_non_fixed = 1
+        for link in robot.links:
+            name = link.name
+            # ignore base link
+            if i < first_non_fixed:
+                if name in [x[1] for x in fixed_links]:
+                    first_non_fixed +=1
+                i += 1
+                continue
+            inertia = Matrix(link.inertial.inertia)
+            mass = link.inertial.mass
+            inertiaorigin = Matrix(link.inertial.origin)
+            if symbolic:
+                I_syms = symbols("Ixx_%s Ixy_%s Ixz_%s Iyy_%s Iyz_%s Izz_%s"%(name,name,name,name,name,name))    
+                c_syms = symbols("cx_%s cy_%s cz_%s"%(name,name,name))
+                I = self.InertiaMatrix(*I_syms)
+                m = symbols("m_%s"%name)
+                cg = Matrix([*c_syms])
+            # if is fixed child:
+            # cg =
+            # I =
+            # m = 
+            M = self.MassMatrixMixedData(m,I,cg)
+            if name in [x[1] for x in fixed_links]:
+                j = i
+                # transform Mass matrix
+                print("Combining mass matrices not implemented yet.")
+                while robot.links[j].name in [x[1] for x in fixed_links]:
+                    # M = joint_origins[j-1].T * M * joint_origins[j-1] # Wrong
+                    j -= 1
+                # self.Mb[-1] += M
+                i += 1
+                continue
+            self.Mb.append(M)
+            i += 1
               
         # for link in robot.links:
         #     self.Mb.append(self.MassMatrixMixedData())
