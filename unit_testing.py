@@ -94,31 +94,153 @@ class abstractFKinTest():
             self.s.Jh_ee,
             Matrix([[0,0],[0,0],[1,1],[-self.L2*sin(self.q1+self.q2)-self.L1*sin(self.q1),-self.L2*sin(self.q1+self.q2)],[self.L2*cos(self.q1+self.q2)+self.L1*cos(self.q1),self.L2*cos(self.q1+self.q2)],[0,0]])
         )
-
-
+        
+    def testJb(self):
+        self.assertEqual(
+            self.s.Jb,
+            Matrix([[0,0],[0,0],[1,1],[self.L1*sin(self.q2),0],[self.L1*cos(self.q2),0],[0,0]])
+        )
+        
+    def testJh(self):
+        self.assertEqual(
+            self.s.Jh,
+            Matrix([[0,0],[0,0],[1,1],[-self.L1*sin(self.q1),0],[self.L1*cos(self.q1),0],[0,0]])
+        )
+    
+    def testJdot(self):
+        self.assertEqual(
+            self.s.Jdot,
+            Matrix([[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[self.L1*self.dq2*cos(self.q2),0],[-self.L1*self.dq2*sin(self.q2),0],[0,0]])
+        )
+    
+    def testVbd_BFn(self):
+        self.assertEqual(
+            simplify(self.s.Vbd_BFn),
+            Matrix([[0],[0],[self.ddq1+self.ddq2],[self.L1*(self.ddq1*sin(self.q2) + self.dq1*self.dq2*cos(self.q2))],[self.L1*(self.ddq1*cos(self.q2) - self.dq1*self.dq2*sin(self.q2))],[0]])
+        )
+    
+    
+    def testVhd_BFn(self):
+        self.assertEqual(
+            simplify(self.s.Vhd_BFn -
+            Matrix([[0],
+                    [0],
+                    [self.ddq1+self.ddq2],
+                    [-self.L1*(cos(self.q1)*self.dq1**2 + self.ddq1*sin(self.q1))],
+                    [-self.L1*(sin(self.q1)*self.dq1**2 - self.ddq1*cos(self.q1))],
+                    [0]])),
+            zeros(6,1)
+        )
+    
+    def testVb_ee(self):
+        self.assertEqual(
+            simplify(self.s.Vb_ee -
+            Matrix([[0],
+                    [0],
+                    [self.dq1+self.dq2],
+                    [self.L1*self.dq1*sin(self.q2)],
+                    [self.L2*(self.dq1+self.dq2) + self.L1*self.dq1*cos(self.q2)],
+                    [0]])),
+            zeros(6,1)
+        )
+    
+    
+    def testVh_ee(self):
+        self.assertEqual(
+            simplify(self.s.Vh_ee -
+            Matrix([[0],
+                    [0],
+                    [self.dq1+self.dq2],
+                    [- self.L2*self.dq1*sin(self.q1 + self.q2) - self.L2*self.dq2*sin(self.q1 + self.q2) - self.L1*self.dq1*sin(self.q1)],
+                    [self.L2*self.dq1*cos(self.q1 + self.q2) + self.L2*self.dq2*cos(self.q1 + self.q2) + self.L1*self.dq1*cos(self.q1)],
+                    [0]])),
+            zeros(6,1)
+        )
+    
+    
+    def testVbd_ee(self):
+        self.assertEqual(
+            simplify(self.s.Vbd_ee-
+            Matrix([[0],
+                    [0],
+                    [self.ddq1+self.ddq2],
+                    [self.L1*(self.ddq1*sin(self.q2) + self.dq1*self.dq2*cos(self.q2))],
+                    [self.L1*(self.ddq1*cos(self.q2) - self.dq1*self.dq2*sin(self.q2))+self.L2*(self.ddq1+self.ddq2)],
+                    [0]])),
+            zeros(6,1)
+        )
+        
+        
+    def testVhd_ee(self):
+        self.assertEqual(
+            simplify(simplify(self.s.Vhd_ee)-
+            Matrix([[0],
+                    [0],
+                    [self.ddq1+self.ddq2],
+                    [- self.L2*self.dq1**2*cos(self.q1 + self.q2) - self.L2*self.dq2**2*cos(self.q1 + self.q2) - self.L1*self.dq1**2*cos(self.q1) - self.L2*self.ddq1*sin(self.q1 + self.q2) - self.L2*self.ddq2*sin(self.q1 + self.q2) - self.L1*self.ddq1*sin(self.q1) - 2*self.L2*self.dq1*self.dq2*cos(self.q1 + self.q2)],
+                    [ self.L2*self.ddq1*cos(self.q1 + self.q2) - self.L2*self.dq2**2*sin(self.q1 + self.q2) - self.L1*self.dq1**2*sin(self.q1) - self.L2*self.dq1**2*sin(self.q1 + self.q2) + self.L2*self.ddq2*cos(self.q1 + self.q2) + self.L1*self.ddq1*cos(self.q1) - 2*self.L2*self.dq1*self.dq2*sin(self.q1 + self.q2)],
+                    [0]])),
+            zeros(6,1)
+        )
+        
+    
+    
+    def testJb_ee_dot(self):
+        self.assertEqual(
+            self.s.Jb_ee_dot,
+            Matrix([[0,0],[0,0],[0,0],[self.L1*self.dq2*cos(self.q2),0],[-self.L1*self.dq2*sin(self.q2),0],[0,0]])
+        )
+        
+    def testJh_ee_dot(self):
+        self.assertEqual(
+            simplify(self.s.Jh_ee_dot-
+            Matrix([[0,0],
+                    [0,0],
+                    [0,0],
+                    [- self.L2*self.dq1*cos(self.q1 + self.q2) - self.L2*self.dq2*cos(self.q1 + self.q2) - self.L1*self.dq1*cos(self.q1), -self.L2*cos(self.q1 + self.q2)*(self.dq1 + self.dq2)],
+                    [- self.L2*self.dq1*sin(self.q1 + self.q2) - self.L2*self.dq2*sin(self.q1 + self.q2) - self.L1*self.dq1*sin(self.q1), -self.L2*sin(self.q1 + self.q2)*(self.dq1 + self.dq2)],
+                    [0,0]])),
+            zeros(6,2)
+        )
+    
+        
+    def testJh_dot(self):
+        self.assertEqual(
+            simplify(self.s.Jh_dot-
+            Matrix([[0,0],[0,0],[0,0],[-self.L1*self.dq1*cos(self.q1),0],[-self.L1*self.dq1*sin(self.q1),0],[0,0]])),
+            zeros(6,2)
+        )
+    
+    def testJb_dot(self):
+        self.assertEqual(
+            self.s.Jb_dot,
+            Matrix([[0,0],[0,0],[0,0],[self.L1*self.dq2*cos(self.q2),0],[-self.L1*self.dq2*sin(self.q2),0],[0,0]])
+        )
+    
 class TestFKin(abstractFKinTest, unittest.TestCase):
     @classmethod
     def setUpClass(self):
         prepare(self)
-        T = self.s.closed_form_kinematics_body_fixed(self.q,self.qd,self.q2d)
+        T = self.s.closed_form_kinematics_body_fixed(self.q,self.qd,self.q2d,True,False)
 
 
 class TestFKin_parallel(abstractFKinTest, unittest.TestCase):
     @classmethod
     def setUpClass(self):
         prepare(self)
-        T = self.s.closed_form_kinematics_body_fixed_parallel(self.q,self.qd,self.q2d)
+        T = self.s.closed_form_kinematics_body_fixed_parallel(self.q,self.qd,self.q2d,True,False)
 
 
 class AbstractInvDyn():
     
     def testM(self):
         self.assertEqual(
-            self.s.M,
+            simplify(self.s.M-
             Matrix([[self.L1**2*self.m1+ self.L1**2*self.m2+self.L2**2*self.m2+2*self.L1*self.L2*self.m2*cos(self.q2),
                      self.L2*self.m2*(self.L2+self.L1*cos(self.q2))],
                     [self.L2*self.m2*(self.L2+self.L1*cos(self.q2)),
-                     self.L2**2*self.m2]])
+                     self.L2**2*self.m2]])),
+            zeros(2,2)
         )      
         
     def testJ(self):
@@ -129,18 +251,20 @@ class AbstractInvDyn():
     
     def testC(self):
         self.assertEqual(
-            self.s.C,
+            self.s.simplify(self.s.C-
             Matrix([[-2*self.L1*self.L2*self.dq2*self.m2*sin(self.q2),
                      -self.L1*self.L2*self.dq2*self.m2*sin(self.q2)],
                     [self.L1*self.L2*self.m2*sin(self.q2)*(self.dq1-self.dq2),
-                     self.L1*self.L2*self.dq1*self.m2*sin(self.q2)]])
+                     self.L1*self.L2*self.dq1*self.m2*sin(self.q2)]])),
+            zeros(2,2)
         )
         
     def testQgrav(self):
         self.assertEqual(
-            self.s.Qgrav,
+            self.s.simplify(self.s.Qgrav-
             Matrix([[self.g*(self.L2*self.m2*cos(self.q1+self.q2)+self.L1*self.m1*cos(self.q1)+self.L1*self.m2*cos(self.q1))],
-                    [self.L2*self.g*self.m2*cos(self.q1+self.q2)]])
+                    [self.L2*self.g*self.m2*cos(self.q1+self.q2)]])),
+            zeros(2,1)
         )
         
     def testQ(self):
@@ -150,7 +274,6 @@ class AbstractInvDyn():
               +self.L1*self.L2*self.ddq2*self.m2*cos(self.q2)-2*self.L1*self.L2*self.dq1*self.dq2*self.m2*sin(self.q2))
         
         Q2 = self.L2*self.m2*(self.L1*sin(self.q2)*self.dq1**2+self.L2*self.ddq1+self.L2*self.ddq2+self.g*cos(self.q1+self.q2)+self.L1*self.ddq1*cos(self.q2))       
-        # print(simplify(self.s.Q[0]-Q1))
         self.assertEqual(
             simplify(self.s.Q - Matrix([Q1,Q2])),
             zeros(2,1)
@@ -161,14 +284,14 @@ class TestInvDyn(AbstractInvDyn,unittest.TestCase):
     @classmethod
     def setUpClass(self):
         prepare(self)
-        Q = self.s.closed_form_inv_dyn_body_fixed(self.q,self.qd,self.q2d)
+        Q = self.s.closed_form_inv_dyn_body_fixed(self.q,self.qd,self.q2d,zeros(6,1),True,False)
 
 
 class TestInvDynParallel(AbstractInvDyn,unittest.TestCase):
     @classmethod
     def setUpClass(self):
         prepare(self)
-        Q = self.s.closed_form_inv_dyn_body_fixed_parallel(self.q,self.qd,self.q2d)
+        Q = self.s.closed_form_inv_dyn_body_fixed_parallel(self.q,self.qd,self.q2d,zeros(6,1),True,False)
 
 
 class TestKinGen(unittest.TestCase):
