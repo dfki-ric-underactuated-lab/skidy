@@ -22,6 +22,7 @@ import os
 import re as regex
 import random
 import numpy
+import time
 
 init_printing()
 
@@ -91,6 +92,7 @@ class SymbolicKinDyn():
         
         # Value assignment
         self.assignment_dict = {}
+        self.subex_dict = {}
         
         # CSE
         self.all_symbols = set()
@@ -98,19 +100,21 @@ class SymbolicKinDyn():
         self.cse_expressions = []
         self.cse_replacements = []
 
-    def simplify(self,exp):
+    def simplify(self,exp, cse_ex=False):
         """Faster simplify implementation for Sympy.
         Expressions can be slightly less simplified as with sympy.simplify.
 
         Args:
             exp (sympy expression): Expression to simplify.
-
+            cse_ex (bool, optional): Use common subexpression elimination. Defaults to False.
+            
         Returns:
             sympy expression: Simplified expression.
         """
-        if type(exp) == sympy.matrices.dense.MutableDenseMatrix:
-            exp = exp.as_immutable()
-        if type(exp) == sympy.matrices.immutable.ImmutableDenseMatrix:
+        if cse_ex:
+            exp = self.cse_function(exp)
+        if (type(exp) == sympy.matrices.immutable.ImmutableDenseMatrix 
+            or type(exp) == sympy.matrices.dense.MutableDenseMatrix):
             # fasten simplification of symmetric matrices
             if exp.is_square:
                 # numeric test is faster than is_symmetric method  for long expressions
@@ -124,19 +128,13 @@ class SymbolicKinDyn():
                             if i != j:
                                 m_exp[j,i] = exp[j,i]
                     return Matrix(m_exp)
-                elif Matrix(num + num.T).is_diagonal():
-                    shape = exp.shape
-                    m_exp = exp.as_mutable()
-                    for i in range(shape[0]):
-                        for j in range(i):
-                            m_exp[i,j] = self.simplify(exp[i,j])
-                            if i != j:
-                                m_exp[j,i] = -exp[j,i]
-                    return Matrix(m_exp)
+        if type(exp) == sympy.matrices.dense.MutableDenseMatrix:
+            exp = exp.as_immutable()
         exp = fu(exp) # fast function to simplify sin and cos expressions
         exp = cancel(exp)
         exp = factor(exp)
         exp = powsimp(exp)
+        exp = exp.doit()
         return exp
         
     
@@ -180,9 +178,13 @@ class SymbolicKinDyn():
     
     
     def cse_function(self, f):
-        r, e = cse([f,f],numbered_symbols(exclude=self.all_symbols), order="canonical", ignore=self.var_syms)
+        r, e = cse([f,f],self._individual_numbered_symbols(exclude=self.all_symbols), order="canonical", ignore=self.var_syms)
         for (sym,val) in r:    
-            self.assignment_dict[sym] = val
+            self.subex_dict[sym] = val
+            try:
+                self.queue_dict["subex_dict"].put(self.subex_dict)
+            except:
+                pass
             self.all_symbols.update({sym})
         return e[0]
         
@@ -199,12 +201,12 @@ class SymbolicKinDyn():
         #         exclude.update(sym.free_symbols)
         #     except:
         #         pass
-        r, e = cse(funcs+funcs,numbered_symbols(exclude=self.all_symbols), order="canonical", ignore=self.var_syms)
+        r, e = cse(funcs+funcs,self._individual_numbered_symbols(exclude=self.all_symbols), order="canonical", ignore=self.var_syms)
         e = e[:len(funcs)]
         if simplify_expressions:
             e = self.simplify_expressions(e)
         for (sym,val) in r:    
-            self.assignment_dict[sym] = val
+            self.subex_dict[sym] = val
             self.all_symbols.update({sym})
         for i,n in enumerate(funcdict):
             self.cse_expressions_dict[n] = e[i]
@@ -242,20 +244,40 @@ class SymbolicKinDyn():
         for f in functions:
             all_syms.update(f.free_symbols)
         if use_global_vars:
-            constant_syms = list(all_syms.difference(self.var_syms))
+            constant_syms = list(all_syms.difference(self.var_syms).union(self.subex_dict))
+            not_assigned_syms = list(all_syms.difference(self.var_syms).difference(self.assignment_dict).difference(self.subex_dict))
+            
         else:
             constant_syms = []
+            not_assigned_syms = []
         if python:
             print("Generate Python code")
             p = NumPyPrinter()
             s = ["import numpy\n\n"]
             s.append("class "+name.capitalize()+"():")
             s.append("\tdef __init__(self, %s):" % (
-                ", ".join(sorted([str(constant_syms[i]) for i in range(len(constant_syms))]))))
-            if len(constant_syms) > 0:
-                s.append("\t\t"+", ".join(sorted(["self."+str(constant_syms[i]) for i in range(len(constant_syms))]))
-                         + " = " + ", ".join(sorted([str(constant_syms[i]) for i in range(len(constant_syms))])))
+                ", ".join(sorted([str(not_assigned_syms[i]) for i in range(len(not_assigned_syms))])+
+                          sorted([str(i)+" = "+ self.assignment_dict[i] for i in self.assignment_dict]))))
+            if len(not_assigned_syms) > 0:
+                s.append("\t\t"+", ".join(sorted(["self."+str(not_assigned_syms[i]) for i in range(len(not_assigned_syms))]))
+                         + " = " + ", ".join(sorted([str(not_assigned_syms[i]) for i in range(len(not_assigned_syms))])))
 
+            if len(self.assignment_dict) > 0:
+                s.append("\t\t"+", ".join(sorted(["self."+str(i) for i in self.assignment_dict]))
+                         + " = " + ", ".join(sorted([str(i) for i in self.assignment_dict])))
+
+            if len(self.subex_dict) > 0:
+                for i in sorted([str(j) for j in self.subex_dict]):
+                    modstring = str(self.subex_dict[symbols(i)])
+                    for j in sorted([str(h) for h in self.subex_dict[symbols(i)].free_symbols], reverse=1):
+                        modstring = regex.sub(str(j),"self."+str(j),modstring)
+                        modstring = regex.sub("self.self.","self.",modstring) # remove double self
+                    s.append("\t\tself."+str(i)+" = "+ modstring)
+                
+                # s.append("\n\t\t".join(sorted(["self."+str(i) for i in self.assignment_dict]))
+                        #  + " = " + ", ".join(sorted([str(i) for i in self.assignment_dict])))
+            
+            
             for i in range(len(functions)):
                 var_syms = list(self.var_syms.intersection(
                     functions[i].free_symbols))
@@ -313,7 +335,7 @@ class SymbolicKinDyn():
                     f.write(m_code)
             print("Done")
 
-    def closed_form_kinematics_body_fixed(self, q, qd, q2d, simplify_expressions=True):
+    def closed_form_kinematics_body_fixed(self, q, qd, q2d, simplify_expressions=True, cse_ex=False):
         """Position, Velocity and Acceleration Kinematics using Body fixed representation of the twists in closed form.
 
         The following functions are saved in the class and can be code generated afterwards:
@@ -337,6 +359,9 @@ class SymbolicKinDyn():
             q (sympy.Matrix): (n,1) Genearlized position vector.
             qd (sympy.Matrix): (n,1 )Generalized velocity vector.
             q2d (sympy.Matrix): (n,1) Generalized acceleration vector.
+            simplify_expressions (bool, optional): Use simplify command on saved expressions. Defaults to True.
+            cse_ex (bool, optional): Use common subexpression elimination. Defaults to False.
+            
 
         Returns:
             sympy.Matrix: Forward kinematics (transformation matrix of ee).
@@ -364,7 +389,7 @@ class SymbolicKinDyn():
             for i in range(1, self.n):
                 FK_C.append(FK_C[i-1]*self.B[i]*self.SE3Exp(self.X[i], q[i]))
             # if simplify_expressions:
-            #     FK_C = self.simplify(FK_C)
+            #     FK_C = self.simplify(FK_C,cse_ex)
             self._FK_C = FK_C
         else:
             'Absolute (A) or Relative (B) configuration of the bodies should be provided in class!'
@@ -372,7 +397,7 @@ class SymbolicKinDyn():
 
         fkin = FK_C[self.n-1]*self.ee
         if simplify_expressions:
-            fkin = self.simplify(fkin)
+            fkin = self.simplify(fkin,cse_ex)
         self.fkin = fkin
 
         # Block diagonal matrix A (6n x 6n) of the Adjoint of body frame
@@ -388,7 +413,7 @@ class SymbolicKinDyn():
                     c = 6*(j)
                     A[r:r+6, c:c+6] = AdCrel
             # if simplify_expressions:
-                # A = self.simplify(A)
+                # A = self.simplify(A,cse_ex)
             self._A = A
 
         if self.J is not None:
@@ -403,7 +428,7 @@ class SymbolicKinDyn():
             # System level Jacobian
             J = A*X
             if simplify_expressions:
-                J = self.simplify(J)
+                J = self.simplify(J,cse_ex)
             self.J = J
 
             # System twist (6n x 1)
@@ -414,7 +439,7 @@ class SymbolicKinDyn():
         R_i = Matrix(fkin[:3, :3]).row_join(
             zeros(3, 1)).col_join(Matrix([0, 0, 0, 1]).T)
         if simplify_expressions:  # fastens later simmplifications
-            R_i = self.simplify(R_i)
+            R_i = self.simplify(R_i,cse_ex)
 
         R_BFn = Matrix(FK_C[-1][:3, :3]).row_join(
             zeros(3, 1)).col_join(Matrix([0, 0, 0, 1]).T)
@@ -422,25 +447,25 @@ class SymbolicKinDyn():
         # Body fixed Jacobian of last moving body (This may not correspond to end-effector frame)
         Jb = J[-6:, :]
         if simplify_expressions:
-            Jb = self.simplify(Jb)
+            Jb = self.simplify(Jb,cse_ex)
 
         Vb_BFn = Jb*qd  # Body fixed twist of last moving body
         if simplify_expressions:
-            Vb_BFn = self.simplify(Vb_BFn)
+            Vb_BFn = self.simplify(Vb_BFn,cse_ex)
         Vh_BFn = self.SE3AdjMatrix(R_BFn)*Vb_BFn
         if simplify_expressions:
-            Vh_BFn = self.simplify(Vh_BFn)
+            Vh_BFn = self.simplify(Vh_BFn,cse_ex)
         self.Vb_BFn = Vb_BFn
         self.Vh_BFn = Vh_BFn
 
         # Body fixed twist of end-effector frame
         Vb_ee = self.SE3AdjMatrix(self.SE3Inv(self.ee))*Vb_BFn
         if simplify_expressions:
-            Vb_ee = self.simplify(Vb_ee)
+            Vb_ee = self.simplify(Vb_ee,cse_ex)
         # Hybrid twist of end-effector frame
         Vh_ee = self.SE3AdjMatrix(R_i)*Vb_ee
         if simplify_expressions:
-            Vh_ee = self.simplify(Vh_ee)
+            Vh_ee = self.simplify(Vh_ee,cse_ex)
 
         self.Vb_ee = Vb_ee
         self.Vh_ee = Vh_ee
@@ -448,15 +473,15 @@ class SymbolicKinDyn():
         # Body fixed Jacobian of end-effector frame
         Jb_ee = self.SE3AdjMatrix(self.SE3Inv(self.ee))*Jb
         if simplify_expressions:
-            Jb_ee = self.simplify(Jb_ee)
+            Jb_ee = self.simplify(Jb_ee,cse_ex)
 
         # Hybrid Jacobian of end-effector frame
         Jh_ee = self.SE3AdjMatrix(R_i)*Jb_ee
         Jh = self.SE3AdjMatrix(R_i)*Jb  # Hybrid Jacobian of last moving body
 
         if simplify_expressions:
-            Jh_ee = self.simplify(Jh_ee)
-            Jh = self.simplify(Jh)
+            Jh_ee = self.simplify(Jh_ee,cse_ex)
+            Jh = self.simplify(Jh,cse_ex)
 
         self.Jh_ee = Jh_ee
         self.Jb_ee = Jb_ee
@@ -472,13 +497,13 @@ class SymbolicKinDyn():
             for i in range(self.n):
                 a[6*i:6*i+6, 6*i:6*i+6] = self.SE3adMatrix(self.X[i])*qd[i]
             if simplify_expressions:
-                a = self.simplify(a)
+                a = self.simplify(a,cse_ex)
             self._a = a
 
         # System acceleration (6n x 1)
         Jdot = -A*a*J  # Sys-level Jacobian time derivative
         if simplify_expressions:
-            Jdot = self.simplify(Jdot)
+            Jdot = self.simplify(Jdot,cse_ex)
 
         self.Jdot = Jdot
 
@@ -487,12 +512,12 @@ class SymbolicKinDyn():
         # Hybrid acceleration of the last body
         Vbd_BFn = Vbd[-6:, :]
         if simplify_expressions:
-            Vbd_BFn = self.simplify(Vbd_BFn)
+            Vbd_BFn = self.simplify(Vbd_BFn,cse_ex)
         Vhd_BFn = self.SE3AdjMatrix(R_BFn)*Vbd_BFn + self.SE3adMatrix(Matrix(Vh_BFn[:3, :]).col_join(
             Matrix([0, 0, 0])))*self.SE3AdjMatrix(R_BFn)*Vb_BFn  # Hybrid twist of end-effector frame
 
         if simplify_expressions:
-            Vhd_BFn = self.simplify(Vhd_BFn)
+            Vhd_BFn = self.simplify(Vhd_BFn,cse_ex)
 
         self.Vbd_BFn = Vbd_BFn
         self.Vhd_BFn = Vhd_BFn
@@ -501,11 +526,11 @@ class SymbolicKinDyn():
         # Hybrid acceleration of the EE
         Vbd_ee = self.SE3AdjMatrix(self.SE3Inv(self.ee))*Vbd_BFn
         if simplify_expressions:
-            Vbd_ee = self.simplify(Vbd_ee)
+            Vbd_ee = self.simplify(Vbd_ee,cse_ex)
         Vhd_ee = self.SE3AdjMatrix(R_i)*Vbd_ee + self.SE3adMatrix(Matrix(
             Vh_ee[:3, :]).col_join(Matrix([0, 0, 0])))*self.SE3AdjMatrix(R_i)*Vb_ee  # Hybrid twist of end-effector frame
         if simplify_expressions:
-            Vhd_ee = self.simplify(Vhd_ee)
+            Vhd_ee = self.simplify(Vhd_ee,cse_ex)
 
         self.Vbd_ee = Vbd_ee
         self.Vhd_ee = Vhd_ee
@@ -519,7 +544,7 @@ class SymbolicKinDyn():
         # For the EE
         Jb_ee_dot = self.SE3AdjMatrix(self.SE3Inv(self.ee))*Jb_dot
         if simplify_expressions:
-            Jb_ee_dot = self.simplify(Jb_ee_dot)
+            Jb_ee_dot = self.simplify(Jb_ee_dot,cse_ex)
         self.Jb_ee_dot = Jb_ee_dot
 
         # Hybrid Jacobian time derivative
@@ -527,14 +552,14 @@ class SymbolicKinDyn():
         Jh_dot = self.SE3AdjMatrix(R_BFn)*Jb_dot + self.SE3adMatrix(
             Matrix(Vh_BFn[:3, :]).col_join(Matrix([0, 0, 0])))*self.SE3AdjMatrix(R_BFn)*Jb
         if simplify_expressions:
-            Jh_dot = self.simplify(Jh_dot)
+            Jh_dot = self.simplify(Jh_dot,cse_ex)
         self.Jh_dot = Jh_dot
 
         # For the EE
         Jh_ee_dot = self.SE3AdjMatrix(R_i)*Jb_ee_dot + self.SE3adMatrix(
             Matrix(Vh_ee[:3, :]).col_join(Matrix([0, 0, 0])))*self.SE3AdjMatrix(R_i)*Jb_ee
         if simplify_expressions:
-            Jh_ee_dot = self.simplify(Jh_ee_dot)
+            Jh_ee_dot = self.simplify(Jh_ee_dot,cse_ex)
         self.Jh_ee_dot = Jh_ee_dot
         
         for f in self.get_functions():
@@ -543,7 +568,7 @@ class SymbolicKinDyn():
         print("Done")
         return fkin
 
-    def closed_form_inv_dyn_body_fixed(self, q, qd, q2d, WEE=zeros(6, 1), simplify_expressions=True):
+    def closed_form_inv_dyn_body_fixed(self, q, qd, q2d, WEE=zeros(6, 1), simplify_expressions=True, cse_ex=False):
         """Inverse Dynamics using Body fixed representation of the twists in closed form. 
 
         The following functions are saved in the class and can be code generated afterwards:
@@ -558,6 +583,7 @@ class SymbolicKinDyn():
             q2d (sympy.Matrix): (n,1) Generalized acceleration vector.
             WEE (sympy.Matrix, optional): (6,1) WEE (t) is the time varying wrench on the EE link. Defaults to zeros(6, 1).
             simplify_expressions (bool, optional): Use simplify command on saved expressions. Defaults to True.
+            cse_ex (bool, optional): Use common subexpression elimination. Defaults to False.
 
         Returns:
             sympy.Matrix: Generalized Forces
@@ -617,7 +643,7 @@ class SymbolicKinDyn():
             # System level Jacobian
             J = A*X
             if simplify_expressions:
-                J = self.simplify(J)
+                J = self.simplify(J,cse_ex)
             self.J = J
 
             # System twist (6n x 1)
@@ -656,12 +682,12 @@ class SymbolicKinDyn():
         # Mass inertia matrix in joint space (n x n)
         M = J.T*Mb*J
         if simplify_expressions:
-            M = self.simplify(M)
+            M = self.simplify(M,cse_ex)
 
         # Coriolis-Centrifugal matrix in joint space (n x n)
         C = J.T * Cb * J
         if simplify_expressions:
-            C = self.simplify(C)
+            C = self.simplify(C,cse_ex)
 
         # Gravity Term
         U = self.SE3AdjInvMatrix(FK_C[0])
@@ -672,7 +698,7 @@ class SymbolicKinDyn():
         Vd_0[3:6, 0] = self.gravity_vector
         Qgrav = J.T*Mb*U*Vd_0
         if simplify_expressions:
-            Qgrav = self.simplify(Qgrav)
+            Qgrav = self.simplify(Qgrav,cse_ex)
 
         # External Wrench
         Wext = zeros(6*self.n, 1)
@@ -685,7 +711,7 @@ class SymbolicKinDyn():
         Q = M*q2d + C*qd + Qgrav + Qext
 
         if simplify_expressions:
-            Q = self.simplify(Q)
+            Q = self.simplify(Q,cse_ex)
 
         self.M = M
         self.C = C
@@ -724,16 +750,17 @@ class SymbolicKinDyn():
             self.queue_dict[name] = Queue()
         self.queue_dict[name].put(var)
 
-    def _start_simplificaton_process(self, name):
+    def _start_simplificaton_process(self, name, cse_ex=False):
         """Start Process, which simplifies and overwrites value in queue from self.queue_dict
 
         Args:
             name (str): Identifier
+            cse_ex (bool, optional): Use common subexpression elimination. Defaults to False.
         """
         if name not in self.queue_dict:
             self.queue_dict[name] = Queue()
         self.process_dict[name+"_simplify"] = Process(
-            target=self._simplify_parallel, args=(name,), name=name+"_simplify")
+            target=self._simplify_parallel, args=(name,cse_ex,), name=name+"_simplify")
         self.process_dict[name+"_simplify"].start()
 
     def _get_value(self, name):
@@ -749,13 +776,14 @@ class SymbolicKinDyn():
         self.queue_dict[name].put(value)
         return value
 
-    def _simplify_parallel(self, name):
+    def _simplify_parallel(self, name, cse_ex=False):
         """Take value from self.queue_dict, simplify it and put it in again.
 
         Args:
             name (str): Identifier
+            cse_ex (bool, optional): Use common subexpression elimination. Defaults to False.
         """
-        value = self.simplify(self.queue_dict[name].get())
+        value = self.simplify(self.queue_dict[name].get(),cse_ex)
         self.queue_dict[name].put(value)
 
     def _flush_queue(self, q):
@@ -770,7 +798,11 @@ class SymbolicKinDyn():
         except queue.Empty:
             pass
 
-    def closed_form_kinematics_body_fixed_parallel(self, q, qd, q2d, simplify_expressions=True):
+    def _individual_numbered_symbols(self,exclude=[],i=[0]):
+        i[0] +=1
+        return numbered_symbols(prefix="sub%s_%s_"%("_".join([str(j) for j in multiprocessing.current_process()._identity]),i[0]),exclude=exclude)
+    
+    def closed_form_kinematics_body_fixed_parallel(self, q, qd, q2d, simplify_expressions=True, cse_ex = False):
         """Position, Velocity and Acceleration Kinematics using Body fixed representation of the twists in closed form.
 
         The following functions are saved in the class and can be code generated afterwards:
@@ -792,8 +824,10 @@ class SymbolicKinDyn():
 
         Args:
             q (sympy.Matrix): (n,1) Genearlized position vector.
-            qd (sympy.Matrix): (n,1 )Generalized velocity vector.
+            qd (sympy.Matrix): (n,1) Generalized velocity vector.
             q2d (sympy.Matrix): (n,1) Generalized acceleration vector.
+            simplify_expressions (bool, optional): Use simplify command on saved expressions. Defaults to True.
+            cse_ex (bool, optional): Use common subexpression elimination. Defaults to False.
 
         Returns:
             sympy.Matrix: Forward kinematics (transformation matrix of ee).
@@ -804,7 +838,9 @@ class SymbolicKinDyn():
         self.var_syms.update(q2d.free_symbols)
 
         self.n = len(q)
-
+        self.queue_dict["subex_dict"] = Queue()
+        
+        
         if self._FK_C is not None:
             FK_C = self._FK_C
         elif self.A:
@@ -827,7 +863,7 @@ class SymbolicKinDyn():
 
         self._set_value("fkin", FK_C[self.n-1]*self.ee)
         if simplify_expressions:
-            self._start_simplificaton_process("fkin")
+            self._start_simplificaton_process("fkin",cse_ex)
 
         # Block diagonal matrix A (6n x 6n) of the Adjoint of body frame
         if self._A is not None:
@@ -856,7 +892,7 @@ class SymbolicKinDyn():
             # J = A*X
             self._set_value("J", A*X)
             if simplify_expressions:
-                self._start_simplificaton_process("J")
+                self._start_simplificaton_process("J",cse_ex)
 
             # System twist (6n x 1)
             # V = J*qd
@@ -867,7 +903,7 @@ class SymbolicKinDyn():
             zeros(3, 1)).col_join(Matrix([0, 0, 0, 1]).T))
 
         if simplify_expressions:  # fastens later simmplifications
-            self._start_simplificaton_process("R_i")
+            self._start_simplificaton_process("R_i",cse_ex)
 
         self._set_value("R_BFn", Matrix(FK_C[-1][:3, :3]).row_join(
             zeros(3, 1)).col_join(Matrix([0, 0, 0, 1]).T))
@@ -876,37 +912,37 @@ class SymbolicKinDyn():
         self._set_value_as_process("Jb", lambda: self._get_value("J")[-6:, :])
         # Jb = J[-6:, :]
         if simplify_expressions:
-            self._start_simplificaton_process("Jb")
+            self._start_simplificaton_process("Jb",cse_ex)
 
         self._set_value_as_process("Vb_BFn", lambda: self._get_value("Jb")*qd)
         # Vb_BFn = Jb*qd  # Body fixed twist of last moving body
         if simplify_expressions:
-            self._start_simplificaton_process("Vb_BFn")
+            self._start_simplificaton_process("Vb_BFn",cse_ex)
         # Vh_BFn = self.SE3AdjMatrix(R_BFn)*Vb_BFn
         self._set_value_as_process("Vh_BFn", lambda: self.SE3AdjMatrix(
             self._get_value("R_BFn"))*self._get_value("Vb_BFn"))
         if simplify_expressions:
-            self._start_simplificaton_process("Vh_BFn")
+            self._start_simplificaton_process("Vh_BFn",cse_ex)
 
         # Body fixed twist of end-effector frame
         # Vb_ee = self.SE3AdjMatrix(self.SE3Inv(self.ee))*Vb_BFn
         self._set_value_as_process("Vb_ee", lambda: self.SE3AdjMatrix(
             self.SE3Inv(self.ee))*self._get_value("Vb_BFn"))
         if simplify_expressions:
-            self._start_simplificaton_process("Vb_ee")
+            self._start_simplificaton_process("Vb_ee",cse_ex)
         # Hybrid twist of end-effector frame
         # Vh_ee = self.SE3AdjMatrix(R_i)*Vb_ee
         self._set_value_as_process("Vh_ee", lambda: self.SE3AdjMatrix(
             self._get_value("R_i"))*self._get_value("Vb_ee"))
         if simplify_expressions:
-            self._start_simplificaton_process("Vh_ee")
+            self._start_simplificaton_process("Vh_ee",cse_ex)
 
         # Body fixed Jacobian of end-effector frame
         # Jb_ee = self.SE3AdjMatrix(self.SE3Inv(self.ee))*Jb
         self._set_value_as_process("Jb_ee", lambda: self.SE3AdjMatrix(
             self.SE3Inv(self.ee))*self._get_value("Jb"))
         if simplify_expressions:
-            self._start_simplificaton_process("Jb_ee")
+            self._start_simplificaton_process("Jb_ee",cse_ex)
 
         # Hybrid Jacobian of end-effector frame
         # Jh_ee = self.SE3AdjMatrix(R_i)*Jb_ee
@@ -917,8 +953,8 @@ class SymbolicKinDyn():
             self._get_value("R_i"))*self._get_value("Jb"))
 
         if simplify_expressions:
-            self._start_simplificaton_process("Jh_ee")
-            self._start_simplificaton_process("Jh")
+            self._start_simplificaton_process("Jh_ee",cse_ex)
+            self._start_simplificaton_process("Jh",cse_ex)
 
         # Acceleration computations
         if self._a is not None:
@@ -930,14 +966,14 @@ class SymbolicKinDyn():
                 a[6*i:6*i+6, 6*i:6*i+6] = self.SE3adMatrix(self.X[i])*qd[i]
             self._set_value("a", a)
             if simplify_expressions:
-                self._start_simplificaton_process("a")
+                self._start_simplificaton_process("a",cse_ex)
 
         # System acceleration (6n x 1)
         # Jdot = -A*a*J  # Sys-level Jacobian time derivative
         self._set_value_as_process(
             "Jdot", lambda: -A*self._get_value("a")*self._get_value("J"))
         if simplify_expressions:
-            self._start_simplificaton_process("Jdot")
+            self._start_simplificaton_process("Jdot",cse_ex)
 
         # self.Jdot = Jdot
 
@@ -951,7 +987,7 @@ class SymbolicKinDyn():
             "Vbd_BFn", lambda: self._get_value("Vbd")[-6:, :])
 
         if simplify_expressions:
-            self._start_simplificaton_process("Vbd_BFn")
+            self._start_simplificaton_process("Vbd_BFn",cse_ex)
 
         # Vhd_BFn = self.SE3AdjMatrix(R_BFn)*Vbd_BFn + self.SE3adMatrix(Matrix(Vh_BFn[:3, :]).col_join(
             # Matrix([0, 0, 0])))*self.SE3AdjMatrix(R_BFn)*Vb_BFn  # Hybrid twist of end-effector frame
@@ -959,7 +995,7 @@ class SymbolicKinDyn():
             Matrix([0, 0, 0])))*self.SE3AdjMatrix(self._get_value("R_BFn"))*self._get_value("Vb_BFn"))
 
         if simplify_expressions:
-            self._start_simplificaton_process("Vhd_BFn")
+            self._start_simplificaton_process("Vhd_BFn",cse_ex)
 
         # Body fixed twist of end-effector frame
         # Hybrid acceleration of the EE
@@ -967,14 +1003,14 @@ class SymbolicKinDyn():
         self._set_value_as_process("Vbd_ee", lambda: self.SE3AdjMatrix(
             self.SE3Inv(self.ee))*self._get_value("Vbd_BFn"))
         if simplify_expressions:
-            self._start_simplificaton_process("Vbd_ee")
+            self._start_simplificaton_process("Vbd_ee",cse_ex)
         # Vhd_ee = self.SE3AdjMatrix(R_i)*Vbd_ee + self.SE3adMatrix(Matrix(
         #     Vh_ee[:3, :]).col_join(Matrix([0, 0, 0])))*self.SE3AdjMatrix(R_i)*Vb_ee  # Hybrid twist of end-effector frame
         self._set_value_as_process("Vhd_ee", lambda: self.SE3AdjMatrix(self._get_value("R_i")) * self._get_value("Vbd_ee") + self.SE3adMatrix(Matrix(
             self._get_value("Vh_ee")[:3, :]).col_join(Matrix([0, 0, 0])))*self.SE3AdjMatrix(self._get_value("R_i"))*self._get_value("Vb_ee"))  # Hybrid twist of end-effector frame
 
         if simplify_expressions:
-            self._start_simplificaton_process("Vhd_ee")
+            self._start_simplificaton_process("Vhd_ee",cse_ex)
 
         # Body Jacobian time derivative
 
@@ -988,7 +1024,7 @@ class SymbolicKinDyn():
         self._set_value_as_process("Jb_ee_dot", lambda: self.SE3AdjMatrix(
             self.SE3Inv(self.ee))*self._get_value("Jb_dot"))
         if simplify_expressions:
-            self._start_simplificaton_process("Jb_ee_dot")
+            self._start_simplificaton_process("Jb_ee_dot",cse_ex)
 
         # Hybrid Jacobian time derivative
         # For the last moving body
@@ -997,7 +1033,7 @@ class SymbolicKinDyn():
         self._set_value_as_process("Jh_dot", lambda: self.SE3AdjMatrix(self._get_value("R_BFn"))*self._get_value("Jb_dot") + self.SE3adMatrix(
             Matrix(self._get_value("Vh_BFn")[:3, :]).col_join(Matrix([0, 0, 0])))*self.SE3AdjMatrix(self._get_value("R_BFn"))*self._get_value("Jb"))
         if simplify_expressions:
-            self._start_simplificaton_process("Jh_dot")
+            self._start_simplificaton_process("Jh_dot",cse_ex)
         # self.Jh_dot = Jh_dot
 
         # For the EE
@@ -1006,7 +1042,7 @@ class SymbolicKinDyn():
         self._set_value_as_process("Jh_ee_dot", lambda: self.SE3AdjMatrix(self._get_value("R_i"))*self._get_value("Jb_ee_dot") + self.SE3adMatrix(
             Matrix(self._get_value("Vh_ee")[:3, :]).col_join(Matrix([0, 0, 0])))*self.SE3AdjMatrix(self._get_value("R_i"))*self._get_value("Jb_ee"))
         if simplify_expressions:
-            self._start_simplificaton_process("Jh_ee_dot")
+            self._start_simplificaton_process("Jh_ee_dot",cse_ex)
         self._a = self._get_value("a")
         self._V = self._get_value("V")
 
@@ -1025,12 +1061,18 @@ class SymbolicKinDyn():
         self.Vhd_BFn = self._get_value("Vhd_BFn")
         self.Vbd_BFn = self._get_value("Vbd_BFn")
         self.Vhd_ee = self._get_value("Vhd_ee")
-        self.Vbd_ee = self._get_value("Vhd_ee")
+        self.Vbd_ee = self._get_value("Vbd_ee")
         self.Jh_dot = self._get_value("Jh_dot")
         self.Jb_dot = self._get_value("Jb_dot")
         self.Jh_ee_dot = self._get_value("Jh_ee_dot")
         self.Jb_ee_dot = self._get_value("Jb_ee_dot")
 
+        try:
+            while True:
+                self.subex_dict.update(self.queue_dict["subex_dict"].get(timeout=0.05))
+        except queue.Empty:
+            pass
+        
         # empty Queues
         for i in self.queue_dict:
             self._flush_queue(self.queue_dict[i])
@@ -1047,7 +1089,7 @@ class SymbolicKinDyn():
         print("Done")
         return self.fkin
 
-    def closed_form_inv_dyn_body_fixed_parallel(self, q, qd, q2d, WEE=zeros(6, 1), simplify_expressions=True):
+    def closed_form_inv_dyn_body_fixed_parallel(self, q, qd, q2d, WEE=zeros(6, 1), simplify_expressions=True, cse_ex=False):
         """Inverse Dynamics using Body fixed representation of the twists in closed form. 
 
         The following functions are saved in the class and can be code generated afterwards:
@@ -1062,6 +1104,7 @@ class SymbolicKinDyn():
             q2d (sympy.Matrix): (n,1) Generalized acceleration vector.
             WEE (sympy.Matrix, optional): (6,1) WEE (t) is the time varying wrench on the EE link. Defaults to zeros(6, 1).
             simplify_expressions (bool, optional): Use simplify command on saved expressions. Defaults to True.
+            cse_ex (bool, optional): Use common subexpression elimination. Defaults to False.
 
         Returns:
             sympy.Matrix: Generalized Forces
@@ -1074,7 +1117,8 @@ class SymbolicKinDyn():
         self.var_syms.update(WEE.free_symbols)
 
         self.n = len(q)
-
+        self.queue_dict["subex_dict"] = Queue()
+        
         if self._FK_C is not None:
             FK_C = self._FK_C
         elif self.A:
@@ -1122,7 +1166,7 @@ class SymbolicKinDyn():
             # J = A*X
             self._set_value("J", A*X)
             if simplify_expressions:
-                self._start_simplificaton_process("J")
+                self._start_simplificaton_process("J",cse_ex)
 
             # System twist (6n x 1)
             # V = J*qd
@@ -1171,14 +1215,14 @@ class SymbolicKinDyn():
         self._set_value_as_process(
             "M", lambda: self._get_value("J").T*Mb*self._get_value("J"))
         if simplify_expressions:
-            self._start_simplificaton_process("M")
+            self._start_simplificaton_process("M",cse_ex)
 
         # Coriolis-Centrifugal matrix in joint space (n x n)
         # C = J.T * Cb * J
         self._set_value_as_process("C", lambda: self._get_value(
             "J").T*self._get_value("Cb")*self._get_value("J"))
         if simplify_expressions:
-            self._start_simplificaton_process("C")
+            self._start_simplificaton_process("C",cse_ex)
 
         # Gravity Term
         U = self.SE3AdjInvMatrix(FK_C[0])
@@ -1191,7 +1235,7 @@ class SymbolicKinDyn():
         self._set_value_as_process(
             "Qgrav", lambda: self._get_value("J").T*Mb*U*Vd_0)
         if simplify_expressions:
-            self._start_simplificaton_process("Qgrav")
+            self._start_simplificaton_process("Qgrav",cse_ex)
 
         # External Wrench
         Wext = zeros(6*self.n, 1)
@@ -1207,7 +1251,7 @@ class SymbolicKinDyn():
             "M")*q2d + self._get_value("C")*qd + self._get_value("Qgrav") + self._get_value("Qext"))
 
         if simplify_expressions:
-            self._start_simplificaton_process("Q")
+            self._start_simplificaton_process("Q",cse_ex)
 
         self._V = self._get_value("V")
         self.J = self._get_value("J")
@@ -1216,6 +1260,12 @@ class SymbolicKinDyn():
         self.Qgrav = self._get_value("Qgrav")
         self.Q = self._get_value("Q")
 
+        try:
+            while True:
+                self.subex_dict.update(self.queue_dict["subex_dict"].get(timeout=0.05))
+        except queue.Empty:
+            pass
+        
         # empty Queues
         for i in self.queue_dict:
             self._flush_queue(self.queue_dict[i])
@@ -1420,7 +1470,7 @@ class SymbolicKinDyn():
     def rpy_to_matrix(self, coords):
         """Convert roll-pitch-yaw coordinates to a 3x3 homogenous rotation matrix.
         
-        Adapted from urdfpy_package
+        Adapted from urdfpy 
 
         The roll-pitch-yaw axes in a typical URDF are defined as a
         rotation of ``r`` radians around the x-axis followed by a rotation of
@@ -1580,6 +1630,18 @@ class SymbolicKinDyn():
                 I = self.InertiaMatrix(*I_syms)
                 m = symbols("m_%s"%name)
                 cg = Matrix([*c_syms])
+            else:
+                if simplify_numbers:
+                    for i in range(4):
+                        for j in range(4):
+                            inertiaorigin[i,j] = nsimplify(inertiaorigin[i,j], [pi], tolerance=tolerance)
+                    for i in range(3):
+                        for j in range(3):
+                            inertia[i,j] = nsimplify(inertia[i,j], [pi], tolerance=tolerance)
+                    # mass = nsimplify(mass, [pi], tolerance=tolerance)
+                I = Matrix(inertia)
+                m = mass
+                cg = Matrix(inertia[0:3,3])
             # if is fixed child:
             # cg =
             # I =
