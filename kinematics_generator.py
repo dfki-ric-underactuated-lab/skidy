@@ -310,10 +310,26 @@ class SymbolicKinDyn():
                 [(c_name, c_code), (h_name, c_header)] = codegen([tuple((names[i], functions[i])) for i in range(len(functions))],
                                                                  "C99", name, project, header=False, empty=True)
             # change strange var names
-            c_code = regex.sub(r"out_\d{19}", "out", c_code)
-            c_header = regex.sub(r"out_\d{19}", "out", c_header)
-            c_code = regex.sub(r"out_\d{18}", "out", c_code)
-            c_header = regex.sub(r"out_\d{18}", "out", c_header)
+            c_code = regex.sub(r"out_\d{10}[\d]+", "out", c_code)
+            c_header = regex.sub(r"out_\d{10}[\d]+", "out", c_header)
+            
+            c_lines = c_code.splitlines(True)
+            i = 0
+            while i < len(c_lines):
+                if any(n+"(" in c_lines[i] for n in names):
+                    [name] = [n for n in names if n+"(" in c_lines[i]]
+                    cols = all_functions[name].shape[1]
+                    i += 1
+                    while "}" not in c_lines[i]:
+                        out = regex.findall("out\[[\d]+\]", c_lines[i])
+                        if out and cols > 1:
+                            [num] = regex.findall("[\d]+", out[0])
+                            num = int(num)
+                            c_lines[i] = c_lines[i].replace(out[0], f"out[{num//cols}][{num%cols}]")
+                        i += 1
+                i += 1
+            c_code = "".join(c_lines)
+            
 
             with open(os.path.join(folder, c_name), "w+") as f:
                 f.write(c_code)
