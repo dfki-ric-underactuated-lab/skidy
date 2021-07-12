@@ -295,6 +295,8 @@ class SymbolicKinDyn():
 
                 s.append("        "+names[i] + " = " + p.doprint(functions[i]))
                 s.append("        return " + names[i])
+            s = list(map(lambda x: x.replace("numpy.", "np."),s))
+            s[0] = "import numpy as np\n\n"
             s = "\n".join(s)
 
             with open(os.path.join(folder, name + ".py"), "w+") as f:
