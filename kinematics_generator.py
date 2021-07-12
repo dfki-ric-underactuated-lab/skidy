@@ -255,15 +255,15 @@ class SymbolicKinDyn():
             p = NumPyPrinter()
             s = ["import numpy\n\n"]
             s.append("class "+name.capitalize()+"():")
-            s.append("\tdef __init__(self, %s):" % (
+            s.append("    def __init__(self, %s):" % (
                 ", ".join(sorted([str(not_assigned_syms[i]) for i in range(len(not_assigned_syms))])+
                           sorted([str(i)+" = "+ self.assignment_dict[i] for i in self.assignment_dict]))))
             if len(not_assigned_syms) > 0:
-                s.append("\t\t"+", ".join(sorted(["self."+str(not_assigned_syms[i]) for i in range(len(not_assigned_syms))]))
+                s.append("        "+", ".join(sorted(["self."+str(not_assigned_syms[i]) for i in range(len(not_assigned_syms))]))
                          + " = " + ", ".join(sorted([str(not_assigned_syms[i]) for i in range(len(not_assigned_syms))])))
 
             if len(self.assignment_dict) > 0:
-                s.append("\t\t"+", ".join(sorted(["self."+str(i) for i in self.assignment_dict]))
+                s.append("        "+", ".join(sorted(["self."+str(i) for i in self.assignment_dict]))
                          + " = " + ", ".join(sorted([str(i) for i in self.assignment_dict])))
 
             if len(self.subex_dict) > 0:
@@ -272,9 +272,9 @@ class SymbolicKinDyn():
                     for j in sorted([str(h) for h in self.subex_dict[symbols(i)].free_symbols], reverse=1):
                         modstring = regex.sub(str(j),"self."+str(j),modstring)
                         modstring = regex.sub("self.self.","self.",modstring) # remove double self
-                    s.append("\t\tself."+str(i)+" = "+ modstring)
+                    s.append("        self."+str(i)+" = "+ modstring)
                 
-                # s.append("\n\t\t".join(sorted(["self."+str(i) for i in self.assignment_dict]))
+                # s.append("\n        ".join(sorted(["self."+str(i) for i in self.assignment_dict]))
                         #  + " = " + ", ".join(sorted([str(i) for i in self.assignment_dict])))
             
             
@@ -284,17 +284,19 @@ class SymbolicKinDyn():
                 const_syms = list(set(constant_syms).intersection(
                     functions[i].free_symbols))
                 if len(var_syms) > 0:
-                    s.append("\n\tdef "+names[i]+"(self, %s):" % (
+                    s.append("\n    def "+names[i]+"(self, %s):" % (
                         ", ".join(sorted([str(var_syms[i]) for i in range(len(var_syms))]))))
 
                 else:
-                    s.append("\n\tdef "+names[i]+"(self):")
+                    s.append("\n    def "+names[i]+"(self):")
                 if len(const_syms) > 0:
-                    s.append("\t\t"+", ".join(sorted([str(const_syms[i]) for i in range(len(const_syms))]))
+                    s.append("        "+", ".join(sorted([str(const_syms[i]) for i in range(len(const_syms))]))
                              + " = " + ", ".join(sorted(["self."+str(const_syms[i]) for i in range(len(const_syms))])))
 
-                s.append("\t\t"+names[i] + " = " + p.doprint(functions[i]))
-                s.append("\t\treturn " + names[i])
+                s.append("        "+names[i] + " = " + p.doprint(functions[i]))
+                s.append("        return " + names[i])
+            s = list(map(lambda x: x.replace("numpy.", "np."),s))
+            s[0] = "import numpy as np\n\n"
             s = "\n".join(s)
 
             with open(os.path.join(folder, name + ".py"), "w+") as f:
@@ -310,10 +312,26 @@ class SymbolicKinDyn():
                 [(c_name, c_code), (h_name, c_header)] = codegen([tuple((names[i], functions[i])) for i in range(len(functions))],
                                                                  "C99", name, project, header=False, empty=True)
             # change strange var names
-            c_code = regex.sub(r"out_\d{19}", "out", c_code)
-            c_header = regex.sub(r"out_\d{19}", "out", c_header)
-            c_code = regex.sub(r"out_\d{18}", "out", c_code)
-            c_header = regex.sub(r"out_\d{18}", "out", c_header)
+            c_code = regex.sub(r"out_\d{10}[\d]+", "out", c_code)
+            c_header = regex.sub(r"out_\d{10}[\d]+", "out", c_header)
+            
+            c_lines = c_code.splitlines(True)
+            i = 0
+            while i < len(c_lines):
+                if any(n+"(" in c_lines[i] for n in names):
+                    [name] = [n for n in names if n+"(" in c_lines[i]]
+                    cols = all_functions[name].shape[1]
+                    i += 1
+                    while "}" not in c_lines[i]:
+                        out = regex.findall("out\[[\d]+\]", c_lines[i])
+                        if out and cols > 1:
+                            [num] = regex.findall("[\d]+", out[0])
+                            num = int(num)
+                            c_lines[i] = c_lines[i].replace(out[0], f"out[{num//cols}][{num%cols}]")
+                        i += 1
+                i += 1
+            c_code = "".join(c_lines)
+            
 
             with open(os.path.join(folder, c_name), "w+") as f:
                 f.write(c_code)
