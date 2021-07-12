@@ -1526,7 +1526,7 @@ class SymbolicKinDyn():
     
     
     # TODO: Implement planar and flaoting joints
-    def load_from_urdf(self, path, symbolic = True, simplify_numbers = True, cse_ex = True, tolerance = 0.0001):
+    def load_from_urdf(self, path, symbolic = True, simplify_numbers = True, cse_ex = False, tolerance = 0.0001):
         robot = URDF.load(path)
         self.B = []
         self.X = []
@@ -1550,7 +1550,7 @@ class SymbolicKinDyn():
             origin = Matrix(joint.origin)
             if symbolic:
                 xyz_rpy = matrix_to_xyz_rpy(joint.origin)
-                xyz_rpy_syms.append(symbols(" ".join([name+"_%s"%s for s in ["x","y","z","r","p","y"]])))
+                xyz_rpy_syms.append(symbols(" ".join([name+"_%s"%s for s in ["x","y","z","roll","pitch","yar"]])))
                 xyzrpylist = []
                 if simplify_numbers:
                     for i in range(6):
@@ -1641,7 +1641,7 @@ class SymbolicKinDyn():
                     # mass = nsimplify(mass, [pi], tolerance=tolerance)
                 I = Matrix(inertia)
                 m = mass
-                cg = Matrix(inertia[0:3,3])
+                cg = Matrix(inertiaorigin[0:3,3])
             # if is fixed child:
             # cg =
             # I =
@@ -1650,11 +1650,11 @@ class SymbolicKinDyn():
             if name in [x[1] for x in fixed_links]:
                 j = i
                 # transform Mass matrix
-                print("Combining mass matrices not implemented yet.")
                 while robot.links[j].name in [x[1] for x in fixed_links]:
                     # M = joint_origins[j-1].T * M * joint_origins[j-1] # Wrong
+                    M = self.SE3AdjInvMatrix(joint_origins[j-1]).T * M * self.SE3AdjInvMatrix(joint_origins[j-1])
                     j -= 1
-                # self.Mb[-1] += M
+                self.Mb[-1] += M
                 i += 1
                 continue
             self.Mb.append(M)
