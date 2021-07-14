@@ -255,15 +255,15 @@ class SymbolicKinDyn():
             p = NumPyPrinter()
             s = ["import numpy\n\n"]
             s.append("class "+name.capitalize()+"():")
-            s.append("\tdef __init__(self, %s):" % (
+            s.append("    def __init__(self, %s):" % (
                 ", ".join(sorted([str(not_assigned_syms[i]) for i in range(len(not_assigned_syms))])+
                           sorted([str(i)+" = "+ self.assignment_dict[i] for i in self.assignment_dict]))))
             if len(not_assigned_syms) > 0:
-                s.append("\t\t"+", ".join(sorted(["self."+str(not_assigned_syms[i]) for i in range(len(not_assigned_syms))]))
+                s.append("        "+", ".join(sorted(["self."+str(not_assigned_syms[i]) for i in range(len(not_assigned_syms))]))
                          + " = " + ", ".join(sorted([str(not_assigned_syms[i]) for i in range(len(not_assigned_syms))])))
 
             if len(self.assignment_dict) > 0:
-                s.append("\t\t"+", ".join(sorted(["self."+str(i) for i in self.assignment_dict]))
+                s.append("        "+", ".join(sorted(["self."+str(i) for i in self.assignment_dict]))
                          + " = " + ", ".join(sorted([str(i) for i in self.assignment_dict])))
 
             if len(self.subex_dict) > 0:
@@ -272,9 +272,9 @@ class SymbolicKinDyn():
                     for j in sorted([str(h) for h in self.subex_dict[symbols(i)].free_symbols], reverse=1):
                         modstring = regex.sub(str(j),"self."+str(j),modstring)
                         modstring = regex.sub("self.self.","self.",modstring) # remove double self
-                    s.append("\t\tself."+str(i)+" = "+ modstring)
+                    s.append("        self."+str(i)+" = "+ modstring)
                 
-                # s.append("\n\t\t".join(sorted(["self."+str(i) for i in self.assignment_dict]))
+                # s.append("\n        ".join(sorted(["self."+str(i) for i in self.assignment_dict]))
                         #  + " = " + ", ".join(sorted([str(i) for i in self.assignment_dict])))
             
             
@@ -284,17 +284,19 @@ class SymbolicKinDyn():
                 const_syms = list(set(constant_syms).intersection(
                     functions[i].free_symbols))
                 if len(var_syms) > 0:
-                    s.append("\n\tdef "+names[i]+"(self, %s):" % (
+                    s.append("\n    def "+names[i]+"(self, %s):" % (
                         ", ".join(sorted([str(var_syms[i]) for i in range(len(var_syms))]))))
 
                 else:
-                    s.append("\n\tdef "+names[i]+"(self):")
+                    s.append("\n    def "+names[i]+"(self):")
                 if len(const_syms) > 0:
-                    s.append("\t\t"+", ".join(sorted([str(const_syms[i]) for i in range(len(const_syms))]))
+                    s.append("        "+", ".join(sorted([str(const_syms[i]) for i in range(len(const_syms))]))
                              + " = " + ", ".join(sorted(["self."+str(const_syms[i]) for i in range(len(const_syms))])))
 
-                s.append("\t\t"+names[i] + " = " + p.doprint(functions[i]))
-                s.append("\t\treturn " + names[i])
+                s.append("        "+names[i] + " = " + p.doprint(functions[i]))
+                s.append("        return " + names[i])
+            s = list(map(lambda x: x.replace("numpy.", "np."),s))
+            s[0] = "import numpy as np\n\n"
             s = "\n".join(s)
 
             with open(os.path.join(folder, name + ".py"), "w+") as f:
@@ -1566,7 +1568,7 @@ class SymbolicKinDyn():
             origin = Matrix(joint.origin)
             if symbolic:
                 xyz_rpy = matrix_to_xyz_rpy(joint.origin)
-                xyz_rpy_syms.append(symbols(" ".join([name+"_%s"%s for s in ["x","y","z","r","p","y"]])))
+                xyz_rpy_syms.append(symbols(" ".join([name+"_%s"%s for s in ["x","y","z","roll","pitch","yar"]])))
                 xyzrpylist = []
                 if simplify_numbers:
                     for i in range(6):
@@ -1657,7 +1659,7 @@ class SymbolicKinDyn():
                     # mass = nsimplify(mass, [pi], tolerance=tolerance)
                 I = Matrix(inertia)
                 m = mass
-                cg = Matrix(inertia[0:3,3])
+                cg = Matrix(inertiaorigin[0:3,3])
             # if is fixed child:
             # cg =
             # I =
@@ -1666,11 +1668,11 @@ class SymbolicKinDyn():
             if name in [x[1] for x in fixed_links]:
                 j = i
                 # transform Mass matrix
-                print("Combining mass matrices not implemented yet.")
                 while robot.links[j].name in [x[1] for x in fixed_links]:
                     # M = joint_origins[j-1].T * M * joint_origins[j-1] # Wrong
+                    M = self.SE3AdjInvMatrix(joint_origins[j-1]).T * M * self.SE3AdjInvMatrix(joint_origins[j-1])
                     j -= 1
-                # self.Mb[-1] += M
+                self.Mb[-1] += M
                 i += 1
                 continue
             self.Mb.append(M)
