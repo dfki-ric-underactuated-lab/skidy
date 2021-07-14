@@ -1542,7 +1542,7 @@ class SymbolicKinDyn():
     
     
     # TODO: Implement planar and flaoting joints
-    def load_from_urdf(self, path, symbolic = True, simplify_numbers = True, cse_ex = True, tolerance = 0.0001):
+    def load_from_urdf(self, path, symbolic = True, simplify_numbers = True, cse_ex = False, tolerance = 0.0001):
         robot = URDF.load(path)
         self.B = []
         self.X = []
@@ -1558,8 +1558,8 @@ class SymbolicKinDyn():
             else: 
                 raise NotImplementedError("Joint type '" +joint.joint_type+"' not implemented yet")
 
-        jn = 0 # joint index of used joints
-        jna = 0 # joint index of all joints
+        ji = 0 # joint index of used joints
+        jia = 0 # joint index of all joints (fixed included)
         joint_origins = []
         for joint in robot.joints:#
             name = joint.name
@@ -1577,8 +1577,8 @@ class SymbolicKinDyn():
                         # elif nsimplify(xyz_rpy[i],tolerance=tolerance) == -1:
                             # xyzrpylist.append(-1)
                         else:
-                            xyzrpylist.append(xyz_rpy_syms[jna][i])
-                            self.assignment_dict[xyz_rpy_syms[jna][i]] = xyz_rpy[i]
+                            xyzrpylist.append(xyz_rpy_syms[jia][i])
+                            self.assignment_dict[xyz_rpy_syms[jia][i]] = xyz_rpy[i]
                 else:
                     for i in range(6):
                         if xyz_rpy[i] == 0:
@@ -1588,8 +1588,8 @@ class SymbolicKinDyn():
                         elif xyz_rpy[i] == -1:
                             xyzrpylist.append(-1)
                         else:
-                            xyzrpylist.append(xyz_rpy_syms[jna][i])
-                            self.assignment_dict[xyz_rpy_syms[jna][i]] = xyz_rpy[i]
+                            xyzrpylist.append(xyz_rpy_syms[jia][i])
+                            self.assignment_dict[xyz_rpy_syms[jia][i]] = xyz_rpy[i]
                 origin = self.xyz_rpy_to_matrix(xyzrpylist)
                 if cse_ex:
                     origin = self.cse_function(origin)
@@ -1613,14 +1613,14 @@ class SymbolicKinDyn():
                     self.X.append(Matrix(axis).col_join(Matrix([0,0,0])))
                 else:
                     self.X.append(Matrix(Matrix([0,0,0])).col_join(axis))
-                jn += 1  
+                ji += 1  
             elif joint.joint_type == "fixed":
                 if fixed_origin:
                     fixed_origin *= origin
                 else:
                     fixed_origin = origin
                 fixed_links.append((joint.parent, joint.child))
-            jna += 1    
+            jia += 1    
                 
         self.Mb = []
         I_syms = []
