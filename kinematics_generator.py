@@ -211,6 +211,28 @@ class SymbolicKinDyn():
         for i,n in enumerate(funcdict):
             self.cse_expressions_dict[n] = e[i]
         
+    def sort_variables(self, vars):
+        vars = set(vars)
+        var_syms = self.var_syms.intersection(vars)
+        rest = list(vars.difference(var_syms))
+        q = []
+        dq = []
+        ddq = []
+        var_rest = []
+        for i in var_syms:
+            if str(i).startswith("ddq"):
+                ddq.append(i)
+            elif str(i).startswith("dq"):
+                dq.append(i)
+            elif str(i).startswith("q"):
+                q.append(i)
+            else:
+                var_rest.append(i)
+        def symsort(data):
+            return [x for _, x in sorted(zip(list(map(str,data)), data))]      
+        return symsort(q) + symsort(dq) + symsort(ddq) + symsort(var_rest) + symsort(rest)
+    
+    
     def generateCode(self, python=True, C=True, Matlab=False, folder="./generated_code", use_global_vars=True, name="plant", project="Project"):
         """Generate code of saved Equations. 
         Needs closed_form_inv_dyn_body_fixed and/or closed_form_kinematics_body_fixed to run first.
@@ -244,8 +266,8 @@ class SymbolicKinDyn():
         for f in functions:
             all_syms.update(f.free_symbols)
         if use_global_vars:
-            constant_syms = list(all_syms.difference(self.var_syms).union(self.subex_dict))
-            not_assigned_syms = list(all_syms.difference(self.var_syms).difference(self.assignment_dict).difference(self.subex_dict))
+            constant_syms = self.sort_variables(all_syms.difference(self.var_syms).union(self.subex_dict))
+            not_assigned_syms = self.sort_variables(all_syms.difference(self.var_syms).difference(self.assignment_dict).difference(self.subex_dict))
             
         else:
             constant_syms = []
@@ -256,11 +278,11 @@ class SymbolicKinDyn():
             s = ["import numpy\n\n"]
             s.append("class "+name.capitalize()+"():")
             s.append("    def __init__(self, %s):" % (
-                ", ".join(sorted([str(not_assigned_syms[i]) for i in range(len(not_assigned_syms))])+
-                          sorted([str(i)+" = "+ self.assignment_dict[i] for i in self.assignment_dict]))))
+                ", ".join([str(not_assigned_syms[i]) for i in range(len(not_assigned_syms))]+
+                          [str(i)+" = "+ self.assignment_dict[i] for i in self.assignment_dict])))
             if len(not_assigned_syms) > 0:
-                s.append("        "+", ".join(sorted(["self."+str(not_assigned_syms[i]) for i in range(len(not_assigned_syms))]))
-                         + " = " + ", ".join(sorted([str(not_assigned_syms[i]) for i in range(len(not_assigned_syms))])))
+                s.append("        "+", ".join(["self."+str(not_assigned_syms[i]) for i in range(len(not_assigned_syms))])
+                         + " = " + ", ".join([str(not_assigned_syms[i]) for i in range(len(not_assigned_syms))]))
 
             if len(self.assignment_dict) > 0:
                 s.append("        "+", ".join(sorted(["self."+str(i) for i in self.assignment_dict]))
@@ -279,19 +301,19 @@ class SymbolicKinDyn():
             
             
             for i in range(len(functions)):
-                var_syms = list(self.var_syms.intersection(
+                var_syms = self.sort_variables(self.var_syms.intersection(
                     functions[i].free_symbols))
-                const_syms = list(set(constant_syms).intersection(
+                const_syms = self.sort_variables(set(constant_syms).intersection(
                     functions[i].free_symbols))
                 if len(var_syms) > 0:
                     s.append("\n    def "+names[i]+"(self, %s):" % (
-                        ", ".join(sorted([str(var_syms[i]) for i in range(len(var_syms))]))))
+                        ", ".join([str(var_syms[i]) for i in range(len(var_syms))])))
 
                 else:
                     s.append("\n    def "+names[i]+"(self):")
                 if len(const_syms) > 0:
-                    s.append("        "+", ".join(sorted([str(const_syms[i]) for i in range(len(const_syms))]))
-                             + " = " + ", ".join(sorted(["self."+str(const_syms[i]) for i in range(len(const_syms))])))
+                    s.append("        "+", ".join([str(const_syms[i]) for i in range(len(const_syms))])
+                             + " = " + ", ".join(["self."+str(const_syms[i]) for i in range(len(const_syms))]))
 
                 s.append("        "+names[i] + " = " + p.doprint(functions[i]))
                 s.append("        return " + names[i])
@@ -344,10 +366,10 @@ class SymbolicKinDyn():
             for i in range(len(functions)):
                 if use_global_vars:
                     [(m_name, m_code)] = codegen((names[i], functions[i]), "Octave",
-                                                 project=project, header=False, empty=True, global_vars=constant_syms)
+                                                 project=project, header=False, empty=True, global_vars=constant_syms, argument_sequence=self.sort_variables(self.all_symbols))
                 else:
                     [(m_name, m_code)] = codegen((names[i], functions[i]),
-                                                 "Octave", project=project, header=False, empty=True)
+                                                 "Octave", project=project, header=False, empty=True, argument_sequence=self.sort_variables(self.all_symbols))
 
                 with open(os.path.join(folder, m_name), "w+") as f:
                     f.write(m_code)
