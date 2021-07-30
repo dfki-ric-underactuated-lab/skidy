@@ -12,7 +12,7 @@ if __name__ == "__main__":
     ddq0, ddq1, ddq2 = symbols("ddq0 ddq1 ddq2")
     g, L1,L2, Ixx1, Ixy1, Ixz1, Iyy1, Iyz1, Izz1, Ixx2, Ixy2, Ixz2, Iyy2, Iyz2, Izz2, m0, m1, m2, cx1,cy1,cz1, cx2, cy2, cz2 = symbols("g L1 L2 Ixx1 Ixy1 Ixz1 Iyy1 Iyz1 Izz1 Ixx2 Ixy2 Ixz2 Iyy2 Iyz2 Izz2 m0 m1 m2 cx1 cy2 cz1 cx2 cy2 cz2", constant=True, real = True)
     
-    s.gravity_vector = Matrix([g, 0, 0])
+    s.gravity_vector = Matrix([-g, 0, 0])
 
     
     
