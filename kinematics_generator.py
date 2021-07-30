@@ -1660,7 +1660,7 @@ class SymbolicKinDyn():
                 I = Matrix(inertia)
                 m = mass
                 cg = Matrix(inertiaorigin[0:3,3])
-            # if is fixed child:
+            # if is fixed child: # TODO: find out what to do
             # cg =
             # I =
             # m = 
