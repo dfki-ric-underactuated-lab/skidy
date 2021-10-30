@@ -1,4 +1,7 @@
 import unittest
+import sys
+from os.path import dirname
+sys.path.append(dirname(dirname(__file__)))
 import kinematics_generator
 from sympy import Matrix, cos, sin, symbols, Identity, simplify, zeros
 import random
