@@ -101,8 +101,16 @@ class SymbolicKinDyn():
         self.cse_expressions = []
         self.cse_replacements = []
 
-    
     def get_expressions_dict(self, filterNone=True):
+        """Get dictionary with expression names (key) and generated expressions (value).
+
+        Args:
+            filterNone (bool, optional): Exclude expressions which havent been generate yet. Defaults to True.
+
+        Returns:
+            dict: dictionary with expression names (key) and generated expressions (value).
+        """
+        # all expressions in this dictionary can be code generated using the generate_code function.
         all_expressions = {"forward_kinematics": self.fkin,
                            "system_jacobian_matrix": self.J,
                            "body_jacobian_matrix": self.Jb,
@@ -124,14 +132,13 @@ class SymbolicKinDyn():
                            "body_jacobian_matrix_dot": self.Jb_dot,
                            "hybrid_jacobian_matrix_ee_dot": self.Jh_ee_dot,
                            "body_jacobian_matrix_ee_dot": self.Jb_ee_dot}  # not included: self.Vh_BFn, self.Vb_BFn,
+        # exclude expressions which are None
         if filterNone:
             filtered = {k: v for k, v in all_expressions.items()
                         if v is not None}
             return filtered
         return all_expressions
 
-    
-    
     def generateCode(self, python=True, C=True, Matlab=False, folder="./generated_code", use_global_vars=True, name="plant", project="Project"):
         """Generate code of saved Equations. 
         Needs closed_form_inv_dyn_body_fixed and/or closed_form_kinematics_body_fixed to run first.
@@ -154,33 +161,37 @@ class SymbolicKinDyn():
         # dict of expression names and expressions
         all_expressions = self.get_expressions_dict()
 
-        expressions = []
-        names = []
-        for i in all_expressions:
-            if all_expressions[i] is not None:
-                expressions.append(all_expressions[i])
-                names.append(i)
-
+        # get individual tuples for names and expressions
+        (names, expressions) = zip(*all_expressions.items())
+            
+        # generate set with all used symbols
         all_syms = set()
         for e in expressions:
             all_syms.update(e.free_symbols)
+        
         if use_global_vars:
+            # generate list of constant symbols
             constant_syms = self._sort_variables(
                 all_syms.difference(self.var_syms).union(self.subex_dict))
+            # generate list with preassigned symbols like subexpressions from common subexpression elimination
             not_assigned_syms = self._sort_variables(all_syms.difference(
                 self.var_syms).difference(self.assignment_dict).difference(self.subex_dict))
-
         else:
             constant_syms = []
             not_assigned_syms = []
+        
         if python:
             print("Generate Python code")
             if not os.path.exists(os.path.join(folder, "python")):
                 os.mkdir(os.path.join(folder, "python"))
 
             p = NumPyPrinter()
+            
+            # start python file with import
             s = ["import numpy\n\n"]
+            # class name
             s.append("class "+name.capitalize()+"():")
+            # define __init__ function
             s.append("    def __init__(self, %s):" % (
                 ", ".join([str(not_assigned_syms[i]) for i in range(len(not_assigned_syms))] +
                           [str(i)+" = " + self.assignment_dict[i] for i in self.assignment_dict])))
@@ -205,6 +216,7 @@ class SymbolicKinDyn():
                 # s.append("\n        ".join(sorted(["self."+str(i) for i in self.assignment_dict]))
                     #  + " = " + ", ".join(sorted([str(i) for i in self.assignment_dict])))
 
+            # define functions
             for i in range(len(expressions)):
                 var_syms = self._sort_variables(self.var_syms.intersection(
                     expressions[i].free_symbols))
@@ -223,10 +235,15 @@ class SymbolicKinDyn():
                 s.append("        "+names[i] +
                          " = " + p.doprint(expressions[i]))
                 s.append("        return " + names[i])
+            
+            # replace numpy with np for better readablility
             s = list(map(lambda x: x.replace("numpy.", "np."), s))
             s[0] = "import numpy as np\n\n"
+            
+            # join list to string
             s = "\n".join(s)
 
+            # write python file
             with open(os.path.join(folder, "python", name + ".py"), "w+") as f:
                 f.write(s)
             print("Done")
@@ -1158,7 +1175,6 @@ class SymbolicKinDyn():
         print("Done")
         return self.Q
 
-
     def simplify(self, exp, cse_ex=False):
         """Faster simplify implementation for Sympy.
         Expressions can be slightly less simplified as with sympy.simplify.
@@ -1181,7 +1197,7 @@ class SymbolicKinDyn():
                 # create matrix with randon values
                 num = lambdify(list(exp.free_symbols), exp, "numpy")(
                     *(random.random() for i in exp.free_symbols))
-                # if (random) matrix is symmetric, we have to simplify less values 
+                # if (random) matrix is symmetric, we have to simplify less values
                 if numpy.allclose(num, num.T):
                     shape = exp.shape
                     m_exp = exp.as_mutable()
@@ -1201,8 +1217,8 @@ class SymbolicKinDyn():
         exp = exp.doit()
         return exp
 
-    
     # TODO: Implement planar and flaoting joints
+
     def load_from_urdf(self, path, symbolic=True, simplify_numbers=True, cse_ex=False, tolerance=0.0001):
         robot = URDF.load(path)
         self.B = []
@@ -1378,7 +1394,6 @@ class SymbolicKinDyn():
                 self.X.append(Matrix([0, 0, 1, 0, 0, 0]))
             else:
                 self.X.append(Matrix([0, 0, 0, 0, 0, 1]))
-
 
     @staticmethod
     def SE3AdjInvMatrix(C):
@@ -1604,7 +1619,6 @@ class SymbolicKinDyn():
         matrix[:3, :3] = SymbolicKinDyn.rpy_to_matrix(xyz_rpy[3:])
         return matrix
 
-
     def _set_value_as_process(self, name, target):
         """Set return value of taget as value to queue in self.queue_dict with identifier name
 
@@ -1692,7 +1706,6 @@ class SymbolicKinDyn():
         i[0] += 1
         return numbered_symbols(prefix="sub%s_%s_" % ("_".join([str(j) for j in multiprocessing.current_process()._identity]), i[0]), exclude=exclude)
 
-
     def _sort_variables(self, vars):
         """Sort variables for code generation starting with q,qd,qdd, 
         continueing with variable symbols and ending with constant sysmbols.
@@ -1736,7 +1749,6 @@ class SymbolicKinDyn():
         # return sorted list
         return symsort(q) + symsort(dq) + symsort(ddq) + symsort(var_rest) + symsort(rest)
 
-
     def _cse_expression(self, exp):
         """Use common subexpression elimination to shorten expression.
         The use subexpressions are saved to the class internal subex_dict.
@@ -1755,24 +1767,22 @@ class SymbolicKinDyn():
             self.subex_dict[sym] = val
             # for multiprocessing save in queue
             try:
-                self.queue_dict["subex_dict"].put(self.subex_dict) 
+                self.queue_dict["subex_dict"].put(self.subex_dict)
             except:
                 pass
             # update used symbols
-            self.all_symbols.update({sym}) 
+            self.all_symbols.update({sym})
         return e[0]
-    
+
     def _get_expressions(self):
         """Get list of all generated expressions
 
         Returns:
             list: generated expressions
-        """        
+        """
         expression_dict = self.get_expressions_dict()
         expressions = [expression_dict[i] for i in expression_dict]
         return expressions
-
-
 
     # def _simplify_expressions(self, expressions):
     #     """Simplify given expressions
@@ -1787,7 +1797,6 @@ class SymbolicKinDyn():
     #         ex = p.map(self.simplify, expressions)
     #     return ex
 
-    
     # def cse_saved(self, simplify_expressions=True):
     #     expressions = self._get_expressions()
     #     expression_dict = self.get_expressions_dict()
@@ -1802,8 +1811,6 @@ class SymbolicKinDyn():
     #         self.all_symbols.update({sym})
     #     for i, n in enumerate(expression_dict):
     #         self.cse_expressions_dict[n] = e[i]
-
-
 
 
 if __name__ == "__main__":
