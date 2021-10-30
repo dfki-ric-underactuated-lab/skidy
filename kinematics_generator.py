@@ -112,7 +112,7 @@ class SymbolicKinDyn():
             sympy expression: Simplified expression.
         """
         if cse_ex:
-            exp = self.cse_function(exp)
+            exp = self.cse_expression(exp)
         if (type(exp) == sympy.matrices.immutable.ImmutableDenseMatrix 
             or type(exp) == sympy.matrices.dense.MutableDenseMatrix):
             # fasten simplification of symmetric matrices
@@ -138,8 +138,8 @@ class SymbolicKinDyn():
         return exp
         
     
-    def get_functions_dict(self, filterNone=True):
-        all_functions = {"forward_kinematics": self.fkin,
+    def get_expressions_dict(self, filterNone=True):
+        all_expressions = {"forward_kinematics": self.fkin,
                          "system_jacobian_matrix": self.J,
                          "body_jacobian_matrix": self.Jb,
                          "hybrid_jacobian_matrix": self.Jh,
@@ -161,14 +161,14 @@ class SymbolicKinDyn():
                          "hybrid_jacobian_matrix_ee_dot": self.Jh_ee_dot,
                          "body_jacobian_matrix_ee_dot": self.Jb_ee_dot}  # not included: self.Vh_BFn, self.Vb_BFn,
         if filterNone:
-            filtered = {k: v for k, v in all_functions.items() if v is not None}
+            filtered = {k: v for k, v in all_expressions.items() if v is not None}
             return filtered
-        return all_functions
+        return all_expressions
     
-    def get_functions(self):
-        funcdict = self.get_functions_dict()
-        funcs = [funcdict[i] for i in funcdict]
-        return funcs
+    def get_expressions(self):
+        expression_dict = self.get_expressions_dict()
+        expressions = [expression_dict[i] for i in expression_dict]
+        return expressions
     
     
     def simplify_expressions(self, expressions):
@@ -177,7 +177,7 @@ class SymbolicKinDyn():
         return ex
     
     
-    def cse_function(self, f):
+    def cse_expression(self, f):
         r, e = cse([f,f],self._individual_numbered_symbols(exclude=self.all_symbols), order="canonical", ignore=self.var_syms)
         for (sym,val) in r:    
             self.subex_dict[sym] = val
@@ -190,25 +190,25 @@ class SymbolicKinDyn():
         
     
     def cse_saved(self, simplify_expressions=True):
-        funcs = self.get_functions()
-        funcdict = self.get_functions_dict()
+        expressions = self.get_expressions()
+        expression_dict = self.get_expressions_dict()
     
         # exclude = set()
-        # for f in funcs:
+        # for f in expressions:
         #     exclude.update(f.free_symbols)
         # for sym in self.assignment_dict:
         #     try:
         #         exclude.update(sym.free_symbols)
         #     except:
         #         pass
-        r, e = cse(funcs+funcs,self._individual_numbered_symbols(exclude=self.all_symbols), order="canonical", ignore=self.var_syms)
-        e = e[:len(funcs)]
+        r, e = cse(expressions+expressions,self._individual_numbered_symbols(exclude=self.all_symbols), order="canonical", ignore=self.var_syms)
+        e = e[:len(expressions)]
         if simplify_expressions:
             e = self.simplify_expressions(e)
         for (sym,val) in r:    
             self.subex_dict[sym] = val
             self.all_symbols.update({sym})
-        for i,n in enumerate(funcdict):
+        for i,n in enumerate(expression_dict):
             self.cse_expressions_dict[n] = e[i]
         
     def sort_variables(self, vars):
@@ -243,7 +243,7 @@ class SymbolicKinDyn():
             C (bool, optional): Generate C99 code. Defaults to True.
             Matlab (bool, optional): Generate Matlab/Octav code. Defaults to False.
             folder (str, optional): Folder where to save code. Defaults to "./generated_code".
-            use_global_vars (bool, optional): Constant vars like mass etc are no arguments of the functions. Defaults to True.
+            use_global_vars (bool, optional): Constant vars like mass etc are no arguments of the generated expressions. Defaults to True.
             name (str, optional): Name of Class and file (for Python and C). Defaults to "plant".
             project (str, optional): Project name in C header. Defaults to "Project".
 
@@ -252,19 +252,19 @@ class SymbolicKinDyn():
         if not os.path.exists(folder):
             os.mkdir(folder)
 
-        # dict of function names and functions
-        all_functions = self.get_functions_dict()
+        # dict of expression names and expressions
+        all_expressions = self.get_expressions_dict()
 
-        functions = []
+        expressions = []
         names = []
-        for i in all_functions:
-            if all_functions[i] is not None:
-                functions.append(all_functions[i])
+        for i in all_expressions:
+            if all_expressions[i] is not None:
+                expressions.append(all_expressions[i])
                 names.append(i)
 
         all_syms = set()
-        for f in functions:
-            all_syms.update(f.free_symbols)
+        for e in expressions:
+            all_syms.update(e.free_symbols)
         if use_global_vars:
             constant_syms = self.sort_variables(all_syms.difference(self.var_syms).union(self.subex_dict))
             not_assigned_syms = self.sort_variables(all_syms.difference(self.var_syms).difference(self.assignment_dict).difference(self.subex_dict))
@@ -303,11 +303,11 @@ class SymbolicKinDyn():
                         #  + " = " + ", ".join(sorted([str(i) for i in self.assignment_dict])))
             
             
-            for i in range(len(functions)):
+            for i in range(len(expressions)):
                 var_syms = self.sort_variables(self.var_syms.intersection(
-                    functions[i].free_symbols))
+                    expressions[i].free_symbols))
                 const_syms = self.sort_variables(set(constant_syms).intersection(
-                    functions[i].free_symbols))
+                    expressions[i].free_symbols))
                 if len(var_syms) > 0:
                     s.append("\n    def "+names[i]+"(self, %s):" % (
                         ", ".join([str(var_syms[i]) for i in range(len(var_syms))])))
@@ -318,7 +318,7 @@ class SymbolicKinDyn():
                     s.append("        "+", ".join([str(const_syms[i]) for i in range(len(const_syms))])
                              + " = " + ", ".join(["self."+str(const_syms[i]) for i in range(len(const_syms))]))
 
-                s.append("        "+names[i] + " = " + p.doprint(functions[i]))
+                s.append("        "+names[i] + " = " + p.doprint(expressions[i]))
                 s.append("        return " + names[i])
             s = list(map(lambda x: x.replace("numpy.", "np."),s))
             s[0] = "import numpy as np\n\n"
@@ -334,10 +334,10 @@ class SymbolicKinDyn():
                 os.mkdir(os.path.join(folder, "C"))
 
             if use_global_vars:
-                [(c_name, c_code), (h_name, c_header)] = codegen([tuple((names[i], functions[i])) for i in range(len(functions))],
+                [(c_name, c_code), (h_name, c_header)] = codegen([tuple((names[i], expressions[i])) for i in range(len(expressions))],
                                                                  "C99", name, project, header=False, empty=True, global_vars=constant_syms)
             else:
-                [(c_name, c_code), (h_name, c_header)] = codegen([tuple((names[i], functions[i])) for i in range(len(functions))],
+                [(c_name, c_code), (h_name, c_header)] = codegen([tuple((names[i], expressions[i])) for i in range(len(expressions))],
                                                                  "C99", name, project, header=False, empty=True)
             # change strange var names
             c_code = regex.sub(r"out_\d{10}[\d]+", "out", c_code)
@@ -348,7 +348,7 @@ class SymbolicKinDyn():
             while i < len(c_lines):
                 if any(n+"(" in c_lines[i] for n in names):
                     [name] = [n for n in names if n+"(" in c_lines[i]]
-                    cols = all_functions[name].shape[1]
+                    cols = all_expressions[name].shape[1]
                     i += 1
                     while "}" not in c_lines[i]:
                         out = regex.findall("out\[[\d]+\]", c_lines[i])
@@ -372,12 +372,12 @@ class SymbolicKinDyn():
             if not os.path.exists(os.path.join(folder, "matlab")):
                 os.mkdir(os.path.join(folder, "matlab"))
 
-            for i in range(len(functions)):
+            for i in range(len(expressions)):
                 if use_global_vars:
-                    [(m_name, m_code)] = codegen((names[i], functions[i]), "Octave",
+                    [(m_name, m_code)] = codegen((names[i], expressions[i]), "Octave",
                                                  project=project, header=False, empty=True, global_vars=constant_syms, argument_sequence=self.sort_variables(self.all_symbols))
                 else:
-                    [(m_name, m_code)] = codegen((names[i], functions[i]),
+                    [(m_name, m_code)] = codegen((names[i], expressions[i]),
                                                  "Octave", project=project, header=False, empty=True, argument_sequence=self.sort_variables(self.all_symbols))
 
                 with open(os.path.join(folder, "matlab", m_name), "w+") as f:
@@ -387,7 +387,7 @@ class SymbolicKinDyn():
     def closed_form_kinematics_body_fixed(self, q, qd, q2d, simplify_expressions=True, cse_ex=False):
         """Position, Velocity and Acceleration Kinematics using Body fixed representation of the twists in closed form.
 
-        The following functions are saved in the class and can be code generated afterwards:
+        The following expressions are saved in the class and can be code generated afterwards:
             body_acceleration
             body_acceleration_ee
             body_jacobian_matrix
@@ -611,8 +611,8 @@ class SymbolicKinDyn():
             Jh_ee_dot = self.simplify(Jh_ee_dot,cse_ex)
         self.Jh_ee_dot = Jh_ee_dot
         
-        for f in self.get_functions():
-            self.all_symbols.update(f.free_symbols)
+        for e in self.get_expressions():
+            self.all_symbols.update(e.free_symbols)
         
         print("Done")
         return fkin
@@ -620,7 +620,7 @@ class SymbolicKinDyn():
     def closed_form_inv_dyn_body_fixed(self, q, qd, q2d, WEE=zeros(6, 1), simplify_expressions=True, cse_ex=False):
         """Inverse Dynamics using Body fixed representation of the twists in closed form. 
 
-        The following functions are saved in the class and can be code generated afterwards:
+        The following expressions are saved in the class and can be code generated afterwards:
             coriolis_cntrifugal_matrix
             generalized_mass_inertia_matrix
             gravity_vector
@@ -767,8 +767,8 @@ class SymbolicKinDyn():
         self.Q = Q
         self.Qgrav = Qgrav
 
-        for f in self.get_functions():
-            self.all_symbols.update(f.free_symbols)
+        for e in self.get_expressions():
+            self.all_symbols.update(e.free_symbols)
         
         print("Done")
         return Q
@@ -854,7 +854,7 @@ class SymbolicKinDyn():
     def closed_form_kinematics_body_fixed_parallel(self, q, qd, q2d, simplify_expressions=True, cse_ex = False):
         """Position, Velocity and Acceleration Kinematics using Body fixed representation of the twists in closed form.
 
-        The following functions are saved in the class and can be code generated afterwards:
+        The following expressions are saved in the class and can be code generated afterwards:
             body_acceleration
             body_acceleration_ee
             body_jacobian_matrix
@@ -1132,8 +1132,8 @@ class SymbolicKinDyn():
             self.process_dict[i].join()
         self.process_dict = {}
 
-        for f in self.get_functions():
-            self.all_symbols.update(f.free_symbols)
+        for e in self.get_expressions():
+            self.all_symbols.update(e.free_symbols)
         
         print("Done")
         return self.fkin
@@ -1141,7 +1141,7 @@ class SymbolicKinDyn():
     def closed_form_inv_dyn_body_fixed_parallel(self, q, qd, q2d, WEE=zeros(6, 1), simplify_expressions=True, cse_ex=False):
         """Inverse Dynamics using Body fixed representation of the twists in closed form. 
 
-        The following functions are saved in the class and can be code generated afterwards:
+        The following expressions are saved in the class and can be code generated afterwards:
             coriolis_cntrifugal_matrix
             generalized_mass_inertia_matrix
             gravity_vector
@@ -1325,8 +1325,8 @@ class SymbolicKinDyn():
             self.process_dict[i].join()
         self.process_dict = {}
 
-        for f in self.get_functions():
-            self.all_symbols.update(f.free_symbols)
+        for e in self.get_expressions():
+            self.all_symbols.update(e.free_symbols)
         
         print("Done")
         return self.Q
@@ -1625,7 +1625,7 @@ class SymbolicKinDyn():
                             self.assignment_dict[xyz_rpy_syms[jia][i]] = xyz_rpy[i]
                 origin = self.xyz_rpy_to_matrix(xyzrpylist)
                 if cse_ex:
-                    origin = self.cse_function(origin)
+                    origin = self.cse_expression(origin)
             elif simplify_numbers:
                 for i in range(4):
                     for j in range(4):
