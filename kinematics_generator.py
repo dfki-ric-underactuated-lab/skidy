@@ -274,6 +274,9 @@ class SymbolicKinDyn():
             not_assigned_syms = []
         if python:
             print("Generate Python code")
+            if not os.path.exists(os.path.join(folder, "python")):
+                os.mkdir(os.path.join(folder, "python"))
+
             p = NumPyPrinter()
             s = ["import numpy\n\n"]
             s.append("class "+name.capitalize()+"():")
@@ -321,12 +324,15 @@ class SymbolicKinDyn():
             s[0] = "import numpy as np\n\n"
             s = "\n".join(s)
 
-            with open(os.path.join(folder, name + ".py"), "w+") as f:
+            with open(os.path.join(folder, "python", name + ".py"), "w+") as f:
                 f.write(s)
             print("Done")
 
         if C:
             print("Generate C code")
+            if not os.path.exists(os.path.join(folder, "C")):
+                os.mkdir(os.path.join(folder, "C"))
+
             if use_global_vars:
                 [(c_name, c_code), (h_name, c_header)] = codegen([tuple((names[i], functions[i])) for i in range(len(functions))],
                                                                  "C99", name, project, header=False, empty=True, global_vars=constant_syms)
@@ -355,14 +361,17 @@ class SymbolicKinDyn():
             c_code = "".join(c_lines)
             
 
-            with open(os.path.join(folder, c_name), "w+") as f:
+            with open(os.path.join(folder, "C", c_name), "w+") as f:
                 f.write(c_code)
-            with open(os.path.join(folder, h_name), "w+") as f:
+            with open(os.path.join(folder, "C", h_name), "w+") as f:
                 f.write(c_header)
             print("Done")
 
         if Matlab:
             print("Generate Matlab code")
+            if not os.path.exists(os.path.join(folder, "matlab")):
+                os.mkdir(os.path.join(folder, "matlab"))
+
             for i in range(len(functions)):
                 if use_global_vars:
                     [(m_name, m_code)] = codegen((names[i], functions[i]), "Octave",
@@ -371,7 +380,7 @@ class SymbolicKinDyn():
                     [(m_name, m_code)] = codegen((names[i], functions[i]),
                                                  "Octave", project=project, header=False, empty=True, argument_sequence=self.sort_variables(self.all_symbols))
 
-                with open(os.path.join(folder, m_name), "w+") as f:
+                with open(os.path.join(folder, "matlab", m_name), "w+") as f:
                     f.write(m_code)
             print("Done")
 
