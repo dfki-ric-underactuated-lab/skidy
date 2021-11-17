@@ -1,5 +1,5 @@
 from kinematics_generator import SymbolicKinDyn
-from sympy import *
+from sympy import symbols, Matrix, Identity
 
 s = SymbolicKinDyn()
 q1, q2, q3, q4 = symbols("q1 q2 q3 q4", real = True)

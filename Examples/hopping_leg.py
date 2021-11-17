@@ -1,4 +1,4 @@
-from sympy import *
+from sympy import symbols, Matrix, Identity
 from kinematics_generator import SymbolicKinDyn
 
 
@@ -61,10 +61,10 @@ if __name__ == "__main__":
     s.ee = Matrix(Identity(3)).row_join(re).col_join(Matrix([0, 0, 0, 1]).T)
 
     # Joint screw coordinates in body-fixed representation computed from screw coordinates in IFR
-    s.X = []
-    s.X.append(s.SE3AdjInvMatrix(s.A[0])*s.Y[0])
-    s.X.append(s.SE3AdjInvMatrix(s.A[1])*s.Y[1])
-    s.X.append(s.SE3AdjInvMatrix(s.A[2])*s.Y[2])
+    # s.X = []
+    # s.X.append(s.SE3AdjInvMatrix(s.A[0])*s.Y[0])
+    # s.X.append(s.SE3AdjInvMatrix(s.A[1])*s.Y[1])
+    # s.X.append(s.SE3AdjInvMatrix(s.A[2])*s.Y[2])
     
     
     

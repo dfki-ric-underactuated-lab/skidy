@@ -1,6 +1,6 @@
 from kinematics_generator import SymbolicKinDyn
 
-from sympy import *
+from sympy import symbols, Matrix, Identity
 
 q0, q1, q2 = symbols("q0 q1 q2")
 dq0, dq1, dq2 = symbols("dq0 dq1 dq2")
