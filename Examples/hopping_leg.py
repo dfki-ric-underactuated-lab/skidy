@@ -88,7 +88,7 @@ if __name__ == "__main__":
     q2d = Matrix([ddq0, ddq1, ddq2])
     
     # Kinematics
-    F = s.closed_form_kinematics_body_fixed_parallel(q, qd, q2d)
-    Q = s.closed_form_inv_dyn_body_fixed_parallel(q, qd, q2d)
+    F = s.closed_form_kinematics_body_fixed(q, qd, q2d)
+    Q = s.closed_form_inv_dyn_body_fixed(q, qd, q2d)
     s.generateCode(python=True, C=True, Matlab=True,
                    use_global_vars=True, name="hopperPlant", project="HoppingLeg")

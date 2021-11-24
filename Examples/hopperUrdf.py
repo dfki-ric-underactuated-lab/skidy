@@ -71,6 +71,6 @@ q2d = Matrix([ddq0])
 # s.n = len(q)
 # s.load_from_urdf()
 # Kinematics
-F = s.closed_form_kinematics_body_fixed_parallel(q, qd, q2d)
+F = s.closed_form_kinematics_body_fixed(q, qd, q2d)
     
 print(F)

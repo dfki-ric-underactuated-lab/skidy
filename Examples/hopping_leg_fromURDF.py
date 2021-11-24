@@ -26,8 +26,8 @@ qd = Matrix([dq0, dq1, dq2])
 q2d = Matrix([ddq0, ddq1, ddq2])
 
 # Kinematics
-F = s.closed_form_kinematics_body_fixed_parallel(q, qd, q2d, simplify_expressions = True)
-Q = s.closed_form_inv_dyn_body_fixed_parallel(q,qd,q2d, simplify_expressions=True)
+F = s.closed_form_kinematics_body_fixed(q, qd, q2d, simplify_expressions = True)
+Q = s.closed_form_inv_dyn_body_fixed(q,qd,q2d, simplify_expressions=True)
 
 print(F)
 print(Q)

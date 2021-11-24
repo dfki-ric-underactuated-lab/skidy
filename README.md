@@ -22,16 +22,10 @@ The in this doku described example of a 2R kinematic chain robot is coded after 
 
 
 If you have set all needed parameters (you have to eighter set `A` and `Y` or `B`, not all of them) the forward kinematics can be calculated with 
-`closed_form_kinematics_body_fixed(q,dq,ddq)`
-or 
-`closed_form_kinematics_body_fixed_parallel(q,dq,ddq)`
-for paralell expression simplification.
+`closed_form_kinematics_body_fixed(q,dq,ddq)`.
 
 The inverse dynamics is calcualted using:
-`closed_form_inv_dyn_body_fixed(q,dq,ddq)`
-or 
-`closed_form_inv_dyn_body_fixed_parallel(q,dq,ddq)`
-for parallel expression simplificaiton.
+`closed_form_inv_dyn_body_fixed(q,dq,ddq)`.
 
 
 ## Code generation

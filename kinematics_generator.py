@@ -1951,12 +1951,10 @@ if __name__ == "__main__":
     q2d = Matrix([ddq1, ddq2])
 
     # Kinematics
-    # F = s.closed_form_kinematics_body_fixed(q, qd, q2d)
-    # Q = s.closed_form_inv_dyn_body_fixed(q, qd, q2d)
     import time
     start = time.time()
-    F = s.closed_form_kinematics_body_fixed_parallel(q, qd, q2d, True)
-    Q = s.closed_form_inv_dyn_body_fixed_parallel(
+    F = s.closed_form_kinematics_body_fixed(q, qd, q2d, True)
+    Q = s.closed_form_inv_dyn_body_fixed(
         q, qd, q2d, simplify_expressions=True)
     end = time.time()
     print(end-start)

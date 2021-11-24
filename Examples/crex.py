@@ -36,8 +36,8 @@ q = Matrix([q1,q2,q3,q4])
 qd = Matrix([dq1,dq2,dq3,dq4])
 q2d = Matrix([ddq1,ddq2,ddq3,ddq4])
 
-T = s.closed_form_kinematics_body_fixed_parallel(q,qd,q2d,simplify_expressions=0)
+T = s.closed_form_kinematics_body_fixed(q,qd,q2d,simplify_expressions=0)
 
-Q = s.closed_form_inv_dyn_body_fixed_parallel(q,qd,q2d,simplify_expressions=0)
+Q = s.closed_form_inv_dyn_body_fixed(q,qd,q2d,simplify_expressions=0)
 
 # s.generateCode(folder="./crex_code")
