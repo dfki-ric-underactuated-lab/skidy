@@ -16,6 +16,7 @@ from urdfpy import URDF, matrix_to_xyz_rpy
 
 init_printing()
 
+
 class SymbolicKinDyn():
 
     def __init__(self, gravity_vector=None, ee=None, A=[], B=[], X=[], Y=[], Mb=[]):
@@ -43,7 +44,7 @@ class SymbolicKinDyn():
         self._FK_C = None
         self._A = None
         self._a = None
-        self._V = None # system twist
+        self._V = None  # system twist
 
         # variables for Code Generation:
         self.fkin = None  # forward_kinematics
@@ -297,7 +298,75 @@ class SymbolicKinDyn():
                     f.write(m_code)
             print("Done")
 
-    def closed_form_kinematics_body_fixed(self, q, qd, q2d, simplify_expressions=True, cse_ex=False):
+    def closed_form_kinematics_body_fixed(self, q, qd, q2d, simplify_expressions=True, cse_ex=False, parallel=True):
+        """Position, Velocity and Acceleration Kinematics using Body fixed representation of the twists in closed form.
+
+        The following expressions are saved in the class and can be code generated afterwards:
+            body_acceleration
+            body_acceleration_ee
+            body_jacobian_matrix
+            body_jacobian_matrix_dot 
+            body_jacobian_matrix_ee
+            body_jacobian_matrix_ee_dot
+            body_twist_ee
+            forward_kinematics
+            hybrid_acceleration
+            hybrid_acceleration_ee
+            hybrid_jacobian_matrix
+            hybrid_jacobian_matrix_dot
+            hybrid_jacobian_matrix_ee
+            hybrid_jacobian_matrix_ee_dot
+            hybrid_twist_ee
+
+            Needs Class parameters A and X or B and Y, and ee to be defined.
+
+        Args:
+            q (sympy.Matrix): (n,1) Genearlized position vector.
+            qd (sympy.Matrix): (n,1 )Generalized velocity vector.
+            q2d (sympy.Matrix): (n,1) Generalized acceleration vector.
+            simplify_expressions (bool, optional): Use simplify command on saved expressions. Defaults to True.
+            cse_ex (bool, optional): Use common subexpression elimination. Defaults to False.
+            parallel (bool, optional): Use Parallel computation via Multiprocessing. Defaults to True.
+
+        Returns:
+            sympy.Matrix: Forward kinematics (transformation matrix of ee).
+        """
+        if parallel:
+            self._closed_form_kinematics_body_fixed_parallel(
+                q, qd, q2d, simplify_expressions, cse_ex)
+        else:
+            self._closed_form_kinematics_body_fixed(
+                q, qd, q2d, simplify_expressions, cse_ex)
+
+    def closed_form_inv_dyn_body_fixed(self, q, qd, q2d, WEE=zeros(6, 1), simplify_expressions=True, cse_ex=False, parallel=True):
+        """Inverse Dynamics using Body fixed representation of the twists in closed form. 
+
+        The following expressions are saved in the class and can be code generated afterwards:
+            coriolis_cntrifugal_matrix
+            generalized_mass_inertia_matrix
+            gravity_vector
+            inverse_dynamics
+
+        Args:
+            q (sympy.Matrix): (n,1) Genearlized position vector.
+            qd (sympy.Matrix): (n,1 )Generalized velocity vector.
+            q2d (sympy.Matrix): (n,1) Generalized acceleration vector.
+            WEE (sympy.Matrix, optional): (6,1) WEE (t) is the time varying wrench on the EE link. Defaults to zeros(6, 1).
+            simplify_expressions (bool, optional): Use simplify command on saved expressions. Defaults to True.
+            cse_ex (bool, optional): Use common subexpression elimination. Defaults to False.
+            parallel (bool, optional): Use Parallel computation via Multiprocessing. Defaults to True.
+
+        Returns:
+            sympy.Matrix: Generalized Forces
+        """
+        if parallel:
+            self._closed_form_inv_dyn_body_fixed_parallel(
+                q, qd, q2d, WEE, simplify_expressions, cse_ex)
+        else:
+            self._closed_form_inv_dyn_body_fixed(
+                q, qd, q2d, WEE, simplify_expressions, cse_ex)
+
+    def _closed_form_kinematics_body_fixed(self, q, qd, q2d, simplify_expressions=True, cse_ex=False):
         """Position, Velocity and Acceleration Kinematics using Body fixed representation of the twists in closed form.
 
         The following expressions are saved in the class and can be code generated afterwards:
@@ -335,7 +404,7 @@ class SymbolicKinDyn():
         self.var_syms.update(qd.free_symbols)
         self.var_syms.update(q2d.free_symbols)
 
-        self.n = len(q) # DOF
+        self.n = len(q)  # DOF
 
         # calc Forward kinematics
         if self._FK_C is not None:
@@ -534,7 +603,7 @@ class SymbolicKinDyn():
         print("Done")
         return fkin
 
-    def closed_form_inv_dyn_body_fixed(self, q, qd, q2d, WEE=zeros(6, 1), simplify_expressions=True, cse_ex=False):
+    def _closed_form_inv_dyn_body_fixed(self, q, qd, q2d, WEE=zeros(6, 1), simplify_expressions=True, cse_ex=False):
         """Inverse Dynamics using Body fixed representation of the twists in closed form. 
 
         The following expressions are saved in the class and can be code generated afterwards:
@@ -603,8 +672,8 @@ class SymbolicKinDyn():
             self._A = A
 
         if self.J is not None:
-            J = self.J # system level Jacobian
-            V = self._V # system twist
+            J = self.J  # system level Jacobian
+            V = self._V  # system twist
         else:
             # Block diagonal matrix X (6n x n) of the screw coordinate vector associated to all joints in the body frame (Constant)
             X = zeros(6*self.n, self.n)
@@ -695,7 +764,7 @@ class SymbolicKinDyn():
         print("Done")
         return Q
 
-    def closed_form_kinematics_body_fixed_parallel(self, q, qd, q2d, simplify_expressions=True, cse_ex=False):
+    def _closed_form_kinematics_body_fixed_parallel(self, q, qd, q2d, simplify_expressions=True, cse_ex=False):
         """Position, Velocity and Acceleration Kinematics using Body fixed representation of the twists in closed form.
 
         The following expressions are saved in the class and can be code generated afterwards:
@@ -725,12 +794,12 @@ class SymbolicKinDyn():
         Returns:
             sympy.Matrix: Forward kinematics (transformation matrix of ee).
         """
-        # This method does the same as closed_form_kinematics_body_fixed. 
+        # This method does the same as _closed_form_kinematics_body_fixed.
         # Parallel computation is implemented by writing most values in queues, organised in a dict.
-        # This ensures the correct order for the execution. 
-        # To understand the calculations it is recommanded to read the code in closed_form_kinematics_body_fixed
-        # since it is more readable and has the same structure.   
-        
+        # This ensures the correct order for the execution.
+        # To understand the calculations it is recommanded to read the code in _closed_form_kinematics_body_fixed
+        # since it is more readable and has the same structure.
+
         print("Forward kinematics calculation")
         self.var_syms.update(q.free_symbols)
         self.var_syms.update(qd.free_symbols)
@@ -818,7 +887,7 @@ class SymbolicKinDyn():
         # Body fixed twist of last moving body
         if simplify_expressions:
             self._start_simplificaton_process("Vb_BFn", cse_ex)
-        
+
         self._set_value_as_process("Vh_BFn", lambda: self.SE3AdjMatrix(
             self._get_value("R_BFn"))*self._get_value("Vb_BFn"))
         if simplify_expressions:
@@ -973,7 +1042,7 @@ class SymbolicKinDyn():
         print("Done")
         return self.fkin
 
-    def closed_form_inv_dyn_body_fixed_parallel(self, q, qd, q2d, WEE=zeros(6, 1), simplify_expressions=True, cse_ex=False):
+    def _closed_form_inv_dyn_body_fixed_parallel(self, q, qd, q2d, WEE=zeros(6, 1), simplify_expressions=True, cse_ex=False):
         """Inverse Dynamics using Body fixed representation of the twists in closed form. 
 
         The following expressions are saved in the class and can be code generated afterwards:
@@ -993,13 +1062,12 @@ class SymbolicKinDyn():
         Returns:
             sympy.Matrix: Generalized Forces
         """
-        # This method does the same as closed_form_inv_dyn_body_fixed. 
+        # This method does the same as _closed_form_inv_dyn_body_fixed.
         # Parallel computation is implemented by writing most values in queues, organised in a dict.
-        # This ensures the correct order for the execution. 
-        # To understand the calculations it is recommanded to read the code in closed_form_inv_dyn_body_fixed
-        # since it is more readable and has the same structure.   
-        
-        
+        # This ensures the correct order for the execution.
+        # To understand the calculations it is recommanded to read the code in _closed_form_inv_dyn_body_fixed
+        # since it is more readable and has the same structure.
+
         print("Inverse dynamics calculation")
 
         self.var_syms.update(q.free_symbols)
@@ -1549,8 +1617,7 @@ class SymbolicKinDyn():
                     [Theta[0, 1], Theta[1, 1], Theta[1, 2],
                         COM[2]*m, 0, (-COM[0]*m)],
                     [Theta[0, 2], Theta[1, 2], Theta[2, 2],
-                        (-COM[1])*m, COM[0]*m, 0],  # TODO: Code generation
-
+                        (-COM[1])*m, COM[0]*m, 0],  
                     [0, COM[2]*m, (-COM[1]*m), m, 0, 0],
                     [(-COM[2])*m, 0, COM[0]*m, 0, m, 0],
                     [COM[1]*m, (-COM[0])*m, 0, 0, 0, m]])

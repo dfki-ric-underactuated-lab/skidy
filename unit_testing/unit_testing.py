@@ -224,14 +224,14 @@ class TestFKin(abstractFKinTest, unittest.TestCase):
     @classmethod
     def setUpClass(self):
         prepare(self)
-        T = self.s.closed_form_kinematics_body_fixed(self.q,self.qd,self.q2d,True,False)
+        T = self.s.closed_form_kinematics_body_fixed(self.q,self.qd,self.q2d,True,False,False)
 
 
 class TestFKin_parallel(abstractFKinTest, unittest.TestCase):
     @classmethod
     def setUpClass(self):
         prepare(self)
-        T = self.s.closed_form_kinematics_body_fixed_parallel(self.q,self.qd,self.q2d,True,False)
+        T = self.s.closed_form_kinematics_body_fixed(self.q,self.qd,self.q2d,True,False,True)
 
 
 class AbstractInvDyn():
@@ -287,14 +287,14 @@ class TestInvDyn(AbstractInvDyn,unittest.TestCase):
     @classmethod
     def setUpClass(self):
         prepare(self)
-        Q = self.s.closed_form_inv_dyn_body_fixed(self.q,self.qd,self.q2d,zeros(6,1),True,False)
+        Q = self.s.closed_form_inv_dyn_body_fixed(self.q,self.qd,self.q2d,zeros(6,1),True,False,False)
 
 
 class TestInvDynParallel(AbstractInvDyn,unittest.TestCase):
     @classmethod
     def setUpClass(self):
         prepare(self)
-        Q = self.s.closed_form_inv_dyn_body_fixed_parallel(self.q,self.qd,self.q2d,zeros(6,1),True,False)
+        Q = self.s.closed_form_inv_dyn_body_fixed(self.q,self.qd,self.q2d,zeros(6,1),True,False,True)
 
 
 class TestKinGen(unittest.TestCase):
