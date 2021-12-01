@@ -20,18 +20,18 @@ if __name__ == "__main__":
     pi = symbols("pi", real=1, constant=1)  # pi
 
     
-    gravity_vector = Matrix([0, 0, -g])  # define gravity vector
+    gravity_vector = Matrix([0, -g, 0])  # define gravity vector
     
     # Joint screw coordinates in spatial representation
 
     Y = []
-    e1 = Matrix([1, 0, 0])  # joint axis of revolute joint
+    e1 = Matrix([0, 0, 1])  # joint axis of revolute joint
     y1 = Matrix([0, 0, 0])  # Vector to joint axis from inertial Frame
     # Joint screw coordinates in spacial representation (6,1)
     Y.append(Matrix([e1, y1.cross(e1)]))
 
-    e2 = Matrix([1, 0, 0])  # joint axis of revolute joint
-    y2 = Matrix([0, 0, -L1])  # Vector to joint axis from inertial Frame
+    e2 = Matrix([0, 0, 1])  # joint axis of revolute joint
+    y2 = Matrix([0, -L1, 0])  # Vector to joint axis from inertial Frame
     # Joint screw coordinates in spacial representation (6,1)
     Y.append(Matrix([e2, y2.cross(e2)]))
 
@@ -39,20 +39,20 @@ if __name__ == "__main__":
     
     # Reference configurations of bodies (i.e. of body-fixed reference frames)
     r1 = Matrix([0, 0, 0])
-    r2 = Matrix([0, 0, -L1])
+    r2 = Matrix([0, -L1, 0])
     
     A = []
     A.append(SymbolicKinDyn.TransformationMatrix(t=r1)) # no rotation, just translation
     A.append(SymbolicKinDyn.TransformationMatrix(t=r2))
     
     # End-effector configuration wrt last link body fixed frame in the chain
-    re = Matrix([0, 0, -L2])
+    re = Matrix([0, -L2, 0])
     ee = SymbolicKinDyn.TransformationMatrix(t=re)
 
     
     # Mass-Inertia parameters
-    cg1 = Matrix([0, 0, -L1]).T
-    cg2 = Matrix([0, 0, -L2]).T
+    cg1 = Matrix([0, -L1, 0]).T
+    cg2 = Matrix([0, -L2, 0]).T
     I1 = m1*L1**2
     I2 = m2*L2**2
 
@@ -69,3 +69,4 @@ if __name__ == "__main__":
     s.closed_form_kinematics_body_fixed(q,qd,q2d)
     s.closed_form_inv_dyn_body_fixed(q,qd,q2d)
     s.generateCode(python=True, C=True, Matlab=False,name="DoublePendulumPlant",project="DoublePendulum")
+    print(s.fkin)
