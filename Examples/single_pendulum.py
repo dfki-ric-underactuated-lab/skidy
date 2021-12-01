@@ -7,16 +7,16 @@ from kinematics_generator import SymbolicKinDyn
 
 if __name__ == "__main__":
     # Declaration of symbolic variables
-    q1, q2 = symbols("q1 q2")  # joint positions
-    dq1, dq2 = symbols("dq1 dq2")  # joint velocities
-    ddq1, ddq2 = symbols("ddq1 ddq2")  # joint accelerations
+    q1 = symbols("q1")  # joint positions
+    dq1 = symbols("dq1")  # joint velocities
+    ddq1 = symbols("ddq1")  # joint accelerations
 
     # mass and inertia values
-    m1, m2 = symbols("m1 m2", real=1, constant=1)
+    m1 = symbols("m1", real=1, constant=1)
 
     # gravity
     g = symbols("g", real=1, constant=1)
-    L1, L2 = symbols("L1 L2", real=1, constant=1)  # link lengths
+    L1 = symbols("L1", real=1, constant=1)  # link lengths
     pi = symbols("pi", real=1, constant=1)  # pi
 
     
@@ -30,42 +30,31 @@ if __name__ == "__main__":
     # Joint screw coordinates in spacial representation (6,1)
     Y.append(Matrix([e1, y1.cross(e1)]))
 
-    e2 = Matrix([0, 0, 1])  # joint axis of revolute joint
-    y2 = Matrix([0, -L1, 0])  # Vector to joint axis from inertial Frame
-    # Joint screw coordinates in spacial representation (6,1)
-    Y.append(Matrix([e2, y2.cross(e2)]))
-
-    
     
     # Reference configurations of bodies (i.e. of body-fixed reference frames)
     r1 = Matrix([0, 0, 0])
-    r2 = Matrix([0, -L1, 0])
     
     A = []
     A.append(SymbolicKinDyn.TransformationMatrix(t=r1)) # no rotation, just translation
-    A.append(SymbolicKinDyn.TransformationMatrix(t=r2))
     
     # End-effector configuration wrt last link body fixed frame in the chain
-    re = Matrix([0, -L2, 0])
+    re = Matrix([0, -L1, 0])
     ee = SymbolicKinDyn.TransformationMatrix(t=re)
 
     
     # Mass-Inertia parameters
     cg1 = Matrix([0, -L1, 0]).T
-    cg2 = Matrix([0, -L2, 0]).T
     I1 = m1*L1**2
-    I2 = m2*L2**2
 
     Mb = []
     Mb.append(SymbolicKinDyn.MassMatrixMixedData(m1, I1*Identity(3), cg1))
-    Mb.append(SymbolicKinDyn.MassMatrixMixedData(m2, I2*Identity(3), cg2))
 
     # Declaring generalized vectors
-    q = Matrix([q1, q2])
-    qd = Matrix([dq1, dq2])
-    q2d = Matrix([ddq1, ddq2])
+    q = Matrix([q1])
+    qd = Matrix([dq1])
+    q2d = Matrix([ddq1])
 
     s = SymbolicKinDyn(gravity_vector=gravity_vector, ee=ee,A = A, Y = Y, Mb=Mb)
     s.closed_form_kinematics_body_fixed(q,qd,q2d)
     s.closed_form_inv_dyn_body_fixed(q,qd,q2d)
-    s.generateCode(python=True, C=True, Matlab=False,name="DoublePendulumPlant",project="DoublePendulum")
+    s.generateCode(python=True, C=True, Matlab=False,name="SinglePendulumPlant",project="SinglePendulum")
