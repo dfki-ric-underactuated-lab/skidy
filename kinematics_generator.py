@@ -1,18 +1,18 @@
+import multiprocessing
+import os
+import queue
+import random
+import re as regex
+from multiprocessing import Process, Queue
+
+import numpy
 import sympy
-from sympy import symbols, Matrix, Identity, init_printing, zeros, lambdify, cancel, factor, powsimp, sin, cos, cse
+from sympy import (Identity, Matrix, cancel, cos, cse, factor, init_printing,
+                   lambdify, powsimp, sin, symbols, zeros)
 from sympy.printing.numpy import NumPyPrinter
-from sympy.utilities.codegen import codegen
 from sympy.simplify.cse_main import numbered_symbols
 from sympy.simplify.fu import fu
-import multiprocessing
-from multiprocessing import Process, Queue, Pool
-import queue
-import os
-import re as regex
-import random
-import numpy
-import time
-from urdfpy import URDF, matrix_to_xyz_rpy
+from sympy.utilities.codegen import codegen
 
 init_printing()
 
@@ -1282,155 +1282,6 @@ class SymbolicKinDyn():
         exp = exp.doit()
         return exp
 
-    # # TODO: Implement planar and flaoting joints
-    # def load_from_urdf(self, path, symbolic=True, simplify_numbers=True, cse_ex=False, tolerance=0.0001):
-    #     robot = URDF.load(path)
-    #     self.B = []
-    #     self.X = []
-    #     fixed_origin = None
-    #     fixed_links = []
-    #     DOF = 0
-    #     xyz_rpy_syms = []
-    #     for joint in robot.joints:
-    #         if joint.joint_type in ["revolute", "continuous", "prismatic"]:
-    #             DOF += 1
-    #         elif joint.joint_type in ["fixed"]:
-    #             pass
-    #         else:
-    #             raise NotImplementedError(
-    #                 "Joint type '" + joint.joint_type+"' not implemented yet")
-
-    #     ji = 0  # joint index of used joints
-    #     jia = 0  # joint index of all joints (fixed included)
-    #     joint_origins = []
-    #     for joint in robot.joints:
-    #         name = joint.name
-    #         origin = Matrix(joint.origin)
-    #         if symbolic:
-    #             xyz_rpy = matrix_to_xyz_rpy(joint.origin)
-    #             xyz_rpy_syms.append(symbols(
-    #                 " ".join([name+"_%s" % s for s in ["x", "y", "z", "roll", "pitch", "yar"]])))
-    #             xyzrpylist = []
-    #             if simplify_numbers:
-    #                 for i in range(6):
-    #                     if nsimplify(xyz_rpy[i], tolerance=tolerance) in [0, -1, 1, pi, -pi, pi/2, -pi/2, 3*pi/2, -3*pi/2]:
-    #                         xyzrpylist.append(
-    #                             nsimplify(xyz_rpy[i], tolerance=tolerance))
-    #                     # elif nsimplify(xyz_rpy[i],tolerance=tolerance) == 1:
-    #                         # xyzrpylist.append(1)
-    #                     # elif nsimplify(xyz_rpy[i],tolerance=tolerance) == -1:
-    #                         # xyzrpylist.append(-1)
-    #                     else:
-    #                         xyzrpylist.append(xyz_rpy_syms[jia][i])
-    #                         self.assignment_dict[xyz_rpy_syms[jia]
-    #                                              [i]] = xyz_rpy[i]
-    #             else:
-    #                 for i in range(6):
-    #                     if xyz_rpy[i] == 0:
-    #                         xyzrpylist.append(0)
-    #                     elif xyz_rpy[i] == 1:
-    #                         xyzrpylist.append(1)
-    #                     elif xyz_rpy[i] == -1:
-    #                         xyzrpylist.append(-1)
-    #                     else:
-    #                         xyzrpylist.append(xyz_rpy_syms[jia][i])
-    #                         self.assignment_dict[xyz_rpy_syms[jia]
-    #                                              [i]] = xyz_rpy[i]
-    #             origin = self.xyz_rpy_to_matrix(xyzrpylist)
-    #             if cse_ex:
-    #                 origin = self._cse_expression(origin)
-    #         elif simplify_numbers:
-    #             for i in range(4):
-    #                 for j in range(4):
-    #                     origin[i, j] = nsimplify(
-    #                         origin[i, j], [pi], tolerance=tolerance)
-    #         joint_origins.append(origin)
-    #         if joint.joint_type in ["revolute", "continuous", "prismatic"]:
-    #             # origin = Matrix(joint.origin)
-    #             axis = Matrix(joint.axis)
-    #             if simplify_numbers:
-    #                 for i in range(3):
-    #                     axis[i] = nsimplify(axis[i], [pi], tolerance=tolerance)
-    #             if fixed_origin:
-    #                 origin *= fixed_origin
-    #                 fixed_origin = None
-    #             self.B.append(Matrix(origin))
-
-    #             if joint.joint_type in ["revolute", "continuous"]:
-    #                 self.X.append(Matrix(axis).col_join(Matrix([0, 0, 0])))
-    #             else:
-    #                 self.X.append(Matrix(Matrix([0, 0, 0])).col_join(axis))
-    #             ji += 1
-    #         elif joint.joint_type == "fixed":
-    #             if fixed_origin:
-    #                 fixed_origin *= origin
-    #             else:
-    #                 fixed_origin = origin
-    #             fixed_links.append((joint.parent, joint.child))
-    #         jia += 1
-
-    #     self.Mb = []
-    #     I_syms = []
-    #     m_syms = []
-    #     # I_syms = [symbols("I%dxx I%dxy I%dxz I%dyy I%dyz I%dzz"%(i,i,i,i,i,i)) for i in range(DOF)]
-    #     # m_syms = [symbols("m%d cx%d cy%d cz%d"%(i,i,i,i)) for i in range(DOF)]
-    #     i = 0
-    #     first_non_fixed = 1
-    #     for link in robot.links:
-    #         name = link.name
-    #         # ignore base link
-    #         if i < first_non_fixed:
-    #             if name in [x[1] for x in fixed_links]:
-    #                 first_non_fixed += 1
-    #             i += 1
-    #             continue
-    #         inertia = Matrix(link.inertial.inertia)
-    #         mass = link.inertial.mass
-    #         inertiaorigin = Matrix(link.inertial.origin)
-    #         if symbolic:
-    #             I_syms = symbols("Ixx_%s Ixy_%s Ixz_%s Iyy_%s Iyz_%s Izz_%s" % (
-    #                 name, name, name, name, name, name))
-    #             c_syms = symbols("cx_%s cy_%s cz_%s" % (name, name, name))
-    #             I = self.InertiaMatrix(*I_syms)
-    #             m = symbols("m_%s" % name)
-    #             cg = Matrix([*c_syms])
-    #         else:
-    #             if simplify_numbers:
-    #                 for i in range(4):
-    #                     for j in range(4):
-    #                         inertiaorigin[i, j] = nsimplify(
-    #                             inertiaorigin[i, j], [pi], tolerance=tolerance)
-    #                 for i in range(3):
-    #                     for j in range(3):
-    #                         inertia[i, j] = nsimplify(
-    #                             inertia[i, j], [pi], tolerance=tolerance)
-    #                 # mass = nsimplify(mass, [pi], tolerance=tolerance)
-    #             I = Matrix(inertia)
-    #             m = mass
-    #             cg = Matrix(inertiaorigin[0:3, 3])
-    #         # if is fixed child: # TODO: find out what to do
-    #         # cg =
-    #         # I =
-    #         # m =
-    #         M = self.MassMatrixMixedData(m, I, cg)
-    #         if name in [x[1] for x in fixed_links]:
-    #             j = i
-    #             # transform Mass matrix
-    #             while robot.links[j].name in [x[1] for x in fixed_links]:
-    #                 # M = joint_origins[j-1].T * M * joint_origins[j-1] # Wrong
-    #                 M = self.SE3AdjInvMatrix(
-    #                     joint_origins[j-1]).T * M * self.SE3AdjInvMatrix(joint_origins[j-1])
-    #                 j -= 1
-    #             self.Mb[-1] += M
-    #             i += 1
-    #             continue
-    #         self.Mb.append(M)
-    #         i += 1
-
-    #     # for link in robot.links:
-    #     #     self.Mb.append(self.MassMatrixMixedData())
-    #     return
-
     def dhToScrewCoord(self, DH_param_table):
         """Build screw coordinate paramters (joint axis frames and body reference frames) 
         from a given modified Denavit-Hartenberg (DH) paramter table.
@@ -1622,66 +1473,9 @@ class SymbolicKinDyn():
                     [(-COM[2])*m, 0, COM[0]*m, 0, m, 0],
                     [COM[1]*m, (-COM[0])*m, 0, 0, 0, m]])
         return M
-
-    @staticmethod
-    def rpy_to_matrix(coords):
-        """Convert roll-pitch-yaw coordinates to a 3x3 homogenous rotation matrix.
-
-        Adapted from urdfpy 
-
-        The roll-pitch-yaw axes in a typical URDF are defined as a
-        rotation of ``r`` radians around the x-axis followed by a rotation of
-        ``p`` radians around the y-axis followed by a rotation of ``y`` radians
-        around the z-axis. These are the Z1-Y2-X3 Tait-Bryan angles. See
-        Wikipedia_ for more information.
-
-        .. _Wikipedia: https://en.wikipedia.org/wiki/Euler_angles#Rotation_matrix
-
-        Parameters
-        ----------
-        coords : (3,) float
-            The roll-pitch-yaw coordinates in order (x-rot, y-rot, z-rot).
-
-        Returns
-        -------
-        R : (3,3) float
-            The corresponding homogenous 3x3 rotation matrix.
-        """
-        c3 = cos(coords[0])
-        c2 = cos(coords[1])
-        c1 = cos(coords[2])
-        s3 = sin(coords[0])
-        s2 = sin(coords[1])
-        s1 = sin(coords[2])
-        return Matrix([
-            [c1 * c2, (c1 * s2 * s3) - (c3 * s1), (s1 * s3) + (c1 * c3 * s2)],
-            [c2 * s1, (c1 * c3) + (s1 * s2 * s3), (c3 * s1 * s2) - (c1 * s3)],
-            [-s2, c2 * s3, c2 * c3]
-        ])
-
-    @staticmethod
-    def xyz_rpy_to_matrix(xyz_rpy):
-        """Convert xyz_rpy coordinates to a 4x4 homogenous matrix.
-
-        Adapted from urdfpy
-
-        Parameters
-        ----------
-        xyz_rpy : (6,) float
-            The xyz_rpy vector.
-
-        Returns
-        -------
-        matrix : (4,4) float
-            The homogenous transform matrix.
-        """
-        matrix = Matrix(Identity(4))
-        matrix[:3, 3] = xyz_rpy[:3]
-        matrix[:3, :3] = SymbolicKinDyn.rpy_to_matrix(xyz_rpy[3:])
-        return matrix
-
+    
     def _set_value_as_process(self, name, target):
-        """Set return value of taget as value to queue in self.queue_dict with identifier name
+        """Set return value of target as value to queue in self.queue_dict with identifier name
 
         Args:
             name (str): Identifier
@@ -1844,33 +1638,3 @@ class SymbolicKinDyn():
         expression_dict = self.get_expressions_dict()
         expressions = [expression_dict[i] for i in expression_dict]
         return expressions
-
-    # def _simplify_expressions(self, expressions):
-    #     """Simplify given expressions
-
-    #     Args:
-    #         expressions (list): Expressions to simplify
-
-    #     Returns:
-    #         list: Simplified expressions
-    #     """
-    #     with Pool() as p:
-    #         ex = p.map(self.simplify, expressions)
-    #     return ex
-
-    # def cse_saved(self, simplify_expressions=True):
-    #     expressions = self._get_expressions()
-    #     expression_dict = self.get_expressions_dict()
-
-    #     r, e = cse(expressions+expressions, self._individual_numbered_symbols(
-    #         exclude=self.all_symbols), order="canonical", ignore=self.var_syms)
-    #     e = e[:len(expressions)]
-    #     if simplify_expressions:
-    #         e = self._simplify_expressions(e)
-    #     for (sym, val) in r:
-    #         self.subex_dict[sym] = val
-    #         self.all_symbols.update({sym})
-    #     for i, n in enumerate(expression_dict):
-    #         self.cse_expressions_dict[n] = e[i]
-
-
