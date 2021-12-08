@@ -19,19 +19,18 @@ if __name__ == "__main__":
     # Joint screw coordinates in spatial representation
 
     s.Y = []
-    # e0 = Matrix([-1,0,0])
-    s.Y.append(Matrix([0,0,0,-1,0,0]))
+    s.Y.append(Matrix([0,0,0,-1,0,0])) # prismatic joint
 
     
     e1 = Matrix([0, 0, 1])  # joint axis of revolute joint
     y1 = Matrix([0, 0, 0])  # Vector to joint axis from inertial Frame
     # Joint screw coordinates in spacial representation
-    s.Y.append(Matrix([e1, y1.cross(e1)]))
+    s.Y.append(Matrix([e1, y1.cross(e1)])) # revolute joint 1
 
     e2 = Matrix([0, 0, 1])  # joint axis of revolute joint
     y2 = Matrix([L1, 0, 0])  # Vector to joint axis from inertial Frame
     # Joint screw coordinates in spacial representation
-    s.Y.append(Matrix([e2, y2.cross(e2)]))
+    s.Y.append(Matrix([e2, y2.cross(e2)])) # revolute joint 2
 
     # Reference configurations of bodies (i.e. of body-fixed reference frames)
     r0 = Matrix([0, 0, 0]) 
