@@ -24,26 +24,26 @@ if __name__ == "__main__":
     
     # Joint screw coordinates in spatial representation
 
-    Y = []
+    joint_screw_coord = []
     e1 = Matrix([0, 0, 1])  # joint axis of revolute joint
     y1 = Matrix([0, 0, 0])  # Vector to joint axis from inertial Frame
     # Joint screw coordinates in spacial representation (6,1)
-    Y.append(Matrix([e1, y1.cross(e1)]))
+    joint_screw_coord.append(Matrix([e1, y1.cross(e1)]))
 
     e2 = Matrix([0, 0, 1])  # joint axis of revolute joint
     y2 = Matrix([0, -L1, 0])  # Vector to joint axis from inertial Frame
     # Joint screw coordinates in spacial representation (6,1)
-    Y.append(Matrix([e2, y2.cross(e2)]))
+    joint_screw_coord.append(Matrix([e2, y2.cross(e2)]))
 
     
     
-    # Reference configurations of bodies (i.e. of body-fixed reference frames)
+    # Reference configurations of bodies (i.e. of absolute reference frames)
     r1 = Matrix([0, 0, 0])
     r2 = Matrix([0, -L1, 0])
     
-    A = []
-    A.append(SymbolicKinDyn.TransformationMatrix(t=r1)) # no rotation, just translation
-    A.append(SymbolicKinDyn.TransformationMatrix(t=r2))
+    body_ref_config = []
+    body_ref_config.append(SymbolicKinDyn.TransformationMatrix(t=r1)) # no rotation, just translation
+    body_ref_config.append(SymbolicKinDyn.TransformationMatrix(t=r2))
     
     # End-effector configuration wrt last link body fixed frame in the chain
     re = Matrix([0, -L2, 0])
@@ -65,7 +65,12 @@ if __name__ == "__main__":
     qd = Matrix([dq1, dq2])
     q2d = Matrix([ddq1, ddq2])
 
-    s = SymbolicKinDyn(gravity_vector=gravity_vector, ee=ee,A = A, Y = Y, Mb=Mb)
+    s = SymbolicKinDyn(gravity_vector=gravity_vector, 
+                       ee=ee,
+                       body_ref_config=body_ref_config,
+                       joint_screw_coord=joint_screw_coord,
+                       config_representation="spacial", 
+                       Mb=Mb)
     s.closed_form_kinematics_body_fixed(q,qd,q2d)
     s.closed_form_inv_dyn_body_fixed(q,qd,q2d)
     s.generateCode(python=True, C=True, Matlab=False,name="DoublePendulumPlant",project="DoublePendulum")

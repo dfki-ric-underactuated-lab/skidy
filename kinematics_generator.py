@@ -1,4 +1,5 @@
 import multiprocessing
+from multiprocessing.sharedctypes import Value
 import os
 import queue
 import random
@@ -18,8 +19,11 @@ init_printing()
 
 
 class SymbolicKinDyn():
-
-    def __init__(self, gravity_vector=None, ee=None, A=[], B=[], X=[], Y=[], Mb=[]):
+    BODY_FIXED = "body_fixed"
+    SPACIAL = "spacial"
+    
+    def __init__(self, gravity_vector=None, ee=None, body_ref_config = [], 
+                 joint_screw_coord = [], config_representation = "body_fixed", Mb=[], **kwargs):
         """[summary] TODO
 
         Args:
@@ -28,18 +32,23 @@ class SymbolicKinDyn():
             ee (sympy.Matrix, optional): 
                 End-effector configuration with reference to last link 
                 body fixed frame in the chain. Defaults to None.
-            A (list of sympy.Matrix, optional): 
-                List of reference configurations of bodies in body-fixed 
-                representation. Defaults to [].
-            B (list of sympy.Matrix, optional): 
-                List of reference configurations of bodies in spacial 
-                representation. Defaults to [].
-            X (list of sympy.Matrix, optional): 
+            body_ref_config (list of sympy.Matrix, optional): 
+                List of reference configurations of bodies in body-fixed
+                or spacial representation, dependent on selected 
+                config_representation. 
+                Leave empty for dH Parameter usage (dhToScrewCoord(...)). 
+                Defaults to [].
+            joint_screw_coord (list of sympy.Matrix, optional): 
                 List of joint screw coordinates in body-fixed 
-                representation. Defaults to [].
-            Y (list of sympy.Matrix, optional): 
-                List of joint screw coordinates in spacial 
-                representation. Defaults to [].
+                or spacial representation, dependent on selected 
+                config_representation. 
+                Leave empty for dH Parameter usage (dhToScrewCoord(...)). 
+                Defaults to [].
+            config_representation (str):
+                Use body fixed or spacial representation for reference 
+                configuration of bodies and joint screw coordinates.
+                Has to be "body_fixed" or "spacial". 
+                Defaults to "body_fixed".
             Mb (list of sympy.Matrix, optional): 
                 List of Mass Inertia matrices for all links. Only 
                 necessary for inverse dynamics. Defaults to [].
@@ -47,10 +56,26 @@ class SymbolicKinDyn():
         self.n = None  # degrees of freedom
         self.gravity_vector = gravity_vector
         self.ee = ee
-        self.A = A
-        self.B = B
-        self.X = X
-        self.Y = Y
+        self.B = [] # List of reference configurations of bodies in body-fixed representation.
+        self.A = [] # List of reference configurations of bodies in spacial representation.
+        self.X = [] # List of joint screw coordinates in body-fixed representation.
+        self.Y = [] # List of joint screw coordinates in spacial representation.
+        
+        self.config_representation = config_representation # @property: checks for valid value 
+        if body_ref_config != []:
+            self.body_ref_config = body_ref_config # @property: sets A or B
+        if joint_screw_coord != []:
+            self.joint_screw_coord = joint_screw_coord # @property: sets X or Y
+        # support of old syntax
+        if "A" in kwargs:
+            self.A = kwargs["A"]
+        if "B" in kwargs:
+            self.B = kwargs["B"]
+        if "X" in kwargs:
+            self.X = kwargs["X"]
+        if "Y" in kwargs:
+            self.Y = kwargs["Y"]
+            
         self.Mb = Mb
 
         # temporary vars
@@ -97,6 +122,44 @@ class SymbolicKinDyn():
 
         self.all_symbols = set()  # set with all used symbols
 
+    @property
+    def config_representation(self):
+        return self._config_representation
+    
+    @config_representation.setter
+    def config_representation(self, value):
+        if value not in {self.BODY_FIXED, self.SPACIAL}:
+            raise ValueError("config_representation has to be 'body_fixed' or 'spacial'")
+        self._config_representation = value
+    
+    @property
+    def body_ref_config(self):
+        if self.config_representation == self.BODY_FIXED:
+            return self.B
+        elif self.config_representation == self.SPACIAL:
+            return self.A
+    
+    @body_ref_config.setter
+    def body_ref_config(self, value):
+        if self.config_representation == self.BODY_FIXED:
+            self.B = value
+        elif self.config_representation == self.SPACIAL:
+            self.A = value
+    
+    @property
+    def joint_screw_coord(self):
+        if self.config_representation == self.BODY_FIXED:
+            return self.X
+        elif self.config_representation == self.SPACIAL:
+            return self.Y
+    
+    @joint_screw_coord.setter
+    def joint_screw_coord(self, value):
+        if self.config_representation == self.BODY_FIXED:
+            self.X = value
+        elif self.config_representation == self.SPACIAL:
+            self.Y = value
+    
     def get_expressions_dict(self, filterNone=True):
         """Get dictionary with expression names (key) and generated 
         expressions (value).
@@ -391,7 +454,7 @@ class SymbolicKinDyn():
             hybrid_jacobian_matrix_ee_dot
             hybrid_twist_ee
 
-            Needs Class parameters A and X or B and Y, and ee to be defined.
+            Needs Class parameters body_ref_config, joint_screw_coord and ee to be defined.
 
         Args:
             q (sympy.Matrix): 
@@ -408,7 +471,11 @@ class SymbolicKinDyn():
             parallel (bool, optional): 
                 Use Parallel computation via Multiprocessing. 
                 Defaults to True.
-
+        Raises:
+            ValueError:
+                Joint screw coordinates and/or reference configuration 
+                of bodies not set.
+                
         Returns:
             sympy.Matrix: Forward kinematics (transformation matrix of ee).
         """
@@ -451,6 +518,11 @@ class SymbolicKinDyn():
                 Use Parallel computation via Multiprocessing. 
                 Defaults to True.
 
+        Raises:
+            ValueError:
+                Joint screw coordinates and/or reference configuration 
+                of bodies not set.
+        
         Returns:
             sympy.Matrix: Generalized Forces
         """
@@ -484,7 +556,7 @@ class SymbolicKinDyn():
             hybrid_jacobian_matrix_ee_dot
             hybrid_twist_ee
 
-            Needs Class parameters A and X or B and Y, and ee to be defined.
+            Needs Class parameters body_ref_config, joint_screw_coord and ee to be defined.
 
         Args:
             q (sympy.Matrix): 
@@ -514,7 +586,7 @@ class SymbolicKinDyn():
         if self._FK_C is not None:
             FK_C = self._FK_C
         elif self.A:
-            print("Using absolute configuration (A) of the body frames")
+            # print("Using absolute configuration (A) of the body frames")
             FK_f = [self.SE3Exp(self.Y[0], q[0])]
             FK_C = [FK_f[0]*self.A[0]]
             for i in range(1, self.n):
@@ -528,14 +600,14 @@ class SymbolicKinDyn():
                     self.A[i])*self.Y[i] for i in range(self.n)]
 
         elif self.B:
-            print('Using relative configuration (B) of the body frames')
+            # print('Using relative configuration (B) of the body frames')
             FK_C = [self.B[0]*self.SE3Exp(self.X[0], q[0])]
             for i in range(1, self.n):
                 FK_C.append(FK_C[i-1]*self.B[i]*self.SE3Exp(self.X[i], q[i]))
             self._FK_C = FK_C
         else:
-            'Absolute (A) or Relative (B) configuration of the bodies should be provided in class!'
-            return
+            # 'Absolute (A) or Relative (B) configuration of the bodies should be provided in class!'
+            raise ValueError("Joint screw coordinates and/or reference configuration of bodies not set.")
 
         fkin = FK_C[self.n-1]*self.ee
         if simplify_expressions:
@@ -747,7 +819,7 @@ class SymbolicKinDyn():
         if self._FK_C is not None:
             FK_C = self._FK_C
         elif self.A:
-            print("Using absolute configuration (A) of the body frames")
+            # print("Using absolute configuration (A) of the body frames")
             FK_f = [self.SE3Exp(self.Y[0], q[0])]
             FK_C = [FK_f[0]*self.A[0]]
             for i in range(1, self.n):
@@ -760,14 +832,14 @@ class SymbolicKinDyn():
                     self.A[i])*self.Y[i] for i in range(self.n)]
 
         elif self.B:
-            print('Using relative configuration (B) of the body frames')
+            # print('Using relative configuration (B) of the body frames')
             FK_C = [self.B[0]*self.SE3Exp(self.X[0], q[0])]
             for i in range(1, self.n):
                 FK_C.append(FK_C[i-1]*self.B[i]*self.SE3Exp(self.X[i], q[i]))
             self._FK_C = FK_C
         else:
-            'Absolute (A) or Relative (B) configuration of the bodies should be provided in class!'
-            return
+            # 'Absolute (A) or Relative (B) configuration of the bodies should be provided in class!'
+            raise ValueError("Joint screw coordinates and/or reference configuration of bodies not set.")
 
         # Block diagonal matrix A (6n x 6n) of the Adjoint of body frame
         if self._A is not None:
@@ -878,8 +950,8 @@ class SymbolicKinDyn():
 
     def _closed_form_kinematics_body_fixed_parallel(
         self, q, qd, q2d, simplify_expressions=True, cse_ex=False):
-        """Position, Velocity and Acceleration Kinematics using B
-        ody fixed representation of the twists in closed form.
+        """Position, Velocity and Acceleration Kinematics using 
+        Body fixed representation of the twists in closed form.
 
         The following expressions are saved in the class and can be 
         code generated afterwards:
@@ -934,7 +1006,7 @@ class SymbolicKinDyn():
         if self._FK_C is not None:
             FK_C = self._FK_C
         elif self.A:
-            print("Using absolute configuration (A) of the body frames")
+            # print("Using absolute configuration (A) of the body frames")
             FK_f = [self.SE3Exp(self.Y[0], q[0])]
             FK_C = [FK_f[0]*self.A[0]]
             for i in range(1, self.n):
@@ -948,15 +1020,15 @@ class SymbolicKinDyn():
                     self.A[i])*self.Y[i] for i in range(self.n)]
 
         elif self.B:
-            print('Using relative configuration (B) of the body frames')
+            # print('Using relative configuration (B) of the body frames')
             FK_C = [self.B[0]*self.SE3Exp(self.X[0], q[0])]
             for i in range(1, self.n):
                 FK_C.append(FK_C[i-1]*self.B[i]*self.SE3Exp(self.X[i], q[i]))
             self._FK_C = FK_C
         else:
-            'Absolute (A) or Relative (B) configuration of the bodies should be provided in class!'
-            return
-
+            # 'Absolute (A) or Relative (B) configuration of the bodies should be provided in class!'
+            raise ValueError("Joint screw coordinates and/or reference configuration of bodies not set.")
+            
         self._set_value("fkin", FK_C[self.n-1]*self.ee)
         if simplify_expressions:
             self._start_simplification_process("fkin", cse_ex)
@@ -1258,7 +1330,7 @@ class SymbolicKinDyn():
         if self._FK_C is not None:
             FK_C = self._FK_C
         elif self.A:
-            print("Using absolute configuration (A) of the body frames")
+            # print("Using absolute configuration (A) of the body frames")
             FK_f = [self.SE3Exp(self.Y[0], q[0])]
             FK_C = [FK_f[0]*self.A[0]]
             for i in range(1, self.n):
@@ -1272,14 +1344,14 @@ class SymbolicKinDyn():
                     self.A[i])*self.Y[i] for i in range(self.n)]
 
         elif self.B:
-            print('Using relative configuration (B) of the body frames')
+            # print('Using relative configuration (B) of the body frames')
             FK_C = [self.B[0]*self.SE3Exp(self.X[0], q[0])]
             for i in range(1, self.n):
                 FK_C.append(FK_C[i-1]*self.B[i]*self.SE3Exp(self.X[i], q[i]))
             self._FK_C = FK_C
         else:
-            'Absolute (A) or Relative (B) configuration of the bodies should be provided in class!'
-            return
+            # 'Absolute (A) or Relative (B) configuration of the bodies should be provided in class!'
+            raise ValueError("Joint screw coordinates and/or reference configuration of bodies not set.")
 
         # Block diagonal matrix A (6n x 6n) of the Adjoint of body frame
         if self._A is not None:
@@ -1473,6 +1545,8 @@ class SymbolicKinDyn():
         """Build screw coordinate paramters (joint axis frames and 
         body reference frames) from a given modified Denavit-Hartenberg 
         (DH) parameter table.
+        Joint screw coordinates and reference configurations of bodies 
+        are directly applied to class.
 
         Args:
             DH_param_table (array_like): 
