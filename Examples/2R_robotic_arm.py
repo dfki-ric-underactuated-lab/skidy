@@ -1,7 +1,10 @@
 from kinematics_generator import SymbolicKinDyn
-from sympy import symbols, Matrix, Identity
+from sympy import symbols, Matrix, Identity, init_printing
+
 
 if __name__ == "__main__":
+    init_printing()
+    
     s = SymbolicKinDyn()
 
     # Declaration of symbolic variables
@@ -72,7 +75,7 @@ if __name__ == "__main__":
     s.Mb.append(s.MassMatrixMixedData(m1, I1*Identity(3), cg1))
     s.Mb.append(s.MassMatrixMixedData(m2, I2*Identity(3), cg2))
 
-    # Declaring generalised vectors
+    # Declaring generalized vectors
     q = Matrix([q1, q2])
     qd = Matrix([dq1, dq2])
     q2d = Matrix([ddq1, ddq2])

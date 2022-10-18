@@ -1,11 +1,13 @@
-from sympy import symbols, Matrix, Identity
+from kinematics_generator import SymbolicKinDyn
+from sympy import symbols, Matrix, Identity, init_printing
 import sys
 from os.path import dirname
 sys.path.append(dirname(dirname(__file__)))
-from kinematics_generator import SymbolicKinDyn
 
 
 if __name__ == "__main__":
+    init_printing()
+
     # Declaration of symbolic variables
     q1, q2 = symbols("q1 q2")  # joint positions
     dq1, dq2 = symbols("dq1 dq2")  # joint velocities
@@ -19,9 +21,8 @@ if __name__ == "__main__":
     L1, L2 = symbols("L1 L2", real=1, constant=1)  # link lengths
     pi = symbols("pi", real=1, constant=1)  # pi
 
-    
     gravity_vector = Matrix([0, -g, 0])  # define gravity vector
-    
+
     # Joint screw coordinates in spatial representation
 
     Y = []
@@ -35,21 +36,19 @@ if __name__ == "__main__":
     # Joint screw coordinates in spacial representation (6,1)
     Y.append(Matrix([e2, y2.cross(e2)]))
 
-    
-    
     # Reference configurations of bodies (i.e. of body-fixed reference frames)
     r1 = Matrix([0, 0, 0])
     r2 = Matrix([0, -L1, 0])
-    
+
     A = []
-    A.append(SymbolicKinDyn.TransformationMatrix(t=r1)) # no rotation, just translation
+    # no rotation, just translation
+    A.append(SymbolicKinDyn.TransformationMatrix(t=r1))
     A.append(SymbolicKinDyn.TransformationMatrix(t=r2))
-    
+
     # End-effector configuration wrt last link body fixed frame in the chain
     re = Matrix([0, -L2, 0])
     ee = SymbolicKinDyn.TransformationMatrix(t=re)
 
-    
     # Mass-Inertia parameters
     cg1 = Matrix([0, -L1, 0]).T
     cg2 = Matrix([0, -L2, 0]).T
