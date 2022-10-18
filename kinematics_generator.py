@@ -540,7 +540,7 @@ class SymbolicKinDyn():
             hybrid_jacobian_matrix_ee_dot
             hybrid_twist_ee
 
-            Needs Class parameters body_ref_config, joint_screw_coord and ee to be defined.
+            Needs class parameters body_ref_config, joint_screw_coord and ee to be defined.
 
         Args:
             q (sympy.Matrix): 
@@ -555,7 +555,7 @@ class SymbolicKinDyn():
             cse_ex (bool, optional): 
                 Use common subexpression elimination. Defaults to False.
             parallel (bool, optional): 
-                Use Parallel computation via Multiprocessing. 
+                Use parallel computation via multiprocessing. 
                 Defaults to True.
         Raises:
             ValueError:
@@ -575,7 +575,7 @@ class SymbolicKinDyn():
     def closed_form_inv_dyn_body_fixed(
         self, q, qd, q2d, WEE=zeros(6, 1), simplify_expressions=True, 
         cse_ex=False, parallel=True):
-        """Inverse Dynamics using Body fixed representation of the 
+        """Inverse dynamics using body fixed representation of the 
         twists in closed form. 
 
         The following expressions are saved in the class and can be 
@@ -601,7 +601,7 @@ class SymbolicKinDyn():
             cse_ex (bool, optional): 
                 Use common subexpression elimination. Defaults to False.
             parallel (bool, optional): 
-                Use Parallel computation via Multiprocessing. 
+                Use parallel computation via multiprocessing. 
                 Defaults to True.
 
         Raises:
@@ -610,7 +610,7 @@ class SymbolicKinDyn():
                 of bodies not set.
         
         Returns:
-            sympy.Matrix: Generalized Forces
+            sympy.Matrix: Generalized forces
         """
         if parallel:
             self._closed_form_inv_dyn_body_fixed_parallel(
@@ -642,7 +642,7 @@ class SymbolicKinDyn():
             hybrid_jacobian_matrix_ee_dot
             hybrid_twist_ee
 
-            Needs Class parameters body_ref_config, joint_screw_coord 
+            Needs class parameters body_ref_config, joint_screw_coord 
             and ee to be defined.
 
         Args:
@@ -881,7 +881,7 @@ class SymbolicKinDyn():
     def _closed_form_inv_dyn_body_fixed(self, q, qd, q2d, WEE=zeros(6, 1), 
                                         simplify_expressions=True, 
                                         cse_ex=False):
-        """Inverse Dynamics using Body fixed representation of the 
+        """Inverse dynamics using body fixed representation of the 
         twists in closed form. 
 
         The following expressions are saved in the class and can be code 
@@ -903,7 +903,7 @@ class SymbolicKinDyn():
                 elimination. Defaults to False.
 
         Returns:
-            sympy.Matrix: Generalized Forces
+            sympy.Matrix: Generalized forces
         """
         print("Inverse dynamics calculation")
 
@@ -959,7 +959,7 @@ class SymbolicKinDyn():
             V = self._V  # system twist
         else:
             # Block diagonal matrix X (6n x n) of the screw coordinate 
-            # vector associated to all joints in the body frame (Constant)
+            # vector associated to all joints in the body frame (constant)
             X = zeros(6*self.n, self.n)
             for i in range(self.n):
                 X[6*i:6*i+6, i] = self.X[i]
@@ -988,7 +988,7 @@ class SymbolicKinDyn():
         Vd = J*q2d - A*a*V
 
         # Block Diagonal Mb (6n x 6n) Mass inertia matrix in body frame 
-        # (Constant)
+        # (constant)
         Mb = zeros(6*self.n, 6*self.n)
         for i in range(self.n):
             Mb[i*6:i*6+6, i*6:i*6+6] = self.Mb[i]
@@ -1381,7 +1381,7 @@ class SymbolicKinDyn():
     def _closed_form_inv_dyn_body_fixed_parallel(
         self, q, qd, q2d, WEE=zeros(6, 1), simplify_expressions=True, 
         cse_ex=False):
-        """Inverse Dynamics using Body fixed representation of the 
+        """Inverse dynamics using body fixed representation of the 
         twists in closed form. 
 
         The following expressions are saved in the class and can be 
@@ -1600,7 +1600,7 @@ class SymbolicKinDyn():
         return self.Q
 
     def simplify(self, exp, cse_ex=False):
-        """Faster simplify implementation for Sympy expressions.
+        """Faster simplify implementation for sympy expressions.
         Expressions can be different simplified as with sympy.simplify.
 
         Args:
@@ -1687,13 +1687,13 @@ class SymbolicKinDyn():
 
     @staticmethod
     def SE3AdjInvMatrix(C):
-        """Compute Inverse of (6x6) Adjoint Matrix for SE(3)
+        """Compute Inverse of (6x6) Adjoint matrix for SE(3)
 
         Args:
-            C ([type]): [description]
+            C ([type]): [description] TODO
 
         Returns:
-            sympy.Matrix: Inverse of (6x6) Adjoint Matrix
+            sympy.Matrix: Inverse of (6x6) Adjoint matrix
         """
         AdInv = Matrix([[C[0, 0], C[1, 0], C[2, 0], 0, 0, 0],
                         [C[0, 1], C[1, 1], C[2, 1], 0, 0, 0],
@@ -1714,13 +1714,13 @@ class SymbolicKinDyn():
 
     @staticmethod
     def SE3AdjMatrix(C):
-        """Compute (6x6) Adjoint Matrix for SE(3)
+        """Compute (6x6) Adjoint matrix for SE(3)
 
         Args:
-            C ([type]): [description]
+            C ([type]): [description] TODO
 
         Returns:
-        sympy.Matrix: (6x6) Adjoint Matrix
+        sympy.Matrix: (6x6) Adjoint matrix
         """
         Ad = Matrix([[C[0, 0], C[0, 1], C[0, 2], 0, 0, 0],
                      [C[1, 0], C[1, 1], C[1, 2], 0, 0, 0],
@@ -1741,14 +1741,14 @@ class SymbolicKinDyn():
 
     @staticmethod
     def SE3adMatrix(X):
-        """Compute (6x6) adjoint Matrix for SE(3) 
+        """Compute (6x6) adjoint matrix for SE(3) 
             - also known as spatial cross product in the literature.
 
         Args:
-            X ([type]): [description]
+            X ([type]): [description] TODO
 
         Returns:
-            sympy.Matrix: (6x6) adjoint Matrix
+            sympy.Matrix: (6x6) adjoint matrix
         """
         ad = Matrix([[0, -X[2, 0], X[1, 0], 0, 0, 0],
                      [X[2, 0], 0, -X[0, 0], 0, 0, 0],
@@ -1763,7 +1763,7 @@ class SymbolicKinDyn():
         """compute exponential mapping for SE(3).
 
         Args:
-            XX ([type]): [description]
+            XX ([type]): [description] TODO
             t ([type]): [description]
 
         Returns:
@@ -1788,7 +1788,7 @@ class SymbolicKinDyn():
         """Compute analytical inverse of exponential mapping for SE(3).
 
         Args:
-            C ([type]): [description]
+            C ([type]): [description] TODO
 
         Returns:
             [type]: [description]
@@ -1841,7 +1841,7 @@ class SymbolicKinDyn():
 
     @staticmethod
     def TransformationMatrix(r=Matrix(Identity(3)), t=zeros(3, 1)):
-        """Build Transformation matrix from rotation and translation
+        """Build transformation matrix from rotation and translation.
 
         Args:
             r (sympy.Matrix): 
@@ -1864,10 +1864,10 @@ class SymbolicKinDyn():
         Args:
             m (float): Mass.
             Theta (array_like): Inertia (3,3).
-            COM (array_like): Center of Mass (3,1).
+            COM (array_like): Center of mass (3,1).
 
         Returns:
-            sympy.Matrix: Mass-inertia Matrix (6,6).
+            sympy.Matrix: Mass-inertia matrix (6,6).
         """
         M = Matrix([[Theta[0, 0], Theta[0, 1], Theta[0, 2], 0, 
                         (-COM[2])*m, COM[1]*m],
@@ -1885,8 +1885,8 @@ class SymbolicKinDyn():
         self.queue_dict with identifier name.
 
         Args:
-            name (str): Identifier
-            target (function): function, which returns value 
+            name (str): Identifier.
+            target (function): function, which returns value. 
         """
         if name not in self.queue_dict:
             self.queue_dict[name] = Queue()
@@ -1897,11 +1897,11 @@ class SymbolicKinDyn():
         self.process_dict[name].start()
 
     def _set_value(self, name, var):
-        """Set value to queue in self.queue_dict
+        """Set value to queue in self.queue_dict.
 
         Args:
-            name (str): Identifier
-            var (any): Value to save
+            name (str): Identifier.
+            var (any): Value to save.
         """
         if name not in self.queue_dict:
             self.queue_dict[name] = Queue()
@@ -1909,7 +1909,7 @@ class SymbolicKinDyn():
 
     def _start_simplification_process(self, name, cse_ex=False):
         """Start Process, which simplifies and overwrites value in 
-        queue from self.queue_dict
+        queue from self.queue_dict.
 
         Args:
             name (str): Identifier
@@ -1925,10 +1925,10 @@ class SymbolicKinDyn():
         self.process_dict[name+"_simplify"].start()
 
     def _get_value(self, name):
-        """Get value from queue in self.queue_dict and put it in again
+        """Get value from queue in self.queue_dict and put it in again.
 
         Args:
-            name (str): Identifier
+            name (str): Identifier.
 
         Returns:
             any: Value
@@ -1984,15 +1984,15 @@ class SymbolicKinDyn():
             exclude=exclude)
 
     def _sort_variables(self, vars):
-        """Sort variables for code generation starting with q,qd,qdd, 
-        continueing with variable symbols and ending with constant 
+        """Sort variables for code generation starting with q, qd, qdd, 
+        continuing with variable symbols and ending with constant 
         symbols.
 
         Args:
-            vars (list of sympy.symbols): Variables to sort
+            vars (list of sympy.symbols): Variables to sort.
 
         Returns:
-            list: Sorted list of variables
+            list: Sorted list of variables.
         """
         # vars as set
         vars = set(vars)
@@ -2034,10 +2034,10 @@ class SymbolicKinDyn():
         subex_dict.
 
         Args:
-            exp (Sympy expression): Expression to shorten using cse
+            exp (Sympy expression): Expression to shorten using cse.
 
         Returns:
-            Sympy expression: Shortened expression
+            Sympy expression: Shortened expression.
         """
         # cse expression
         r, e = cse([exp, exp], self._individual_numbered_symbols(
@@ -2055,10 +2055,10 @@ class SymbolicKinDyn():
         return e[0]
 
     def _get_expressions(self):
-        """Get list of all generated expressions
+        """Get list of all generated expressions.
 
         Returns:
-            list: generated expressions
+            list: generated expressions.
         """
         expression_dict = self.get_expressions_dict()
         expressions = [expression_dict[i] for i in expression_dict]
