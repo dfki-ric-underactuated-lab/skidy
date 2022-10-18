@@ -1,4 +1,5 @@
 import multiprocessing
+from multiprocessing.sharedctypes import Value
 import os
 import queue
 import random
@@ -16,34 +17,43 @@ from sympy.utilities.codegen import codegen
 
 
 class SymbolicKinDyn():
-
-    def __init__(self, gravity_vector=None, ee=None, A=[], B=[], X=[], 
-                 Y=[], Mb=[]):
+    BODY_FIXED = "body_fixed"
+    SPACIAL = "spacial"
+    
+    def __init__(self, gravity_vector=None, ee=None, body_ref_config = [], 
+                 joint_screw_coord = [], config_representation = "body_fixed", Mb=[], **kwargs):
         """SymbolicKinDyn
         Symbolic tool to compute equations of motion of serial chain 
         robots and autogenerate code from the calculated equations. 
         This tool supports generation of python, C and Matlab code.
 
         Args:
-            gravity_vector (sympy.Matrix, optional): Vector of gravity. 
-                Defaults to None.
-            ee (sympy.Matrix, optional): End-effector configuration with 
-                reference to last link body fixed frame in the chain. 
-                Defaults to None.
-            A (list of sympy.Matrix, optional): List of reference 
-                configurations of bodies in body-fixed representation. 
+            gravity_vector (sympy.Matrix, optional): 
+                Vector of gravity. Defaults to None.
+            ee (sympy.Matrix, optional): 
+                End-effector configuration with reference to last link 
+                body fixed frame in the chain. Defaults to None.
+            body_ref_config (list of sympy.Matrix, optional): 
+                List of reference configurations of bodies in body-fixed
+                or spacial representation, dependent on selected 
+                config_representation. 
+                Leave empty for dH Parameter usage (dhToScrewCoord(...)). 
                 Defaults to [].
-            B (list of sympy.Matrix, optional): List of reference 
-                configurations of bodies in spacial representation. 
+            joint_screw_coord (list of sympy.Matrix, optional): 
+                List of joint screw coordinates in body-fixed 
+                or spacial representation, dependent on selected 
+                config_representation. 
+                Leave empty for dH Parameter usage (dhToScrewCoord(...)). 
                 Defaults to [].
-            X (list of sympy.Matrix, optional): List of joint screw 
-                coordinates in body-fixed representation. Defaults to [].
-            Y (list of sympy.Matrix, optional): List of joint screw 
-                coordinates in spacial representation. Defaults to [].
-            Mb (list of sympy.Matrix, optional): List of Mass Inertia 
-                matrices for all links. Only necessary for inverse 
-                dynamics. Defaults to [].
-        
+            config_representation (str):
+                Use body fixed or spacial representation for reference 
+                configuration of bodies and joint screw coordinates.
+                Has to be "body_fixed" or "spacial". 
+                Defaults to "body_fixed".
+            Mb (list of sympy.Matrix, optional): 
+                List of Mass Inertia matrices for all links. Only 
+                necessary for inverse dynamics. Defaults to [].
+                
         Usage:
             Example of an 2R Serial chain robot:
             Imports:
@@ -72,17 +82,19 @@ class SymbolicKinDyn():
                 Gravity vector:
                 >>> gravity_vector = sympy.Matrix([0, g, 0])
                 
-                Joint screw coordinate in spacial representation:
-                >>> Y = []
-                >>> Y.append(sympy.Matrix([0, 0, 1, 0, 0, 0]).T)
-                >>> Y.append(sympy.Matrix([0, 0, 1, 0, -L1, 0]).T)
+                Joint screw coordinate in body fixed representation:
+                >>> joint_screw_coord = []
+                >>> joint_screw_coord.append(sympy.Matrix([0, 0, 1, 0, 0, 0]).T)
+                >>> joint_screw_coord.append(sympy.Matrix([0, 0, 1, 0, -L1, 0]).T)
                 
                 Reference configurations of bodies 
                 (i.e. of body-fixed reference frames):
-                >>> A = []
-                >>> A.append(SymbolicKinDyn.TransformationMatrix(
+                >>> body_ref_config = []
+                >>> body_ref_config.append(
+                ...     SymbolicKinDyn.TransformationMatrix(
                 ...     t=sympy.Matrix([0, 0, 0]))
-                >>> A.append(SymbolicKinDyn.TransformationMatrix(
+                >>> body_ref_config.append(
+                ...     SymbolicKinDyn.TransformationMatrix(
                 ...     t=sympy.Matrix([L1, 0, 0]))
             
                 End-effector configuration wrt last link body fixed 
@@ -105,7 +117,11 @@ class SymbolicKinDyn():
             Initialization and usage of SymbolicKinDyn:
                 Init:
                 >>> skd = SymbolicKinDyn(gravity_vector=gravity_vector, 
-                ...                      ee=ee, A=A, Y=Y, Mb=Mb)
+                ...                      ee=ee, 
+                ...                      body_ref_config = body_ref_config, 
+                ...                      joint_screw_coord = joint_screw_coord, 
+                ...                      config_representation = "body_fixed", 
+                ...                      Mb=Mb)
                 
                 Generate Kinematics:
                 >>> skd.closed_form_kinematics_body_fixed(q, qd, q2d)
@@ -120,10 +136,26 @@ class SymbolicKinDyn():
         self.n = None  # degrees of freedom
         self.gravity_vector = gravity_vector
         self.ee = ee
-        self.A = A
-        self.B = B
-        self.X = X
-        self.Y = Y
+        self.B = [] # List of reference configurations of bodies in body-fixed representation.
+        self.A = [] # List of reference configurations of bodies in spacial representation.
+        self.X = [] # List of joint screw coordinates in body-fixed representation.
+        self.Y = [] # List of joint screw coordinates in spacial representation.
+        
+        self.config_representation = config_representation # @property: checks for valid value 
+        if body_ref_config != []:
+            self.body_ref_config = body_ref_config # @property: sets A or B
+        if joint_screw_coord != []:
+            self.joint_screw_coord = joint_screw_coord # @property: sets X or Y
+        # support of old syntax
+        if "A" in kwargs:
+            self.A = kwargs["A"]
+        if "B" in kwargs:
+            self.B = kwargs["B"]
+        if "X" in kwargs:
+            self.X = kwargs["X"]
+        if "Y" in kwargs:
+            self.Y = kwargs["Y"]
+            
         self.Mb = Mb
 
         # temporary vars
@@ -174,20 +206,59 @@ class SymbolicKinDyn():
 
         self.all_symbols = set()  # set with all used symbols
 
+    @property
+    def config_representation(self):
+        return self._config_representation
+    
+    @config_representation.setter
+    def config_representation(self, value):
+        if value not in {self.BODY_FIXED, self.SPACIAL}:
+            raise ValueError("config_representation has to be 'body_fixed' or 'spacial'")
+        self._config_representation = value
+    
+    @property
+    def body_ref_config(self):
+        if self.config_representation == self.BODY_FIXED:
+            return self.B
+        elif self.config_representation == self.SPACIAL:
+            return self.A
+    
+    @body_ref_config.setter
+    def body_ref_config(self, value):
+        if self.config_representation == self.BODY_FIXED:
+            self.B = value
+        elif self.config_representation == self.SPACIAL:
+            self.A = value
+    
+    @property
+    def joint_screw_coord(self):
+        if self.config_representation == self.BODY_FIXED:
+            return self.X
+        elif self.config_representation == self.SPACIAL:
+            return self.Y
+    
+    @joint_screw_coord.setter
+    def joint_screw_coord(self, value):
+        if self.config_representation == self.BODY_FIXED:
+            self.X = value
+        elif self.config_representation == self.SPACIAL:
+            self.Y = value
+    
     def get_expressions_dict(self, filterNone=True):
         """Get dictionary with expression names (key) and generated 
         expressions (value).
 
         Args:
-            filterNone (bool, optional): Exclude expressions which 
-                haven't been generate yet. Defaults to True.
+            filterNone (bool, optional): 
+                Exclude expressions which haven't been generate yet. 
+                Defaults to True.
 
         Returns:
             dict: dictionary with expression names (key) and generated 
                 expressions (value).
         """
-        # all expressions in this dictionary can be code generated using
-        # the generate_code function.
+        # all expressions in this dictionary can be code generated 
+        # using the generate_code function.
         all_expressions = {"forward_kinematics": self.fkin,
                            "system_jacobian_matrix": self.J,
                            "body_jacobian_matrix": self.Jb,
@@ -208,9 +279,8 @@ class SymbolicKinDyn():
                            "hybrid_jacobian_matrix_dot": self.Jh_dot,
                            "body_jacobian_matrix_dot": self.Jb_dot,
                            "hybrid_jacobian_matrix_ee_dot": self.Jh_ee_dot,
-                           "body_jacobian_matrix_ee_dot": self.Jb_ee_dot} 
-        # not included yet: self.Vh_BFn, self.Vb_BFn
-        
+                           "body_jacobian_matrix_ee_dot": self.Jb_ee_dot}  
+                            # not included: self.Vh_BFn, self.Vb_BFn
         # exclude expressions which are None
         if filterNone:
             filtered = {k: v for k, v in all_expressions.items()
@@ -228,20 +298,23 @@ class SymbolicKinDyn():
 
 
         Args:
-            python (bool, optional): Generate Python code. 
-                Defaults to True.
-            C (bool, optional): Generate C99 code. Defaults to True.
-            Matlab (bool, optional): Generate Matlab/Octave code. 
-                Defaults to False.
-            folder (str, optional): Folder where to save code. 
+            python (bool, optional): 
+                Generate Python code. Defaults to True.
+            C (bool, optional): 
+                Generate C99 code. Defaults to True.
+            Matlab (bool, optional): 
+                Generate Matlab/Octave code. Defaults to False.
+            folder (str, optional): 
+                Folder where to save code. 
                 Defaults to "./generated_code".
-            use_global_vars (bool, optional): Constant vars like mass 
-                etc are no arguments of the generated expressions. 
-                Defaults to True.
-            name (str, optional): class and file name (for Python and C). 
+            use_global_vars (bool, optional): 
+                Constant vars like mass etc are no arguments of the 
+                generated expressions. Defaults to True.
+            name (str, optional): 
+                Name of Class and file (for Python and C). 
                 Defaults to "plant".
-            project (str, optional): Project name in C header. 
-                Defaults to "Project".
+            project (str, optional): 
+                Project name in C header. Defaults to "Project".
 
         """
         # create Folder
@@ -263,11 +336,14 @@ class SymbolicKinDyn():
             # generate list of constant symbols
             constant_syms = self._sort_variables(
                 all_syms.difference(self.var_syms).union(self.subex_dict))
-            # generate list with preassigned symbols like subexpressions 
+            # generate list with preassigned symbols like subexpressions
             # from common subexpression elimination
-            not_assigned_syms = self._sort_variables(all_syms.difference(
-                self.var_syms).difference(self.assignment_dict).difference(
-                    self.subex_dict))
+            not_assigned_syms = self._sort_variables(
+                all_syms
+                .difference(self.var_syms)
+                .difference(self.assignment_dict)
+                .difference(self.subex_dict)
+                )
         else:
             constant_syms = []
             not_assigned_syms = []
@@ -286,29 +362,36 @@ class SymbolicKinDyn():
             s.append("class "+name.capitalize()+"():")
             # define __init__ function
             s.append("    def __init__(self, %s):" % (
-                ", ".join([str(not_assigned_syms[i]) 
-                           for i in range(len(not_assigned_syms))] +
-                          [str(i)+" = " + self.assignment_dict[i] 
-                           for i in self.assignment_dict])))
+                ", ".join(
+                    [str(not_assigned_syms[i]) 
+                     for i in range(len(not_assigned_syms))] 
+                    + [str(i)+" = " + self.assignment_dict[i] 
+                       for i in self.assignment_dict])))
             if len(not_assigned_syms) > 0:
-                s.append("%8s"%""+", ".join(["self."+str(not_assigned_syms[i]) 
-                                    for i in range(len(not_assigned_syms))])
-                         + " = " + ", ".join([str(not_assigned_syms[i]) 
-                                    for i in range(len(not_assigned_syms))]))
+                s.append("        "
+                         + ", ".join(["self."+str(not_assigned_syms[i]) 
+                                      for i in range(len(not_assigned_syms))])
+                         + " = " 
+                         + ", ".join([str(not_assigned_syms[i]) 
+                                      for i in range(len(not_assigned_syms))])
+                         )
 
             # append preassigned values to __init__ function
             if len(self.assignment_dict) > 0:
-                s.append("        "+", ".join(sorted(["self."+str(i) 
-                                    for i in self.assignment_dict]))
-                         + " = " + ", ".join(sorted([str(i) 
-                                    for i in self.assignment_dict])))
+                s.append("        "
+                         + ", ".join(sorted(["self."+str(i) 
+                                             for i in self.assignment_dict]))
+                         + " = " 
+                         + ", ".join(sorted([str(i) 
+                                             for i in self.assignment_dict]))
+                         )
 
             # append cse expressions to __init__ function
             if len(self.subex_dict) > 0:
                 for i in sorted([str(j) for j in self.subex_dict]):
                     modstring = str(self.subex_dict[symbols(i)])
-                    for j in sorted([str(h) for h in 
-                                     self.subex_dict[symbols(i)].free_symbols], 
+                    for j in sorted([str(h) 
+                                     for h in self.subex_dict[symbols(i)].free_symbols],
                                     reverse=1):
                         modstring = regex.sub(
                             str(j), "self."+str(j), modstring)
@@ -331,13 +414,18 @@ class SymbolicKinDyn():
                 else:
                     s.append("\n    def "+names[i]+"(self):")
                 if len(const_syms) > 0:
-                    s.append("        "+", ".join([str(const_syms[i]) 
-                                            for i in range(len(const_syms))])
-                             + " = " + ", ".join(["self."+str(const_syms[i]) 
-                                            for i in range(len(const_syms))]))
+                    s.append("        "
+                             + ", ".join([str(const_syms[i]) 
+                                          for i in range(len(const_syms))])
+                             + " = " 
+                             + ", ".join(["self."+str(const_syms[i]) 
+                                          for i in range(len(const_syms))])
+                             )
 
-                s.append("        "+names[i] +
-                         " = " + p.doprint(expressions[i]))
+                s.append("        "
+                         + names[i] 
+                         + " = " 
+                         + p.doprint(expressions[i]))
                 s.append("        return " + names[i])
 
             # replace numpy with np for better readability
@@ -362,8 +450,8 @@ class SymbolicKinDyn():
                 [(c_name, c_code), (h_name, c_header)] = codegen(
                     [tuple((names[i], expressions[i])) 
                      for i in range(len(expressions))],
-                    "C99", name, project, header=False, empty=True, 
-                    global_vars=constant_syms)
+                    "C99", name, project, header=False, 
+                    empty=True, global_vars=constant_syms)
             else:
                 [(c_name, c_code), (h_name, c_header)] = codegen(
                     [tuple((names[i], expressions[i])) 
@@ -412,30 +500,30 @@ class SymbolicKinDyn():
             # generate m code
             for i in range(len(expressions)):
                 if use_global_vars:
-                    [(m_name, m_code)] = codegen((names[i], expressions[i]), 
-                        "Octave", project=project, header=False, empty=True, 
-                        global_vars=constant_syms, 
-                        argument_sequence=self._sort_variables(
-                            self.all_symbols))
+                    [(m_name, m_code)] = codegen(
+                        (names[i], expressions[i]), "Octave", project=project, 
+                        header=False, empty=True, global_vars=constant_syms, 
+                        argument_sequence=self._sort_variables(self.all_symbols)
+                        )
                 else:
-                    [(m_name, m_code)] = codegen((names[i], expressions[i]),
-                        "Octave", project=project, header=False, empty=True, 
-                        argument_sequence=self._sort_variables(
-                            self.all_symbols))
+                    [(m_name, m_code)] = codegen(
+                        (names[i], expressions[i]), "Octave", project=project, 
+                        header=False, empty=True, 
+                        argument_sequence=self._sort_variables(self.all_symbols)
+                        )
 
                 # write code files
                 with open(os.path.join(folder, "matlab", m_name), "w+") as f:
                     f.write(m_code)
             print("Done")
 
-    def closed_form_kinematics_body_fixed(self, q, qd, q2d, 
-                                          simplify_expressions=True, 
-                                          cse_ex=False, parallel=True):
+    def closed_form_kinematics_body_fixed(
+        self, q, qd, q2d, simplify_expressions=True, cse_ex=False, parallel=True):
         """Position, Velocity and Acceleration Kinematics using Body 
         fixed representation of the twists in closed form.
 
-        The following expressions are saved in the class and can be code
-        generated afterwards:
+        The following expressions are saved in the class and can be 
+        code generated afterwards:
             body_acceleration
             body_acceleration_ee
             body_jacobian_matrix
@@ -452,20 +540,28 @@ class SymbolicKinDyn():
             hybrid_jacobian_matrix_ee_dot
             hybrid_twist_ee
 
-            Needs Class parameters A and X or B and Y, and ee to be 
-            defined.
+            Needs Class parameters body_ref_config, joint_screw_coord and ee to be defined.
 
         Args:
-            q (sympy.Matrix): (n,1) Generalized position vector.
-            qd (sympy.Matrix): (n,1 )Generalized velocity vector.
-            q2d (sympy.Matrix): (n,1) Generalized acceleration vector.
-            simplify_expressions (bool, optional): Use simplify command 
-                on saved expressions. Defaults to True.
-            cse_ex (bool, optional): Use common subexpression 
-                elimination. Defaults to False.
-            parallel (bool, optional): Use Parallel computation via 
-                Multiprocessing. Defaults to True.
-
+            q (sympy.Matrix): 
+                (n,1) Generalized position vector.
+            qd (sympy.Matrix): 
+                (n,1 )Generalized velocity vector.
+            q2d (sympy.Matrix): 
+                (n,1) Generalized acceleration vector.
+            simplify_expressions (bool, optional): 
+                Use simplify command on saved expressions. 
+                Defaults to True.
+            cse_ex (bool, optional): 
+                Use common subexpression elimination. Defaults to False.
+            parallel (bool, optional): 
+                Use Parallel computation via Multiprocessing. 
+                Defaults to True.
+        Raises:
+            ValueError:
+                Joint screw coordinates and/or reference configuration 
+                of bodies not set.
+                
         Returns:
             sympy.Matrix: Forward kinematics.
         """
@@ -476,32 +572,43 @@ class SymbolicKinDyn():
             self._closed_form_kinematics_body_fixed(
                 q, qd, q2d, simplify_expressions, cse_ex)
 
-    def closed_form_inv_dyn_body_fixed(self, q, qd, q2d, WEE=zeros(6, 1), 
-                                       simplify_expressions=True, 
-                                       cse_ex=False, parallel=True):
+    def closed_form_inv_dyn_body_fixed(
+        self, q, qd, q2d, WEE=zeros(6, 1), simplify_expressions=True, 
+        cse_ex=False, parallel=True):
         """Inverse Dynamics using Body fixed representation of the 
         twists in closed form. 
 
-        The following expressions are saved in the class and can be code 
-        generated afterwards:
+        The following expressions are saved in the class and can be 
+        code generated afterwards:
             coriolis_centrifugal_matrix
             generalized_mass_inertia_matrix
             gravity_vector
             inverse_dynamics
 
         Args:
-            q (sympy.Matrix): (n,1) Generalized position vector.
-            qd (sympy.Matrix): (n,1 )Generalized velocity vector.
-            q2d (sympy.Matrix): (n,1) Generalized acceleration vector.
-            WEE (sympy.Matrix, optional): (6,1) WEE (t) is the time 
-                varying wrench on the EE link. Defaults to zeros(6, 1).
-            simplify_expressions (bool, optional): Use simplify command 
-                on saved expressions. Defaults to True.
-            cse_ex (bool, optional): Use common subexpression 
-                elimination. Defaults to False.
-            parallel (bool, optional): Use Parallel computation via 
-                Multiprocessing. Defaults to True.
+            q (sympy.Matrix): 
+                (n,1) Generalized position vector.
+            qd (sympy.Matrix): 
+                (n,1 )Generalized velocity vector.
+            q2d (sympy.Matrix): 
+                (n,1) Generalized acceleration vector.
+            WEE (sympy.Matrix, optional): 
+                (6,1) WEE (t) is the time varying wrench on the EE link. 
+                Defaults to zeros(6, 1).
+            simplify_expressions (bool, optional): 
+                Use simplify command on saved expressions. 
+                Defaults to True.
+            cse_ex (bool, optional): 
+                Use common subexpression elimination. Defaults to False.
+            parallel (bool, optional): 
+                Use Parallel computation via Multiprocessing. 
+                Defaults to True.
 
+        Raises:
+            ValueError:
+                Joint screw coordinates and/or reference configuration 
+                of bodies not set.
+        
         Returns:
             sympy.Matrix: Generalized Forces
         """
@@ -512,14 +619,13 @@ class SymbolicKinDyn():
             self._closed_form_inv_dyn_body_fixed(
                 q, qd, q2d, WEE, simplify_expressions, cse_ex)
 
-    def _closed_form_kinematics_body_fixed(self, q, qd, q2d, 
-                                           simplify_expressions=True, 
-                                           cse_ex=False):
-        """Position, Velocity and Acceleration Kinematics using Body 
-        fixed representation of the twists in closed form.
+    def _closed_form_kinematics_body_fixed(
+        self, q, qd, q2d, simplify_expressions=True, cse_ex=False):
+        """Position, velocity and acceleration kinematics using 
+        body fixed representation of the twists in closed form.
 
-        The following expressions are saved in the class and can be code 
-        generated afterwards:
+        The following expressions are saved in the class and can be 
+        code generated afterwards:
             body_acceleration
             body_acceleration_ee
             body_jacobian_matrix
@@ -536,17 +642,21 @@ class SymbolicKinDyn():
             hybrid_jacobian_matrix_ee_dot
             hybrid_twist_ee
 
-            Needs Class parameters A and X or B and Y, and ee to be 
-            defined.
+            Needs Class parameters body_ref_config, joint_screw_coord 
+            and ee to be defined.
 
         Args:
-            q (sympy.Matrix): (n,1) Generalized position vector.
-            qd (sympy.Matrix): (n,1 )Generalized velocity vector.
-            q2d (sympy.Matrix): (n,1) Generalized acceleration vector.
-            simplify_expressions (bool, optional): Use simplify command 
-                on saved expressions. Defaults to True.
-            cse_ex (bool, optional): Use common subexpression 
-                elimination. Defaults to False.
+            q (sympy.Matrix): 
+                (n,1) Generalized position vector.
+            qd (sympy.Matrix): 
+                (n,1) Generalized velocity vector.
+            q2d (sympy.Matrix): 
+                (n,1) Generalized acceleration vector.
+            simplify_expressions (bool, optional): 
+                Use simplify command on saved expressions. 
+                Defaults to True.
+            cse_ex (bool, optional): 
+                Use common subexpression elimination. Defaults to False.
 
 
         Returns:
@@ -563,7 +673,7 @@ class SymbolicKinDyn():
         if self._FK_C is not None:
             FK_C = self._FK_C
         elif self.A:
-            print("Using absolute configuration (A) of the body frames")
+            # print("Using absolute configuration (A) of the body frames")
             FK_f = [self.SE3Exp(self.Y[0], q[0])]
             FK_C = [FK_f[0]*self.A[0]]
             for i in range(1, self.n):
@@ -577,14 +687,14 @@ class SymbolicKinDyn():
                     self.A[i])*self.Y[i] for i in range(self.n)]
 
         elif self.B:
-            print('Using relative configuration (B) of the body frames')
+            # print('Using relative configuration (B) of the body frames')
             FK_C = [self.B[0]*self.SE3Exp(self.X[0], q[0])]
             for i in range(1, self.n):
                 FK_C.append(FK_C[i-1]*self.B[i]*self.SE3Exp(self.X[i], q[i]))
             self._FK_C = FK_C
         else:
-            print('Absolute (A) or Relative (B) configuration of the bodies should be provided in class!')
-            return
+            # 'Absolute (A) or Relative (B) configuration of the bodies should be provided in class!'
+            raise ValueError("Joint screw coordinates and/or reference configuration of bodies not set.")
 
         fkin = FK_C[self.n-1]*self.ee
         if simplify_expressions:
@@ -634,8 +744,8 @@ class SymbolicKinDyn():
         R_BFn = Matrix(FK_C[-1][:3, :3]).row_join(
             zeros(3, 1)).col_join(Matrix([0, 0, 0, 1]).T)
 
-        # Body fixed Jacobian of last moving body (This may not 
-        # correspond to end-effector frame)
+        # Body fixed Jacobian of last moving body 
+        # (This may not correspond to end-effector frame)
         Jb = J[-6:, :]
         if simplify_expressions:
             Jb = self.simplify(Jb, cse_ex)
@@ -705,10 +815,12 @@ class SymbolicKinDyn():
         Vbd_BFn = Vbd[-6:, :]
         if simplify_expressions:
             Vbd_BFn = self.simplify(Vbd_BFn, cse_ex)
-        # Hybrid twist of end-effector frame
-        Vhd_BFn = self.SE3AdjMatrix(R_BFn)*Vbd_BFn \
-            + self.SE3adMatrix(Matrix(Vh_BFn[:3, :]).col_join(
-            Matrix([0, 0, 0])))*self.SE3AdjMatrix(R_BFn)*Vb_BFn  
+        # Hybrid twist of end-effector frame 
+        # TODO: check comments
+        Vhd_BFn = (self.SE3AdjMatrix(R_BFn)*Vbd_BFn 
+                   + self.SE3adMatrix(Matrix(Vh_BFn[:3, :])
+                                      .col_join(Matrix([0, 0, 0])))
+                   * self.SE3AdjMatrix(R_BFn)*Vb_BFn)  
 
         if simplify_expressions:
             Vhd_BFn = self.simplify(Vhd_BFn, cse_ex)
@@ -805,7 +917,7 @@ class SymbolicKinDyn():
         if self._FK_C is not None:
             FK_C = self._FK_C
         elif self.A:
-            print("Using absolute configuration (A) of the body frames")
+            # print("Using absolute configuration (A) of the body frames")
             FK_f = [self.SE3Exp(self.Y[0], q[0])]
             FK_C = [FK_f[0]*self.A[0]]
             for i in range(1, self.n):
@@ -819,14 +931,14 @@ class SymbolicKinDyn():
                     self.A[i])*self.Y[i] for i in range(self.n)]
 
         elif self.B:
-            print('Using relative configuration (B) of the body frames')
+            # print('Using relative configuration (B) of the body frames')
             FK_C = [self.B[0]*self.SE3Exp(self.X[0], q[0])]
             for i in range(1, self.n):
                 FK_C.append(FK_C[i-1]*self.B[i]*self.SE3Exp(self.X[i], q[i]))
             self._FK_C = FK_C
         else:
-            print('Absolute (A) or Relative (B) configuration of the bodies should be provided in class!')
-            return
+            # 'Absolute (A) or Relative (B) configuration of the bodies should be provided in class!'
+            raise ValueError("Joint screw coordinates and/or reference configuration of bodies not set.")
 
         # Block diagonal matrix A (6n x 6n) of the Adjoint of body frame
         if self._A is not None:
@@ -937,14 +1049,13 @@ class SymbolicKinDyn():
         print("Done")
         return Q
 
-    def _closed_form_kinematics_body_fixed_parallel(self, q, qd, q2d, 
-                                                    simplify_expressions=True, 
-                                                    cse_ex=False):
-        """Position, Velocity and Acceleration Kinematics using Body 
-        fixed representation of the twists in closed form.
+    def _closed_form_kinematics_body_fixed_parallel(
+        self, q, qd, q2d, simplify_expressions=True, cse_ex=False):
+        """Position, velocity and acceleration kinematics using 
+        body fixed representation of the twists in closed form.
 
-        The following expressions are saved in the class and can be code 
-        generated afterwards:
+        The following expressions are saved in the class and can be 
+        code generated afterwards:
             body_acceleration
             body_acceleration_ee
             body_jacobian_matrix
@@ -962,20 +1073,24 @@ class SymbolicKinDyn():
             hybrid_twist_ee
 
         Args:
-            q (sympy.Matrix): (n,1) Generalized position vector.
-            qd (sympy.Matrix): (n,1) Generalized velocity vector.
-            q2d (sympy.Matrix): (n,1) Generalized acceleration vector.
-            simplify_expressions (bool, optional): Use simplify command 
-                on saved expressions. Defaults to True.
-            cse_ex (bool, optional): Use common subexpression 
-                elimination. Defaults to False.
+            q (sympy.Matrix): 
+                (n,1) Generalized position vector.
+            qd (sympy.Matrix): 
+                (n,1) Generalized velocity vector.
+            q2d (sympy.Matrix): 
+                (n,1) Generalized acceleration vector.
+            simplify_expressions (bool, optional): 
+                Use simplify command on saved expressions. 
+                Defaults to True.
+            cse_ex (bool, optional): 
+                Use common subexpression elimination. Defaults to False.
 
         Returns:
             sympy.Matrix: Forward kinematics.
         """
         # This method does the same as _closed_form_kinematics_body_fixed.
-        # Parallel computation is implemented by writing most values in 
-        # queues, organized in a dict.
+        # Parallel computation is implemented by writing most values 
+        # in queues, organized in a dict.
         # This ensures the correct order for the execution.
         # To understand the calculations it is recommended to read the 
         # code in _closed_form_kinematics_body_fixed since it is more 
@@ -992,7 +1107,7 @@ class SymbolicKinDyn():
         if self._FK_C is not None:
             FK_C = self._FK_C
         elif self.A:
-            print("Using absolute configuration (A) of the body frames")
+            # print("Using absolute configuration (A) of the body frames")
             FK_f = [self.SE3Exp(self.Y[0], q[0])]
             FK_C = [FK_f[0]*self.A[0]]
             for i in range(1, self.n):
@@ -1006,15 +1121,15 @@ class SymbolicKinDyn():
                     self.A[i])*self.Y[i] for i in range(self.n)]
 
         elif self.B:
-            print('Using relative configuration (B) of the body frames')
+            # print('Using relative configuration (B) of the body frames')
             FK_C = [self.B[0]*self.SE3Exp(self.X[0], q[0])]
             for i in range(1, self.n):
                 FK_C.append(FK_C[i-1]*self.B[i]*self.SE3Exp(self.X[i], q[i]))
             self._FK_C = FK_C
         else:
-            print('Absolute (A) or Relative (B) configuration of the bodies should be provided in class!')
-            return
-
+            # 'Absolute (A) or Relative (B) configuration of the bodies should be provided in class!'
+            raise ValueError("Joint screw coordinates and/or reference configuration of bodies not set.")
+            
         self._set_value("fkin", FK_C[self.n-1]*self.ee)
         if simplify_expressions:
             self._start_simplification_process("fkin", cse_ex)
@@ -1052,9 +1167,13 @@ class SymbolicKinDyn():
             self._set_value_as_process("V", lambda: self._get_value("J")*qd)
 
         # Different Jacobians
-        self._set_value_as_process("R_i", lambda: Matrix(
-            self._get_value("fkin")[:3, :3]).row_join(
-            zeros(3, 1)).col_join(Matrix([0, 0, 0, 1]).T))
+        self._set_value_as_process(
+            "R_i", 
+            lambda: 
+                Matrix(self._get_value("fkin")[:3, :3])
+                .row_join(zeros(3, 1))
+                .col_join(Matrix([0, 0, 0, 1]).T)
+            )
 
         if simplify_expressions:  # fastens later simplifications
             self._start_simplification_process("R_i", cse_ex)
@@ -1136,12 +1255,16 @@ class SymbolicKinDyn():
             self._start_simplification_process("Vbd_BFn", cse_ex)
 
         # Hybrid twist of end-effector frame
-        self._set_value_as_process("Vhd_BFn", lambda: self.SE3AdjMatrix(
-            self._get_value("R_BFn"))*self._get_value("Vbd_BFn") 
-            + self.SE3adMatrix(Matrix(
-                self._get_value("Vh_BFn")[:3, :]).col_join(
-            Matrix([0, 0, 0])))*self.SE3AdjMatrix(self._get_value("R_BFn"))
-            *self._get_value("Vb_BFn"))
+        self._set_value_as_process(
+            "Vhd_BFn", 
+            lambda: 
+                self.SE3AdjMatrix(self._get_value("R_BFn"))
+                * self._get_value("Vbd_BFn") 
+                + self.SE3adMatrix(Matrix(self._get_value("Vh_BFn")[:3, :])
+                                   .col_join(Matrix([0, 0, 0])))
+                * self.SE3AdjMatrix(self._get_value("R_BFn"))
+                * self._get_value("Vb_BFn")
+            )
 
         if simplify_expressions:
             self._start_simplification_process("Vhd_BFn", cse_ex)
@@ -1152,13 +1275,17 @@ class SymbolicKinDyn():
             self.SE3Inv(self.ee))*self._get_value("Vbd_BFn"))
         if simplify_expressions:
             self._start_simplification_process("Vbd_ee", cse_ex)
-        # Hybrid twist of end-effector frame 
-        self._set_value_as_process("Vhd_ee", lambda: self.SE3AdjMatrix(
-            self._get_value("R_i")) * self._get_value("Vbd_ee") 
-                                   + self.SE3adMatrix(Matrix(
-            self._get_value("Vh_ee")[:3, :]).col_join(Matrix([0, 0, 0])))
-                                   *self.SE3AdjMatrix(self._get_value("R_i"))
-                                   *self._get_value("Vb_ee"))  
+        # Hybrid twist of end-effector frame
+        self._set_value_as_process(
+            "Vhd_ee", 
+            lambda: 
+                self.SE3AdjMatrix(self._get_value("R_i")) 
+                * self._get_value("Vbd_ee") 
+                + self.SE3adMatrix(Matrix(self._get_value("Vh_ee")[:3, :])
+                                   .col_join(Matrix([0, 0, 0])))
+                * self.SE3AdjMatrix(self._get_value("R_i"))
+                * self._get_value("Vb_ee")
+            )  # Hybrid twist of end-effector frame
 
         if simplify_expressions:
             self._start_simplification_process("Vhd_ee", cse_ex)
@@ -1177,22 +1304,30 @@ class SymbolicKinDyn():
 
         # Hybrid Jacobian time derivative
         # For the last moving body
-        self._set_value_as_process("Jh_dot", lambda: self.SE3AdjMatrix(
-            self._get_value("R_BFn"))*self._get_value("Jb_dot") 
-                                   + self.SE3adMatrix(
-            Matrix(self._get_value("Vh_BFn")[:3, :]).col_join(
-                Matrix([0, 0, 0])))*self.SE3AdjMatrix(self._get_value("R_BFn"))
-                                   *self._get_value("Jb"))
+        self._set_value_as_process(
+            "Jh_dot", 
+            lambda: 
+                self.SE3AdjMatrix(self._get_value("R_BFn"))
+                * self._get_value("Jb_dot") 
+                + self.SE3adMatrix(Matrix(self._get_value("Vh_BFn")[:3, :])
+                                   .col_join(Matrix([0, 0, 0])))
+                * self.SE3AdjMatrix(self._get_value("R_BFn"))
+                * self._get_value("Jb")
+            )
         if simplify_expressions:
             self._start_simplification_process("Jh_dot", cse_ex)
 
         # For the EE
-        self._set_value_as_process("Jh_ee_dot", lambda: self.SE3AdjMatrix(
-            self._get_value("R_i"))*self._get_value("Jb_ee_dot") 
-                                   + self.SE3adMatrix(
-            Matrix(self._get_value("Vh_ee")[:3, :]).col_join(
-                Matrix([0, 0, 0])))*self.SE3AdjMatrix(self._get_value("R_i"))
-                                   *self._get_value("Jb_ee"))
+        self._set_value_as_process(
+            "Jh_ee_dot", 
+            lambda: 
+                self.SE3AdjMatrix(self._get_value("R_i"))
+                * self._get_value("Jb_ee_dot") 
+                + self.SE3adMatrix(Matrix(self._get_value("Vh_ee")[:3, :])
+                                   .col_join(Matrix([0, 0, 0])))
+                * self.SE3AdjMatrix(self._get_value("R_i"))
+                * self._get_value("Jb_ee")
+            )
         if simplify_expressions:
             self._start_simplification_process("Jh_ee_dot", cse_ex)
         self._a = self._get_value("a")
@@ -1249,30 +1384,35 @@ class SymbolicKinDyn():
         """Inverse Dynamics using Body fixed representation of the 
         twists in closed form. 
 
-        The following expressions are saved in the class and can be code 
-        generated afterwards:
+        The following expressions are saved in the class and can be 
+        code generated afterwards:
             coriolis_centrifugal_matrix
             generalized_mass_inertia_matrix
             gravity_vector
             inverse_dynamics
 
         Args:
-            q (sympy.Matrix): (n,1) Generalized position vector.
-            qd (sympy.Matrix): (n,1 )Generalized velocity vector.
-            q2d (sympy.Matrix): (n,1) Generalized acceleration vector.
-            WEE (sympy.Matrix, optional): (6,1) WEE (t) is the time 
-                varying wrench on the EE link. Defaults to zeros(6, 1).
-            simplify_expressions (bool, optional): Use simplify command 
-                on saved expressions. Defaults to True.
-            cse_ex (bool, optional): Use common subexpression 
-                elimination. Defaults to False.
+            q (sympy.Matrix): 
+                (n,1) Generalized position vector.
+            qd (sympy.Matrix): 
+                (n,1 )Generalized velocity vector.
+            q2d (sympy.Matrix): 
+                (n,1) Generalized acceleration vector.
+            WEE (sympy.Matrix, optional): 
+                (6,1) WEE (t) is the time varying wrench on the EE link. 
+                Defaults to zeros(6, 1).
+            simplify_expressions (bool, optional): 
+                Use simplify command on saved expressions. 
+                Defaults to True.
+            cse_ex (bool, optional): 
+                Use common subexpression elimination. Defaults to False.
 
         Returns:
             sympy.Matrix: Generalized Forces
         """
         # This method does the same as _closed_form_inv_dyn_body_fixed.
-        # Parallel computation is implemented by writing most values in 
-        # queues, organized in a dict.
+        # Parallel computation is implemented by writing most values 
+        # in queues, organized in a dict.
         # This ensures the correct order for the execution.
         # To understand the calculations it is recommended to read the 
         # code in _closed_form_inv_dyn_body_fixed since it is more 
@@ -1291,7 +1431,7 @@ class SymbolicKinDyn():
         if self._FK_C is not None:
             FK_C = self._FK_C
         elif self.A:
-            print("Using absolute configuration (A) of the body frames")
+            # print("Using absolute configuration (A) of the body frames")
             FK_f = [self.SE3Exp(self.Y[0], q[0])]
             FK_C = [FK_f[0]*self.A[0]]
             for i in range(1, self.n):
@@ -1305,14 +1445,14 @@ class SymbolicKinDyn():
                     self.A[i])*self.Y[i] for i in range(self.n)]
 
         elif self.B:
-            print('Using relative configuration (B) of the body frames')
+            # print('Using relative configuration (B) of the body frames')
             FK_C = [self.B[0]*self.SE3Exp(self.X[0], q[0])]
             for i in range(1, self.n):
                 FK_C.append(FK_C[i-1]*self.B[i]*self.SE3Exp(self.X[i], q[i]))
             self._FK_C = FK_C
         else:
-            print('Absolute (A) or Relative (B) configuration of the bodies should be provided in class!')
-            return
+            # 'Absolute (A) or Relative (B) configuration of the bodies should be provided in class!'
+            raise ValueError("Joint screw coordinates and/or reference configuration of bodies not set.")
 
         # Block diagonal matrix A (6n x 6n) of the Adjoint of body frame
         if self._A is not None:
@@ -1416,9 +1556,14 @@ class SymbolicKinDyn():
             "Qext", lambda: self._get_value("J").T * Wext)
 
         # Generalized forces Q
-        self._set_value_as_process("Q", lambda: self._get_value(
-            "M")*q2d + self._get_value("C")*qd + self._get_value("Qgrav") 
-                                   + self._get_value("Qext"))
+        self._set_value_as_process(
+            "Q", 
+            lambda: 
+                self._get_value("M") * q2d 
+                + self._get_value("C") * qd 
+                + self._get_value("Qgrav") 
+                + self._get_value("Qext")
+            )
 
         if simplify_expressions:
             self._start_simplification_process("Q", cse_ex)
@@ -1459,9 +1604,10 @@ class SymbolicKinDyn():
         Expressions can be different simplified as with sympy.simplify.
 
         Args:
-            exp (sympy expression): Expression to simplify.
-            cse_ex (bool, optional): Use common subexpression 
-                elimination. Defaults to False.
+            exp (sympy expression): 
+                Expression to simplify.
+            cse_ex (bool, optional): 
+                Use common subexpression elimination. Defaults to False.
 
         Returns:
             sympy expression: Simplified expression.
@@ -1501,13 +1647,16 @@ class SymbolicKinDyn():
         return exp
 
     def dhToScrewCoord(self, DH_param_table):
-        """Build screw coordinate paramters (joint axis frames and body 
-        reference frames) 
-        from a given modified Denavit-Hartenberg (DH) parameter table.
+        """Build screw coordinate paramters (joint axis frames and 
+        body reference frames) from a given modified Denavit-Hartenberg 
+        (DH) parameter table.
+        Joint screw coordinates and reference configurations of bodies 
+        are directly applied to class.
 
         Args:
-            DH_param_table (array_like): Table with modified DH 
-                parameters (n,5) -> (gamma,alpha,d,theta,r)
+            DH_param_table (array_like): 
+                Table with modified DH parameters (n,5) 
+                -> (gamma,alpha,d,theta,r)
         """
         number_of_frames = DH_param_table.shape[0]
         self.B = []
@@ -1515,7 +1664,6 @@ class SymbolicKinDyn():
         for i in range(number_of_frames):
             # Reference configurations of bodies (i.e. of body-fixed 
             # reference frames) w.r.t their previous bodies
-            
             # gamma, alpha, d, theta,r
             frame = DH_param_table[i, :]
             gamma = frame[0]
@@ -1523,10 +1671,13 @@ class SymbolicKinDyn():
             d = frame[2]
             theta = frame[3]
             r = frame[4]
-            self.B.append(self.SO3Exp(Matrix([1, 0, 0]), alpha).row_join(
-                Matrix([d, 0, 0])).col_join(Matrix([0, 0, 0, 1]).T)
-                    * self.SO3Exp(Matrix([0, 0, 1]), theta).row_join(
-                        Matrix([0, 0, r])).col_join(Matrix([0, 0, 0, 1]).T))
+            self.B.append(self.SO3Exp(Matrix([1, 0, 0]), alpha)
+                          .row_join(Matrix([d, 0, 0]))
+                          .col_join(Matrix([0, 0, 0, 1]).T)
+                          * self.SO3Exp(Matrix([0, 0, 1]), theta)
+                          .row_join(Matrix([0, 0, r]))
+                          .col_join(Matrix([0, 0, 0, 1]).T)
+                          )
 
             #  Joint screw coordinates in body-fixed representation
             if gamma == 0:
@@ -1644,8 +1795,8 @@ class SymbolicKinDyn():
         """
         CInv = Matrix([[C[0, 0], C[1, 0], C[2, 0], 
                         -C[0, 0]*C[0, 3]-C[1, 0]*C[1, 3]-C[2, 0]*C[2, 3]],
-                       [C[0, 1], C[1, 1], C[2, 1], -C[0, 1] *
-                           C[0, 3]-C[1, 1]*C[1, 3]-C[2, 1]*C[2, 3]],
+                       [C[0, 1], C[1, 1], C[2, 1], 
+                        -C[0, 1]*C[0, 3]-C[1, 1]*C[1, 3]-C[2, 1]*C[2, 3]],
                        [C[0, 2], C[1, 2], C[2, 2], -C[0, 2] *
                            C[0, 3]-C[1, 2]*C[1, 3]-C[2, 2]*C[2, 3]],
                        [0, 0, 0, 1]])
@@ -1653,7 +1804,7 @@ class SymbolicKinDyn():
 
     @staticmethod
     def SO3Exp(x, t):
-        """Compute exponential mapping for SO(3) (Rotation Matrix).
+        """Compute exponential mapping for SO(3).
 
         Args:
             x (sympy.Matrix): Rotation axis
@@ -1670,6 +1821,19 @@ class SymbolicKinDyn():
 
     @staticmethod
     def InertiaMatrix(Ixx, Ixy, Ixz, Iyy, Iyz, Izz):
+        """Create 3 x 3 inertia matrix from independent inertia values.
+
+        Args:
+            Ixx: Inertia value I11
+            Ixy: Inertia value I12
+            Ixz: Inertia value I13
+            Iyy: Inertia value I22
+            Iyz: Inertia value I23
+            Izz: Inertia value I33
+
+        Returns:
+            sympy.Matrix: Inertia matrix (3,3)
+        """
         I = Matrix([[Ixx, Ixy, Ixz],
                     [Ixy, Iyy, Iyz],
                     [Ixz, Iyz, Izz]])
@@ -1680,13 +1844,14 @@ class SymbolicKinDyn():
         """Build Transformation matrix from rotation and translation
 
         Args:
-            r (sympy.Matrix): SO(3) Rotation matrix (3,3). 
+            r (sympy.Matrix): 
+                SO(3) Rotation matrix (3,3). 
                 Defaults to sympy.Matrix(Identity(3))
-            t (sympy.Matrix): Translation vector (3,1). 
-                Defaults to sympy.zeros(3,1)
+            t (sympy.Matrix): 
+                Translation vector (3,1). Defaults to sympy.zeros(3,1)
 
         Returns:
-            sympy.Matrix: Transformation matrix
+            sympy.Matrix: Transformation matrix (4,4)
         """
         T = r.row_join(t).col_join(Matrix([[0, 0, 0, 1]]))
         return T
@@ -1698,11 +1863,11 @@ class SymbolicKinDyn():
 
         Args:
             m (float): Mass.
-            Theta (sympy.Matrix): Inertia.
-            COM (sympy.Matrix): Center of Mass.
+            Theta (array_like): Inertia (3,3).
+            COM (array_like): Center of Mass (3,1).
 
         Returns:
-            sympy.Matrix: Mass-inertia Matrix.
+            sympy.Matrix: Mass-inertia Matrix (6,6).
         """
         M = Matrix([[Theta[0, 0], Theta[0, 1], Theta[0, 2], 0, 
                         (-COM[2])*m, COM[1]*m],
@@ -1743,18 +1908,19 @@ class SymbolicKinDyn():
         self.queue_dict[name].put(var)
 
     def _start_simplification_process(self, name, cse_ex=False):
-        """Start Process, which simplifies and overwrites value in queue
-        from self.queue_dict
+        """Start Process, which simplifies and overwrites value in 
+        queue from self.queue_dict
 
         Args:
             name (str): Identifier
-            cse_ex (bool, optional): Use common subexpression 
-                elimination. Defaults to False.
+            cse_ex (bool, optional): 
+                Use common subexpression elimination. Defaults to False.
         """
         if name not in self.queue_dict:
             self.queue_dict[name] = Queue()
         self.process_dict[name+"_simplify"] = Process(
-            target=self._simplify_parallel, args=(name, cse_ex,), 
+            target=self._simplify_parallel, 
+            args=(name, cse_ex,), 
             name=name+"_simplify")
         self.process_dict[name+"_simplify"].start()
 
@@ -1777,8 +1943,8 @@ class SymbolicKinDyn():
 
         Args:
             name (str): Identifier
-            cse_ex (bool, optional): Use common subexpression 
-                elimination. Defaults to False.
+            cse_ex (bool, optional): 
+                Use common subexpression elimination. Defaults to False.
         """
         value = self.simplify(self.queue_dict[name].get(), cse_ex)
         self.queue_dict[name].put(value)
@@ -1800,19 +1966,22 @@ class SymbolicKinDyn():
         multiprocessing.
 
         Args:
-            exclude (list, optional): List of names, which should not be
-                used. Defaults to [].
-            i (list, optional): List with starting value -1 as first 
-                value. Is used as counter and should not be set. 
-                Defaults to [0].
+            exclude (list, optional): 
+                List of names, which should not be used. Defaults to [].
+            i (list, optional): 
+                List with starting value -1 as first value. Is used as 
+                counter and should not be set. Defaults to [0].
 
         Returns:
             sympy.numbered_symbols:  Symbols
         """
         i[0] += 1
-        return numbered_symbols(prefix="sub%s_%s_" % ("_".join([str(j) 
-                for j in multiprocessing.current_process()._identity]), i[0]), 
-                exclude=exclude)
+        return numbered_symbols(
+            prefix="sub%s_%s_" 
+            % ("_".join(
+                [str(j) for j in multiprocessing.current_process()._identity]), 
+               i[0]), 
+            exclude=exclude)
 
     def _sort_variables(self, vars):
         """Sort variables for code generation starting with q,qd,qdd, 

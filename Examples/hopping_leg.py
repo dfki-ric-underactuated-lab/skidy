@@ -17,59 +17,63 @@ if __name__ == "__main__":
     s.gravity_vector = Matrix([-g, 0, 0])
 
     # Joint screw coordinates in spatial representation
+    # define config_representation to be spacial
+    s.config_representation = s.SPACIAL
 
-    s.Y = []
-    s.Y.append(Matrix([0, 0, 0, -1, 0, 0]))  # prismatic joint
+    s.joint_screw_coord = []
+    s.joint_screw_coord.append(Matrix([0, 0, 0, -1, 0, 0])) # prismatic joint
 
     e1 = Matrix([0, 0, 1])  # joint axis of revolute joint
     y1 = Matrix([0, 0, 0])  # Vector to joint axis from inertial Frame
     # Joint screw coordinates in spacial representation
-    s.Y.append(Matrix([e1, y1.cross(e1)]))  # revolute joint 1
+    s.joint_screw_coord.append(Matrix([e1, y1.cross(e1)])) # revolute joint 1
 
     e2 = Matrix([0, 0, 1])  # joint axis of revolute joint
     y2 = Matrix([L1, 0, 0])  # Vector to joint axis from inertial Frame
     # Joint screw coordinates in spacial representation
-    s.Y.append(Matrix([e2, y2.cross(e2)]))  # revolute joint 2
+    s.joint_screw_coord.append(Matrix([e2, y2.cross(e2)])) # revolute joint 2
 
     # Reference configurations of bodies (i.e. of body-fixed reference frames)
     r0 = Matrix([0, 0, 0])
     r1 = Matrix([0, 0, 0])
     r2 = Matrix([L1, 0, 0])
 
-    s.A = []
-    s.A.append(Matrix(Identity(3)).row_join(
-        r0).col_join(Matrix([0, 0, 0, 1]).T))
-    s.A.append(Matrix(Identity(3)).row_join(
-        r1).col_join(Matrix([0, 0, 0, 1]).T))
-    s.A.append(Matrix(Identity(3)).row_join(
-        r2).col_join(Matrix([0, 0, 0, 1]).T))
+    s.body_ref_config = []
+    s.body_ref_config.append(Matrix(Identity(3)).row_join(r0).col_join(Matrix([0, 0, 0, 1]).T))
+    s.body_ref_config.append(Matrix(Identity(3)).row_join(r1).col_join(Matrix([0, 0, 0, 1]).T))
+    s.body_ref_config.append(Matrix(Identity(3)).row_join(r2).col_join(Matrix([0, 0, 0, 1]).T))
 
     # Reference configurations of bodies (i.e. of body-fixed reference frames)
-    # r0 = Matrix([0, 0, 0])
-    # r1 = Matrix([0, 0, 0])
+    # define config_representation to be body fixed
+    # s.config_representation = s.BODY_FIXED
+    # r0 = Matrix([0, 0, 0]) 
+    # r1 = Matrix([0, 0, 0]) 
     # r2 = Matrix([L1, 0, 0])
 
-    # s.B = []
-    # s.B.append(s.TransformationMatrix(t=r0))
-    # s.B.append(s.TransformationMatrix(t=r1))
-    # s.B.append(s.TransformationMatrix(t=r2))
-
+    # s.joint_screw_coord = []
+    # s.joint_screw_coord.append(s.TransformationMatrix(t=r0))
+    # s.joint_screw_coord.append(s.TransformationMatrix(t=r1))
+    # s.joint_screw_coord.append(s.TransformationMatrix(t=r2))
+    
+    
+    
     # End-effector configuration wrt last link body fixed frame in the chain
     re = Matrix([L2, 0, 0])
     s.ee = Matrix(Identity(3)).row_join(re).col_join(Matrix([0, 0, 0, 1]).T)
 
     # Joint screw coordinates in body-fixed representation computed from screw coordinates in IFR
-    # s.X = []
-    # s.X.append(s.SE3AdjInvMatrix(s.A[0])*s.Y[0])
-    # s.X.append(s.SE3AdjInvMatrix(s.A[1])*s.Y[1])
-    # s.X.append(s.SE3AdjInvMatrix(s.A[2])*s.Y[2])
-
+    # s.joint_screw_coord = []
+    # s.joint_screw_coord.append(s.SE3AdjInvMatrix(s.A[0])*s.Y[0])
+    # s.joint_screw_coord.append(s.SE3AdjInvMatrix(s.A[1])*s.Y[1])
+    # s.joint_screw_coord.append(s.SE3AdjInvMatrix(s.A[2])*s.Y[2])
+    
+    
+    
     # Joint screw coordinates in body-fixed representation
-
-    # s.X = []
-    # s.X.append(Matrix([0,0,0,-1,0,0]))
-    # s.X.append(Matrix([0,0,1,0,0,0]))
-    # s.X.append(Matrix([0,0,1,0,0,0]))
+    # s.joint_screw_coord = []
+    # s.joint_screw_coord.append(Matrix([0,0,0,-1,0,0]))
+    # s.joint_screw_coord.append(Matrix([0,0,1,0,0,0]))
+    # s.joint_screw_coord.append(Matrix([0,0,1,0,0,0]))
 
     # Mass-Inertia parameters
 
