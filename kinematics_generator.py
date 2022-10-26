@@ -8,7 +8,7 @@ from multiprocessing import Process, Queue
 import numpy
 import sympy
 from sympy import (Identity, Matrix, cancel, cos, cse, factor,
-                   lambdify, powsimp, sin, symbols, zeros)
+                   lambdify, powsimp, sin, symbols, zeros, pi, nsimplify)
 from sympy.printing.numpy import NumPyPrinter
 from sympy.simplify.cse_main import numbered_symbols
 from sympy.simplify.fu import fu
@@ -1525,11 +1525,74 @@ class SymbolicKinDyn():
         exp = exp.doit()
         return exp
 
-    # TODO: Implement planar and flaoting joints
+    def _create_topology_lists(self,robot):
+        link_names = [link.name for link in robot.links]
+        parent_names = []
+        connection_type = []
+        body_index = []
+        parent = []
+        child = []
+        support = []
+        for name in link_names:
+            for joint in robot.joints:
+                if joint.child == name:
+                    parent_names.append(joint.parent)
+                    body_index.append(None)
+                    if joint.joint_type == "fixed":
+                        connection_type.append(0)
+                    else:
+                        connection_type.append(1)
+                    break
+            else:
+                parent_names.append(None)
+                connection_type.append(None)
+                body_index.append(0)
+
+        while None in body_index:
+            i1 = body_index.index(None) # i of current link
+            while body_index[link_names.index(parent_names[i1])] is None:
+                i1 = link_names.index(parent_names[i1])
+            if connection_type[i1] == 0:
+                body_index[i1] = -1
+                continue
+            i2 = link_names.index(parent_names[i1]) # i of parent link
+            while body_index[i2] == -1:
+                i2 = link_names.index(parent_names[i2])
+            index = body_index[i2]+1
+            while index in body_index:
+                index+=1
+            body_index[i1] = index
+            
+        parent = [None for _ in range(max(body_index))] 
+        child = [[] for _ in range(max(body_index))]
+        support = [[] for _ in range(max(body_index))]
+
+        for i in range(len(body_index)):
+            idx = body_index[i]
+            if idx <= 0:
+                continue
+            i1 = link_names.index(parent_names[i]) # parent index
+            while body_index[i1] == -1:
+                i1 = link_names.index(parent_names[i1])
+            parent[idx-1] = body_index[i1]
+            if body_index[i1] > 0:
+                child[body_index[i1]-1].append(idx)
+            i2 = i
+            while body_index[i2] != 0:
+                if  body_index[i2] > 0: # ignore fixed links
+                    support[idx-1].append(body_index[i2])
+                i2 = link_names.index(parent_names[i2])
+            support[idx-1].reverse()
+        self.support = support
+        self.child = child
+        self.parent = parent
+            
+        
     def load_from_urdf(self, path, symbolic=True, simplify_numbers=True, cse_ex=False, tolerance=0.0001):
         robot = URDF.load(path)
         self.B = []
         self.X = []
+        self._create_topology_lists(robot)
         fixed_origin = None
         fixed_links = []
         DOF = 0
@@ -1541,7 +1604,7 @@ class SymbolicKinDyn():
                 pass
             else:
                 raise NotImplementedError(
-                    "Joint type '" + joint.joint_type+"' not implemented yet")
+                    "Joint type '" + joint.joint_type+"' not implemented yet!")
 
         ji = 0  # joint index of used joints
         jia = 0  # joint index of all joints (fixed included)
@@ -1613,8 +1676,8 @@ class SymbolicKinDyn():
             jia += 1
 
         self.Mb = []
-        I_syms = []
-        m_syms = []
+        # I_syms = []
+        # m_syms = []
         # I_syms = [symbols("I%dxx I%dxy I%dxz I%dyy I%dyz I%dzz"%(i,i,i,i,i,i)) for i in range(DOF)]
         # m_syms = [symbols("m%d cx%d cy%d cz%d"%(i,i,i,i)) for i in range(DOF)]
         i = 0
@@ -1660,7 +1723,6 @@ class SymbolicKinDyn():
                 j = i
                 # transform Mass matrix
                 while robot.links[j].name in [x[1] for x in fixed_links]:
-                    # M = joint_origins[j-1].T * M * joint_origins[j-1] # Wrong
                     M = self.SE3AdjInvMatrix(
                         joint_origins[j-1]).T * M * self.SE3AdjInvMatrix(joint_origins[j-1])
                     j -= 1
