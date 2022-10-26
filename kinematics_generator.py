@@ -1,5 +1,4 @@
 import multiprocessing
-from multiprocessing.sharedctypes import Value
 import os
 import queue
 import random
@@ -559,7 +558,7 @@ class SymbolicKinDyn():
             q (sympy.Matrix): 
                 (n,1) Generalized position vector.
             qd (sympy.Matrix): 
-                (n,1 )Generalized velocity vector.
+                (n,1) Generalized velocity vector.
             q2d (sympy.Matrix): 
                 (n,1) Generalized acceleration vector.
             simplify_expressions (bool, optional): 
@@ -1691,7 +1690,7 @@ class SymbolicKinDyn():
             t (double): Rotation angle
 
         Returns:
-            sympy.Matrix: Rotation Matrix
+            sympy.Matrix: Rotation matrix
         """
         xhat = Matrix([[0, -x[2, 0], x[1, 0]],
                        [x[2, 0], 0, -x[0, 0]],
