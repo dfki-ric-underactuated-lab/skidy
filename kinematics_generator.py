@@ -1526,40 +1526,45 @@ class SymbolicKinDyn():
         return exp
 
     def _create_topology_lists(self,robot):
-        link_names = [link.name for link in robot.links]
-        parent_names = []
-        connection_type = []
-        body_index = []
-        parent = []
-        child = []
-        support = []
+        # names of all links in urdf
+        link_names = [link.name for link in robot.links] 
+        parent_names = [] # names of parent links corresponding link_names
+        connection_type = [] # 0 for fixed, None for base, 1 else
+        body_index = [] # index of link; -1 for fixed links
+        parent = [] # parent array
+        child = [] # child array
+        support = [] # support array
+        # find parent link names and search for fixed joints
         for name in link_names:
             for joint in robot.joints:
                 if joint.child == name:
                     parent_names.append(joint.parent)
-                    body_index.append(None)
+                    body_index.append(None) # specify later
                     if joint.joint_type == "fixed":
                         connection_type.append(0)
                     else:
                         connection_type.append(1)
                     break
-            else:
+            else: # base link
                 parent_names.append(None)
                 connection_type.append(None)
                 body_index.append(0)
 
+        # generate body indices concatenating fixed bodies
         while None in body_index:
             i1 = body_index.index(None) # i of current link
+            # update until parent is already specified
             while body_index[link_names.index(parent_names[i1])] is None:
                 i1 = link_names.index(parent_names[i1])
+            # fixed links get index -1
             if connection_type[i1] == 0:
                 body_index[i1] = -1
                 continue
             i2 = link_names.index(parent_names[i1]) # i of parent link
-            while body_index[i2] == -1:
+            while body_index[i2] == -1: # find forst non fixed parent
                 i2 = link_names.index(parent_names[i2])
-            index = body_index[i2]+1
-            while index in body_index:
+            index = body_index[i2]+1 # body index
+            while index in body_index: # find first unused index
                 index+=1
             body_index[i1] = index
             
@@ -1567,18 +1572,19 @@ class SymbolicKinDyn():
         child = [[] for _ in range(max(body_index))]
         support = [[] for _ in range(max(body_index))]
 
+        # fill parent, child and support array
         for i in range(len(body_index)):
-            idx = body_index[i]
-            if idx <= 0:
+            idx = body_index[i] # get index of current body
+            if idx <= 0: # ignore base and fixed bodys
                 continue
             i1 = link_names.index(parent_names[i]) # parent index
-            while body_index[i1] == -1:
+            while body_index[i1] == -1: # find first non fixed parent
                 i1 = link_names.index(parent_names[i1])
-            parent[idx-1] = body_index[i1]
-            if body_index[i1] > 0:
-                child[body_index[i1]-1].append(idx)
+            parent[idx-1] = body_index[i1] # save parent index
+            if body_index[i1] > 0: # ignore base
+                child[body_index[i1]-1].append(idx) # save child to parent
             i2 = i
-            while body_index[i2] != 0:
+            while body_index[i2] != 0: # save all indices in support path
                 if  body_index[i2] > 0: # ignore fixed links
                     support[idx-1].append(body_index[i2])
                 i2 = link_names.index(parent_names[i2])
@@ -1588,7 +1594,8 @@ class SymbolicKinDyn():
         self.parent = parent
             
         
-    def load_from_urdf(self, path, symbolic=True, simplify_numbers=True, cse_ex=False, tolerance=0.0001):
+    def load_from_urdf(self, path, symbolic=True, simplify_numbers=True, 
+                       cse_ex=False, tolerance=0.0001):
         robot = URDF.load(path)
         self.B = []
         self.X = []
