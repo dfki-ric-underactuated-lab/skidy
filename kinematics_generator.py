@@ -21,7 +21,8 @@ class SymbolicKinDyn():
     SPACIAL = "spacial"
     
     def __init__(self, gravity_vector=None, ee=None, body_ref_config = [], 
-                 joint_screw_coord = [], config_representation = "body_fixed", Mb=[], **kwargs):
+                 joint_screw_coord = [], config_representation = "body_fixed", 
+                 Mb=[], parent = [], support = [], child = [], **kwargs):
         """SymbolicKinDyn
         Symbolic tool to compute equations of motion of serial chain 
         robots and autogenerate code from the calculated equations. 
@@ -53,6 +54,15 @@ class SymbolicKinDyn():
             Mb (list of sympy.Matrix, optional): 
                 List of Mass Inertia matrices for all links. Only 
                 necessary for inverse dynamics. Defaults to [].
+            parent (list, optional):
+                TODO
+                Defaults to [].
+            support (list, optional):
+                TODO
+                Defaults to [].
+            child (list, optional):
+                TODO
+                Defaults to [].
                 
         Usage:
             Example of an 2R Serial chain robot:
@@ -157,6 +167,9 @@ class SymbolicKinDyn():
             self.Y = kwargs["Y"]
             
         self.Mb = Mb
+        self.parent = parent
+        self.child = child
+        self.support = support
 
         # temporary vars
         self._FK_C = None
@@ -571,6 +584,7 @@ class SymbolicKinDyn():
         else:
             self._closed_form_kinematics_body_fixed(
                 q, qd, q2d, simplify_expressions, cse_ex)
+        return self.fkin
 
     def closed_form_inv_dyn_body_fixed(
         self, q, qd, q2d, WEE=zeros(6, 1), simplify_expressions=True, 
@@ -618,6 +632,7 @@ class SymbolicKinDyn():
         else:
             self._closed_form_inv_dyn_body_fixed(
                 q, qd, q2d, WEE, simplify_expressions, cse_ex)
+        return self.Q
 
     def _closed_form_kinematics_body_fixed(
         self, q, qd, q2d, simplify_expressions=True, cse_ex=False):
@@ -670,50 +685,16 @@ class SymbolicKinDyn():
         self.n = len(q)  # DOF
 
         # calc Forward kinematics
-        if self._FK_C is not None:
-            FK_C = self._FK_C
-        elif self.A:
-            # print("Using absolute configuration (A) of the body frames")
-            FK_f = [self.SE3Exp(self.Y[0], q[0])]
-            FK_C = [FK_f[0]*self.A[0]]
-            for i in range(1, self.n):
-                FK_f.append(FK_f[i-1]*self.SE3Exp(self.Y[i], q[i]))
-                FK_C.append(FK_f[i]*self.A[i])
-            self._FK_C = FK_C
-            if not self.X:
-                # Joint screw coordinates in body-fixed representation 
-                # computed from screw coordinates in IFR
-                self.X = [self.SE3AdjInvMatrix(
-                    self.A[i])*self.Y[i] for i in range(self.n)]
-
-        elif self.B:
-            # print('Using relative configuration (B) of the body frames')
-            FK_C = [self.B[0]*self.SE3Exp(self.X[0], q[0])]
-            for i in range(1, self.n):
-                FK_C.append(FK_C[i-1]*self.B[i]*self.SE3Exp(self.X[i], q[i]))
-            self._FK_C = FK_C
-        else:
-            # 'Absolute (A) or Relative (B) configuration of the bodies should be provided in class!'
-            raise ValueError("Joint screw coordinates and/or reference configuration of bodies not set.")
-
+        if self.parent and self.support:
+            FK_C, A = self._calc_A_matrix_tree(q)
+        else:    
+            FK_C, A = self._calc_A_matrix(q)
+            
         fkin = FK_C[self.n-1]*self.ee
         if simplify_expressions:
             fkin = self.simplify(fkin, cse_ex)
         self.fkin = fkin
 
-        # Block diagonal matrix A (6n x 6n) of the Adjoint of body frame
-        if self._A is not None:
-            A = self._A
-        else:
-            A = Matrix(Identity(6*self.n))
-            for i in range(self.n):
-                for j in range(i):
-                    Crel = self.SE3Inv(FK_C[i])*FK_C[j]
-                    AdCrel = self.SE3AdjMatrix(Crel)
-                    r = 6*(i)
-                    c = 6*(j)
-                    A[r:r+6, c:c+6] = AdCrel
-            self._A = A
 
         if self.J is not None:
             J = self.J
@@ -914,46 +895,12 @@ class SymbolicKinDyn():
 
         self.n = len(q)
 
-        if self._FK_C is not None:
-            FK_C = self._FK_C
-        elif self.A:
-            # print("Using absolute configuration (A) of the body frames")
-            FK_f = [self.SE3Exp(self.Y[0], q[0])]
-            FK_C = [FK_f[0]*self.A[0]]
-            for i in range(1, self.n):
-                FK_f.append(FK_f[i-1]*self.SE3Exp(self.Y[i], q[i]))
-                FK_C.append(FK_f[i]*self.A[i])
-            self._FK_C = FK_C
-            if not self.X:
-                # Joint screw coordinates in body-fixed representation 
-                # computed from screw coordinates in IFR
-                self.X = [self.SE3AdjInvMatrix(
-                    self.A[i])*self.Y[i] for i in range(self.n)]
-
-        elif self.B:
-            # print('Using relative configuration (B) of the body frames')
-            FK_C = [self.B[0]*self.SE3Exp(self.X[0], q[0])]
-            for i in range(1, self.n):
-                FK_C.append(FK_C[i-1]*self.B[i]*self.SE3Exp(self.X[i], q[i]))
-            self._FK_C = FK_C
-        else:
-            # 'Absolute (A) or Relative (B) configuration of the bodies should be provided in class!'
-            raise ValueError("Joint screw coordinates and/or reference configuration of bodies not set.")
-
-        # Block diagonal matrix A (6n x 6n) of the Adjoint of body frame
-        if self._A is not None:
-            A = self._A
-        else:
-            A = Matrix(Identity(6*self.n))
-            for i in range(self.n):
-                for j in range(i):
-                    Crel = self.SE3Inv(FK_C[i])*FK_C[j]
-                    AdCrel = self.SE3AdjMatrix(Crel)
-                    r = 6*(i)
-                    c = 6*(j)
-                    A[r:r+6, c:c+6] = AdCrel
-            self._A = A
-
+        # calc Forward kinematics
+        if self.parent and self.support:
+            FK_C, A = self._calc_A_matrix_tree(q)
+        else:    
+            FK_C, A = self._calc_A_matrix(q)
+        
         if self.J is not None:
             J = self.J  # system level Jacobian
             V = self._V  # system twist
@@ -1104,49 +1051,16 @@ class SymbolicKinDyn():
         self.n = len(q)
         self.queue_dict["subex_dict"] = Queue()
 
-        if self._FK_C is not None:
-            FK_C = self._FK_C
-        elif self.A:
-            # print("Using absolute configuration (A) of the body frames")
-            FK_f = [self.SE3Exp(self.Y[0], q[0])]
-            FK_C = [FK_f[0]*self.A[0]]
-            for i in range(1, self.n):
-                FK_f.append(FK_f[i-1]*self.SE3Exp(self.Y[i], q[i]))
-                FK_C.append(FK_f[i]*self.A[i])
-            self._FK_C = FK_C
-            if not self.X:
-                # Joint screw coordinates in body-fixed representation 
-                # computed from screw coordinates in IFR
-                self.X = [self.SE3AdjInvMatrix(
-                    self.A[i])*self.Y[i] for i in range(self.n)]
-
-        elif self.B:
-            # print('Using relative configuration (B) of the body frames')
-            FK_C = [self.B[0]*self.SE3Exp(self.X[0], q[0])]
-            for i in range(1, self.n):
-                FK_C.append(FK_C[i-1]*self.B[i]*self.SE3Exp(self.X[i], q[i]))
-            self._FK_C = FK_C
-        else:
-            # 'Absolute (A) or Relative (B) configuration of the bodies should be provided in class!'
-            raise ValueError("Joint screw coordinates and/or reference configuration of bodies not set.")
-            
+        # calc Forward kinematics
+        if self.parent and self.support:
+            FK_C, A = self._calc_A_matrix_tree(q)
+        else:    
+            FK_C, A = self._calc_A_matrix(q)
+        
         self._set_value("fkin", FK_C[self.n-1]*self.ee)
         if simplify_expressions:
             self._start_simplification_process("fkin", cse_ex)
 
-        # Block diagonal matrix A (6n x 6n) of the Adjoint of body frame
-        if self._A is not None:
-            A = self._A
-        else:
-            A = Matrix(Identity(6*self.n))
-            for i in range(self.n):
-                for j in range(i):
-                    Crel = self.SE3Inv(FK_C[i])*FK_C[j]
-                    AdCrel = self.SE3AdjMatrix(Crel)
-                    r = 6*(i)
-                    c = 6*(j)
-                    A[r:r+6, c:c+6] = AdCrel
-            self._A = A
 
         if self.J is not None:
             self._set_value("J", self.J)
@@ -1428,46 +1342,12 @@ class SymbolicKinDyn():
         self.n = len(q)
         self.queue_dict["subex_dict"] = Queue()
 
-        if self._FK_C is not None:
-            FK_C = self._FK_C
-        elif self.A:
-            # print("Using absolute configuration (A) of the body frames")
-            FK_f = [self.SE3Exp(self.Y[0], q[0])]
-            FK_C = [FK_f[0]*self.A[0]]
-            for i in range(1, self.n):
-                FK_f.append(FK_f[i-1]*self.SE3Exp(self.Y[i], q[i]))
-                FK_C.append(FK_f[i]*self.A[i])
-            self._FK_C = FK_C
-            if not self.X:
-                # Joint screw coordinates in body-fixed representation 
-                # computed from screw coordinates in IFR
-                self.X = [self.SE3AdjInvMatrix(
-                    self.A[i])*self.Y[i] for i in range(self.n)]
-
-        elif self.B:
-            # print('Using relative configuration (B) of the body frames')
-            FK_C = [self.B[0]*self.SE3Exp(self.X[0], q[0])]
-            for i in range(1, self.n):
-                FK_C.append(FK_C[i-1]*self.B[i]*self.SE3Exp(self.X[i], q[i]))
-            self._FK_C = FK_C
-        else:
-            # 'Absolute (A) or Relative (B) configuration of the bodies should be provided in class!'
-            raise ValueError("Joint screw coordinates and/or reference configuration of bodies not set.")
-
-        # Block diagonal matrix A (6n x 6n) of the Adjoint of body frame
-        if self._A is not None:
-            A = self._A
-        else:
-            A = Matrix(Identity(6*self.n))
-            for i in range(self.n):
-                for j in range(i):
-                    Crel = self.SE3Inv(FK_C[i])*FK_C[j]
-                    AdCrel = self.SE3AdjMatrix(Crel)
-                    r = 6*(i)
-                    c = 6*(j)
-                    A[r:r+6, c:c+6] = AdCrel
-            self._A = A
-
+        # calc Forward kinematics
+        if self.parent and self.support:
+            FK_C, A = self._calc_A_matrix_tree(q)
+        else:    
+            FK_C, A = self._calc_A_matrix(q)
+        
         if self.J is not None:
             self._set_value("J", self.J)
             self._set_value("V", self._V)
@@ -2063,3 +1943,99 @@ class SymbolicKinDyn():
         expression_dict = self.get_expressions_dict()
         expressions = [expression_dict[i] for i in expression_dict]
         return expressions
+
+    def _calc_A_matrix(self,q):
+        # calc Forward kinematics
+        if self._FK_C is not None:
+            FK_C = self._FK_C
+        elif self.A:
+            # print("Using absolute configuration (A) of the body frames")
+            FK_f = [self.SE3Exp(self.Y[0], q[0])]
+            FK_C = [FK_f[0]*self.A[0]]
+            for i in range(1, self.n):
+                FK_f.append(FK_f[i-1]*self.SE3Exp(self.Y[i], q[i]))
+                FK_C.append(FK_f[i]*self.A[i])
+            self._FK_C = FK_C
+            if not self.X:
+                # Joint screw coordinates in body-fixed representation 
+                # computed from screw coordinates in IFR
+                self.X = [self.SE3AdjInvMatrix(
+                    self.A[i])*self.Y[i] for i in range(self.n)]
+
+        elif self.B:
+            # print('Using relative configuration (B) of the body frames')
+            FK_C = [self.B[0]*self.SE3Exp(self.X[0], q[0])]
+            for i in range(1, self.n):
+                FK_C.append(FK_C[i-1]*self.B[i]*self.SE3Exp(self.X[i], q[i]))
+            self._FK_C = FK_C
+        else:
+            # 'Absolute (A) or Relative (B) configuration of the bodies should be provided in class!'
+            raise ValueError("Joint screw coordinates and/or reference configuration of bodies not set.")
+
+        # Block diagonal matrix A (6n x 6n) of the Adjoint of body frame
+        if self._A is not None:
+            A = self._A
+        else:
+            A = Matrix(Identity(6*self.n))
+            for i in range(self.n):
+                for j in range(i):
+                    Crel = self.SE3Inv(FK_C[i])*FK_C[j]
+                    AdCrel = self.SE3AdjMatrix(Crel)
+                    r = 6*(i)
+                    c = 6*(j)
+                    A[r:r+6, c:c+6] = AdCrel
+            self._A = A
+        return FK_C, A
+
+    def _calc_A_matrix_tree(self,q):
+        if self._FK_C is not None:
+            FK_C = self._FK_C
+        elif self.A:
+            # print("Using absolute configuration (A) of the body frames")
+            FK_f = []
+            FK_C = []
+            for i in range(self.n):
+                if self.parent[i] == 0: # bodies with no predecessor
+                    # Initialization for the first body
+                    FK_f.append(self.SE3Exp(self.Y[i], q[i]))
+                    FK_C.append(FK_f[i]*self.A[i])
+                else:
+                    FK_f.append(FK_f[self.parent[i]-1]*self.SE3Exp(self.Y[i], q[i]))
+                    FK_C.append(FK_f[i]*self.A[i])      
+            self._FK_C = FK_C
+            if not self.X:
+                # Joint screw coordinates in body-fixed representation 
+                # computed from screw coordinates in IFR
+                self.X = [self.SE3AdjInvMatrix(
+                    self.A[i])*self.Y[i] for i in range(self.n)]
+
+        elif self.B:
+            # print('Using relative configuration (B) of the body frames')
+            FK_C = []
+            for i in range(self.n):
+                if self.parent[i] == 0: # bodies with no predecessor
+                    # Initialization for the first body
+                    FK_C.append(self.B[i]*self.SE3Exp(self.X[i], q[i]))
+                else:
+                    FK_C.append(FK_C[self.parent[i]-1]*self.B[i]*self.SE3Exp(self.X[i], q[i]))
+        else:
+            # 'Absolute (A) or Relative (B) configuration of the bodies should be provided in class!'
+            raise ValueError("Joint screw coordinates and/or reference configuration of bodies not set.")
+
+        # Block diagonal matrix A (6n x 6n) of the Adjoint of body frame
+        if self._A is not None:
+            A = self._A
+        else:
+            A = Matrix(Identity(6*self.n))
+            for i in range(self.n):        
+                if True:
+                # if self.parent[i] != 0:
+                    for k in self.support[i]:
+                        j = k-1
+                        Crel = self.SE3Inv(FK_C[i])*FK_C[j]
+                        AdCrel = self.SE3AdjMatrix(Crel)
+                        r = 6*(i)
+                        c = 6*(j)
+                        A[r:r+6, c:c+6] = AdCrel
+            self._A = A
+        return FK_C, A
