@@ -1593,9 +1593,19 @@ class SymbolicKinDyn():
         self.child = child
         self.parent = parent
             
+    def _nsimplify(self,num, *args, max_denominator = 0, **kwargs):
+        ex = nsimplify(num,*args,**kwargs)
+        if ex.is_rational and max_denominator:
+            try:
+                d = ex.denominator()
+                if d > max_denominator:
+                    return num
+            except ValueError:
+                return ex
+        return ex
         
     def load_from_urdf(self, path, symbolic=True, simplify_numbers=True, 
-                       cse_ex=False, tolerance=0.0001):
+                       cse_ex=False, tolerance=0.0001, max_denominator = 9):
         robot = URDF.load(path)
         self.B = []
         self.X = []
@@ -1626,9 +1636,14 @@ class SymbolicKinDyn():
                 xyzrpylist = []
                 if simplify_numbers:
                     for i in range(6):
-                        if nsimplify(xyz_rpy[i], tolerance=tolerance) in [0, -1, 1, pi, -pi, pi/2, -pi/2, 3*pi/2, -3*pi/2]:
+                        if (self._nsimplify(xyz_rpy[i], 
+                                           tolerance=tolerance, 
+                                           max_denominator=max_denominator) 
+                            in [0, -1, 1, pi, -pi, pi/2, -pi/2, 3*pi/2, -3*pi/2]
+                            ):
                             xyzrpylist.append(
-                                nsimplify(xyz_rpy[i], tolerance=tolerance))
+                                self._nsimplify(xyz_rpy[i], tolerance=tolerance,
+                                                max_denominator=max_denominator))
                         # elif nsimplify(xyz_rpy[i],tolerance=tolerance) == 1:
                             # xyzrpylist.append(1)
                         # elif nsimplify(xyz_rpy[i],tolerance=tolerance) == -1:
@@ -1655,15 +1670,17 @@ class SymbolicKinDyn():
             elif simplify_numbers:
                 for i in range(4):
                     for j in range(4):
-                        origin[i, j] = nsimplify(
-                            origin[i, j], [pi], tolerance=tolerance)
+                        origin[i, j] = self._nsimplify(
+                            origin[i, j], [pi], tolerance=tolerance,
+                            max_denominator=max_denominator)
             joint_origins.append(origin)
             if joint.joint_type in ["revolute", "continuous", "prismatic"]:
                 # origin = Matrix(joint.origin)
                 axis = Matrix(joint.axis)
                 if simplify_numbers:
                     for i in range(3):
-                        axis[i] = nsimplify(axis[i], [pi], tolerance=tolerance)
+                        axis[i] = self._nsimplify(axis[i], [pi], tolerance=tolerance,
+                                            max_denominator=max_denominator)
                 if fixed_origin:
                     origin *= fixed_origin
                     fixed_origin = None
@@ -1711,12 +1728,14 @@ class SymbolicKinDyn():
                 if simplify_numbers:
                     for i in range(4):
                         for j in range(4):
-                            inertiaorigin[i, j] = nsimplify(
-                                inertiaorigin[i, j], [pi], tolerance=tolerance)
+                            inertiaorigin[i, j] = self._nsimplify(
+                                inertiaorigin[i, j], [pi], tolerance=tolerance,
+                                max_denominator=max_denominator)
                     for i in range(3):
                         for j in range(3):
-                            inertia[i, j] = nsimplify(
-                                inertia[i, j], [pi], tolerance=tolerance)
+                            inertia[i, j] = self._nsimplify(
+                                inertia[i, j], [pi], tolerance=tolerance,
+                                max_denominator=max_denominator)
                     # mass = nsimplify(mass, [pi], tolerance=tolerance)
                 I = Matrix(inertia)
                 m = mass
