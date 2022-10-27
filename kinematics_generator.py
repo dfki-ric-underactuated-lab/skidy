@@ -8,12 +8,12 @@ from multiprocessing import Process, Queue
 import numpy
 import sympy
 from sympy import (Identity, Matrix, cancel, cos, cse, factor,
-                   lambdify, powsimp, sin, symbols, zeros)
+                   lambdify, powsimp, sin, symbols, zeros, pi, nsimplify)
 from sympy.printing.numpy import NumPyPrinter
 from sympy.simplify.cse_main import numbered_symbols
 from sympy.simplify.fu import fu
 from sympy.utilities.codegen import codegen
-
+from urdfpy import URDF, matrix_to_xyz_rpy
 
 class SymbolicKinDyn():
     BODY_FIXED = "body_fixed"
@@ -1525,6 +1525,243 @@ class SymbolicKinDyn():
         exp = exp.doit()
         return exp
 
+    def _create_topology_lists(self,robot):
+        # names of all links in urdf
+        link_names = [link.name for link in robot.links] 
+        parent_names = [] # names of parent links corresponding link_names
+        connection_type = [] # 0 for fixed, None for base, 1 else
+        body_index = [] # index of link; -1 for fixed links
+        parent = [] # parent array
+        child = [] # child array
+        support = [] # support array
+        # find parent link names and search for fixed joints
+        for name in link_names:
+            for joint in robot.joints:
+                if joint.child == name:
+                    parent_names.append(joint.parent)
+                    body_index.append(None) # specify later
+                    if joint.joint_type == "fixed":
+                        connection_type.append(0)
+                    else:
+                        connection_type.append(1)
+                    break
+            else: # base link
+                parent_names.append(None)
+                connection_type.append(None)
+                body_index.append(0)
+
+        # generate body indices concatenating fixed bodies
+        while None in body_index:
+            i1 = body_index.index(None) # i of current link
+            # update until parent is already specified
+            while body_index[link_names.index(parent_names[i1])] is None:
+                i1 = link_names.index(parent_names[i1])
+            # fixed links get index -1
+            if connection_type[i1] == 0:
+                body_index[i1] = -1
+                continue
+            i2 = link_names.index(parent_names[i1]) # i of parent link
+            while body_index[i2] == -1: # find forst non fixed parent
+                i2 = link_names.index(parent_names[i2])
+            index = body_index[i2]+1 # body index
+            while index in body_index: # find first unused index
+                index+=1
+            body_index[i1] = index
+            
+        parent = [None for _ in range(max(body_index))] 
+        child = [[] for _ in range(max(body_index))]
+        support = [[] for _ in range(max(body_index))]
+
+        # fill parent, child and support array
+        for i in range(len(body_index)):
+            idx = body_index[i] # get index of current body
+            if idx <= 0: # ignore base and fixed bodys
+                continue
+            i1 = link_names.index(parent_names[i]) # parent index
+            while body_index[i1] == -1: # find first non fixed parent
+                i1 = link_names.index(parent_names[i1])
+            parent[idx-1] = body_index[i1] # save parent index
+            if body_index[i1] > 0: # ignore base
+                child[body_index[i1]-1].append(idx) # save child to parent
+            i2 = i
+            while body_index[i2] != 0: # save all indices in support path
+                if  body_index[i2] > 0: # ignore fixed links
+                    support[idx-1].append(body_index[i2])
+                i2 = link_names.index(parent_names[i2])
+            support[idx-1].reverse()
+        self.support = support
+        self.child = child
+        self.parent = parent
+            
+    def _nsimplify(self,num, *args, max_denominator = 0, **kwargs):
+        ex = nsimplify(num,*args,**kwargs)
+        if ex.is_rational and max_denominator:
+            try:
+                d = ex.denominator()
+                if d > max_denominator:
+                    return num
+            except ValueError:
+                return ex
+        return ex
+        
+    def load_from_urdf(self, path, symbolic=True, simplify_numbers=True, 
+                       cse_ex=False, tolerance=0.0001, max_denominator = 9):
+        robot = URDF.load(path)
+        self.B = []
+        self.X = []
+        self._create_topology_lists(robot)
+        fixed_origin = None
+        fixed_links = []
+        DOF = 0
+        xyz_rpy_syms = []
+        for joint in robot.joints:
+            if joint.joint_type in ["revolute", "continuous", "prismatic"]:
+                DOF += 1
+            elif joint.joint_type in ["fixed"]:
+                pass
+            else:
+                raise NotImplementedError(
+                    "Joint type '" + joint.joint_type+"' not implemented yet!")
+
+        ji = 0  # joint index of used joints
+        jia = 0  # joint index of all joints (fixed included)
+        joint_origins = []
+        for joint in robot.joints:
+            name = joint.name
+            origin = Matrix(joint.origin)
+            if symbolic:
+                xyz_rpy = matrix_to_xyz_rpy(joint.origin)
+                xyz_rpy_syms.append(symbols(
+                    " ".join([name+"_%s" % s for s in ["x", "y", "z", "roll", "pitch", "yar"]])))
+                xyzrpylist = []
+                if simplify_numbers:
+                    for i in range(6):
+                        if (self._nsimplify(xyz_rpy[i], 
+                                           tolerance=tolerance, 
+                                           max_denominator=max_denominator) 
+                            in [0, -1, 1, pi, -pi, pi/2, -pi/2, 3*pi/2, -3*pi/2]
+                            ):
+                            xyzrpylist.append(
+                                self._nsimplify(xyz_rpy[i], tolerance=tolerance,
+                                                max_denominator=max_denominator))
+                        # elif nsimplify(xyz_rpy[i],tolerance=tolerance) == 1:
+                            # xyzrpylist.append(1)
+                        # elif nsimplify(xyz_rpy[i],tolerance=tolerance) == -1:
+                            # xyzrpylist.append(-1)
+                        else:
+                            xyzrpylist.append(xyz_rpy_syms[jia][i])
+                            self.assignment_dict[xyz_rpy_syms[jia]
+                                                 [i]] = xyz_rpy[i]
+                else:
+                    for i in range(6):
+                        if xyz_rpy[i] == 0:
+                            xyzrpylist.append(0)
+                        elif xyz_rpy[i] == 1:
+                            xyzrpylist.append(1)
+                        elif xyz_rpy[i] == -1:
+                            xyzrpylist.append(-1)
+                        else:
+                            xyzrpylist.append(xyz_rpy_syms[jia][i])
+                            self.assignment_dict[xyz_rpy_syms[jia]
+                                                 [i]] = xyz_rpy[i]
+                origin = self.xyz_rpy_to_matrix(xyzrpylist)
+                if cse_ex:
+                    origin = self._cse_expression(origin)
+            elif simplify_numbers:
+                for i in range(4):
+                    for j in range(4):
+                        origin[i, j] = self._nsimplify(
+                            origin[i, j], [pi], tolerance=tolerance,
+                            max_denominator=max_denominator)
+            joint_origins.append(origin)
+            if joint.joint_type in ["revolute", "continuous", "prismatic"]:
+                # origin = Matrix(joint.origin)
+                axis = Matrix(joint.axis)
+                if simplify_numbers:
+                    for i in range(3):
+                        axis[i] = self._nsimplify(axis[i], [pi], tolerance=tolerance,
+                                            max_denominator=max_denominator)
+                if fixed_origin:
+                    origin *= fixed_origin
+                    fixed_origin = None
+                self.B.append(Matrix(origin))
+
+                if joint.joint_type in ["revolute", "continuous"]:
+                    self.X.append(Matrix(axis).col_join(Matrix([0, 0, 0])))
+                else:
+                    self.X.append(Matrix(Matrix([0, 0, 0])).col_join(axis))
+                ji += 1
+            elif joint.joint_type == "fixed":
+                if fixed_origin:
+                    fixed_origin *= origin
+                else:
+                    fixed_origin = origin
+                fixed_links.append((joint.parent, joint.child))
+            jia += 1
+
+        self.Mb = []
+        # I_syms = []
+        # m_syms = []
+        # I_syms = [symbols("I%dxx I%dxy I%dxz I%dyy I%dyz I%dzz"%(i,i,i,i,i,i)) for i in range(DOF)]
+        # m_syms = [symbols("m%d cx%d cy%d cz%d"%(i,i,i,i)) for i in range(DOF)]
+        i = 0
+        first_non_fixed = 1
+        for link in robot.links:
+            name = link.name
+            # ignore base link
+            if i < first_non_fixed:
+                if name in [x[1] for x in fixed_links]:
+                    first_non_fixed += 1
+                i += 1
+                continue
+            inertia = Matrix(link.inertial.inertia)
+            mass = link.inertial.mass
+            inertiaorigin = Matrix(link.inertial.origin)
+            if symbolic:
+                I_syms = symbols("Ixx_%s Ixy_%s Ixz_%s Iyy_%s Iyz_%s Izz_%s" % (
+                    name, name, name, name, name, name))
+                c_syms = symbols("cx_%s cy_%s cz_%s" % (name, name, name))
+                I = self.InertiaMatrix(*I_syms)
+                m = symbols("m_%s" % name)
+                cg = Matrix([*c_syms])
+            else:
+                if simplify_numbers:
+                    for i in range(4):
+                        for j in range(4):
+                            inertiaorigin[i, j] = self._nsimplify(
+                                inertiaorigin[i, j], [pi], tolerance=tolerance,
+                                max_denominator=max_denominator)
+                    for i in range(3):
+                        for j in range(3):
+                            inertia[i, j] = self._nsimplify(
+                                inertia[i, j], [pi], tolerance=tolerance,
+                                max_denominator=max_denominator)
+                    # mass = nsimplify(mass, [pi], tolerance=tolerance)
+                I = Matrix(inertia)
+                m = mass
+                cg = Matrix(inertiaorigin[0:3, 3])
+            # if is fixed child: # TODO: find out what to do
+            # cg =
+            # I =
+            # m =
+            M = self.MassMatrixMixedData(m, I, cg)
+            if name in [x[1] for x in fixed_links]:
+                j = i
+                # transform Mass matrix
+                while robot.links[j].name in [x[1] for x in fixed_links]:
+                    M = self.SE3AdjInvMatrix(
+                        joint_origins[j-1]).T * M * self.SE3AdjInvMatrix(joint_origins[j-1])
+                    j -= 1
+                self.Mb[-1] += M
+                i += 1
+                continue
+            self.Mb.append(M)
+            i += 1
+
+        # for link in robot.links:
+        #     self.Mb.append(self.MassMatrixMixedData())
+        return
+
     def dhToScrewCoord(self, DH_param_table):
         """Build screw coordinate paramters (joint axis frames and 
         body reference frames) from a given modified Denavit-Hartenberg 
@@ -1758,6 +1995,63 @@ class SymbolicKinDyn():
                     [(-COM[2])*m, 0, COM[0]*m, 0, m, 0],
                     [COM[1]*m, (-COM[0])*m, 0, 0, 0, m]])
         return M
+
+    @staticmethod
+    def rpy_to_matrix(coords):
+        """Convert roll-pitch-yaw coordinates to a 3x3 homogenous rotation matrix.
+
+        Adapted from urdfpy 
+
+        The roll-pitch-yaw axes in a typical URDF are defined as a
+        rotation of ``r`` radians around the x-axis followed by a rotation of
+        ``p`` radians around the y-axis followed by a rotation of ``y`` radians
+        around the z-axis. These are the Z1-Y2-X3 Tait-Bryan angles. See
+        Wikipedia_ for more information.
+
+        .. _Wikipedia: https://en.wikipedia.org/wiki/Euler_angles#Rotation_matrix
+
+        Parameters
+        ----------
+        coords : (3,) float
+            The roll-pitch-yaw coordinates in order (x-rot, y-rot, z-rot).
+
+        Returns
+        -------
+        R : (3,3) float
+            The corresponding homogenous 3x3 rotation matrix.
+        """
+        c3 = cos(coords[0])
+        c2 = cos(coords[1])
+        c1 = cos(coords[2])
+        s3 = sin(coords[0])
+        s2 = sin(coords[1])
+        s1 = sin(coords[2])
+        return Matrix([
+            [c1 * c2, (c1 * s2 * s3) - (c3 * s1), (s1 * s3) + (c1 * c3 * s2)],
+            [c2 * s1, (c1 * c3) + (s1 * s2 * s3), (c3 * s1 * s2) - (c1 * s3)],
+            [-s2, c2 * s3, c2 * c3]
+        ])
+
+    @staticmethod
+    def xyz_rpy_to_matrix(xyz_rpy):
+        """Convert xyz_rpy coordinates to a 4x4 homogenous matrix.
+
+        Adapted from urdfpy
+
+        Parameters
+        ----------
+        xyz_rpy : (6,) float
+            The xyz_rpy vector.
+
+        Returns
+        -------
+        matrix : (4,4) float
+            The homogenous transform matrix.
+        """
+        matrix = Matrix(Identity(4))
+        matrix[:3, 3] = xyz_rpy[:3]
+        matrix[:3, :3] = SymbolicKinDyn.rpy_to_matrix(xyz_rpy[3:])
+        return matrix
 
     def _set_value_as_process(self, name, target):
         """Set return value of target as value to queue in 
