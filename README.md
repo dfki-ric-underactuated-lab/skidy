@@ -4,17 +4,30 @@ Symbolic kinematics and dynamics model generation using Equations of Motion in c
 This python file is almost a copy of the Matlab symbolic kinematics and dynamics generation tool.
 
 
-# Requirements
-Sympy (Version >= 1.8)
+## Install
+The project requires the following packages:
+- sympy (Version >= 1.8)
 ```
 python3 -m pip install --upgrade sympy
 ```
-urdfpy
+- numpy
+```
+python3 -m pip install numpy
+```
+- urdfpy
 ```
 python3 -m pip install urdfpy
 ```
+- regex
+```
+python3 -m pip install regex
+```
 
-# Usage
+To install all dependencies use:
+```
+python3 setup.py install --user
+```
+## Usage
 The script kinematics generator contains one class `SymbolicKinDyn` which contains all needed functions.
 This class has the attributes `gravity_vector`, `ee`, `A`, `B`, `X`, `Y` and `Mb`, which have to be set as described in https://git.hb.dfki.de/underactuated-robotics/symbolic_kinematics_and_dynamics/-/blob/master/documentation/main.pdf.
 
@@ -28,12 +41,19 @@ The inverse dynamics is calculated using:
 `closed_form_inv_dyn_body_fixed(q,dq,ddq)`.
 
 
-## Code generation
+### Code generation
 There exists a code generation function, which can generate python, Matlab/Octave and C (C99) code. 
 
 This can be done with:
 `generateCode()`
 See docstring for more options.
 
-# Shortcomings
+## Unit testing
+To run the unit tests use:
+```
+python3 ./unit_testing/unit_testing.py
+```
+
+## Benchmarking
+## Shortcomings
 Currently, the expression simplification takes ages for higher dimension system with 3 or 4 rotational degrees of freedom. 

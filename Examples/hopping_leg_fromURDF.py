@@ -1,4 +1,5 @@
 from kinematics_generator import SymbolicKinDyn
+import os
 
 from sympy import symbols, Matrix, Identity
 
@@ -17,8 +18,7 @@ s.gravity_vector = Matrix([0,0,g])
 re = Matrix([0, 0, L2])
 s.ee = Matrix(Identity(3)).row_join(re).col_join(Matrix([0, 0, 0, 1]).T)
 
-# change path
-s.load_from_urdf("/home/hannah/DFKI/hopping_leg/model/with_rails/urdf/v7.urdf",symbolic=0, simplify_numbers=0, cse_ex=0)
+s.load_from_urdf(os.path.join(os.path.dirname(__file__),"urdf/hopping_leg.urdf"),symbolic=1, simplify_numbers=1, cse_ex=1)
 
 
 q = Matrix([q0,q1, q2])
@@ -26,8 +26,9 @@ qd = Matrix([dq0, dq1, dq2])
 q2d = Matrix([ddq0, ddq1, ddq2])
 
 # Kinematics
-F = s.closed_form_kinematics_body_fixed(q, qd, q2d, simplify_expressions = True)
-Q = s.closed_form_inv_dyn_body_fixed(q,qd,q2d, simplify_expressions=True)
+F = s.closed_form_kinematics_body_fixed(q, qd, q2d, simplify_expressions=0,cse_ex=1)
+# Q = s.closed_form_inv_dyn_body_fixed(q,qd,q2d, simplify_expressions=0)
 
 print(F)
-print(Q)
+s.generateCode(python=1,C=0,Matlab=0,name="hlurdfcse")
+# print(Q)

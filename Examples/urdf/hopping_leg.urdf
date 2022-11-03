@@ -1,0 +1,275 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- This URDF was automatically created by SolidWorks to URDF Exporter! Originally created by Stephen Brawner (brawner@gmail.com) 
+     Commit Version: 1.6.0-1-g15f4949  Build Version: 1.6.7594.29634
+     For more information, please see http://wiki.ros.org/sw_urdf_exporter -->
+<robot
+  name="v7">
+  <link
+    name="base_link">
+    <inertial>
+      <origin
+        xyz="-0.061623 -0.0056536 0.17591"
+        rpy="0 0 0" />
+      <mass
+        value="15.348" />
+      <inertia
+        ixx="0.85774"
+        ixy="-8.2576E-06"
+        ixz="-0.035668"
+        iyy="1.0044"
+        iyz="0.035668"
+        izz="0.78062" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="../meshes/base_link.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.75294 0.75294 0.75294 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="../meshes/base_link.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <link
+    name="slider">
+    <inertial>
+      <origin
+        xyz="0.01039 -8.6308E-05 -0.00018678"
+        rpy="0 0 0" />
+      <mass
+        value="0.37766" />
+      <inertia
+        ixx="0.00016094"
+        ixy="7.2687E-08"
+        ixz="-6.3886E-08"
+        iyy="0.00011183"
+        iyz="2.8019E-07"
+        izz="6.5676E-05" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="../meshes/slider.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.75294 0.75294 0.75294 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="../meshes/slider.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="rail_prismatic"
+    type="prismatic">
+    <origin
+      xyz="0 0 0"
+      rpy="0 0 0" />
+    <parent
+      link="base_link" />
+    <child
+      link="slider" />
+    <axis
+      xyz="0 0 1" />
+    <limit
+      lower="0"
+      upper="1.5"
+      effort="0"
+      velocity="0" />
+  </joint>
+  <link
+    name="hip">
+    <inertial>
+      <origin
+        xyz="0.0027379 -0.00020066 -0.056426"
+        rpy="0 0 0" />
+      <mass
+        value="0.53716" />
+      <inertia
+        ixx="0.00057698"
+        ixy="1.5435E-06"
+        ixz="-1.1156E-08"
+        iyy="0.00033506"
+        iyz="1.9459E-08"
+        izz="0.00034484" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="../meshes/hip.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.75294 0.75294 0.75294 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="../meshes/hip.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="force_sensor"
+    type="fixed">
+    <origin
+      xyz="0.036 0 0"
+      rpy="-1.5708 0 1.5708" />
+    <parent
+      link="slider" />
+    <child
+      link="hip" />
+    <axis
+      xyz="0 0 0" />
+    <limit
+      lower="0"
+      upper="0"
+      effort="0"
+      velocity="0" />
+  </joint>
+  <link
+    name="link_1">
+    <inertial>
+      <origin
+        xyz="0.056105 1.0785E-05 0.039497"
+        rpy="0 0 0" />
+      <mass
+        value="1.2148" />
+      <inertia
+        ixx="0.00062248"
+        ixy="7.9566E-09"
+        ixz="1.563E-06"
+        iyy="0.00098947"
+        iyz="1.5473E-09"
+        izz="0.0014078" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="../meshes/link_1.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.75294 0.75294 0.75294 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="../meshes/link_1.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="hip_joint"
+    type="revolute">
+    <origin
+      xyz="-0.01525 0 -0.059"
+      rpy="-1.5708 0 1.5708" />
+    <parent
+      link="hip" />
+    <child
+      link="link_1" />
+    <axis
+      xyz="0 0 1" />
+    <limit
+      effort="12"
+      velocity="38.2" />
+  </joint>
+  <link
+    name="link_2">
+    <inertial>
+      <origin
+        xyz="0.096585 9.8958E-09 -6.9822E-05"
+        rpy="0 0 0" />
+      <mass
+        value="0.14334" />
+      <inertia
+        ixx="2.1335E-05"
+        ixy="-5.0085E-13"
+        ixz="9.6434E-11"
+        iyy="0.0001242"
+        iyz="-4.4738E-11"
+        izz="0.00012493" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="../meshes/link_2.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.75294 0.75294 0.75294 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="../meshes/link_2.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="knee_joint"
+    type="revolute">
+    <origin
+      xyz="0.205 0 0.099"
+      rpy="0 0 0" />
+    <parent
+      link="link_1" />
+    <child
+      link="link_2" />
+    <axis
+      xyz="0 0 1" />
+    <limit
+      effort="12"
+      velocity="38.2" />
+  </joint>
+</robot>
