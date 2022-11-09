@@ -400,7 +400,7 @@ class SymbolicKinDyn():
 
             # append cse expressions to __init__ function
             if len(self.subex_dict) > 0:
-                for i in sorted([str(j) for j in self.subex_dict]):
+                for i in sorted([str(j) for j in self.subex_dict], key=lambda x: int(regex.findall("(?<=sub)\d*",x)[0])):
                     modstring = str(self.subex_dict[symbols(i)])
                     for j in sorted([str(h) 
                                      for h in self.subex_dict[symbols(i)].free_symbols],
@@ -2278,11 +2278,13 @@ class SymbolicKinDyn():
             sympy.numbered_symbols:  Symbols
         """
         i[0] += 1
+        prefix="sub%s_%s_" % (
+            "_".join([str(j) for j in multiprocessing.current_process()._identity]), 
+            i[0]
+            )
+        prefix = prefix.replace("sub_","sub0_")
         return numbered_symbols(
-            prefix="sub%s_%s_" 
-            % ("_".join(
-                [str(j) for j in multiprocessing.current_process()._identity]), 
-               i[0]), 
+            prefix=prefix, 
             exclude=exclude)
 
     def _sort_variables(self, vars):
