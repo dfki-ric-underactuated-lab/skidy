@@ -1,4 +1,23 @@
-from sympy import Matrix, Identity, sin, cos, zeros
+from sympy import Matrix, Identity, symbols, sin, cos, zeros
+
+def generalized_vectors(DOF, startindex=0):
+    """Generate symbolic generalized vectors q, qd and q2d.
+    The symbols are named as follows:
+        q0, q1, ....., qi for joint positions.
+        dq0, dq1, ....., dqi for joint velocities.
+        ddq0, ddq1, ....., ddqi for joint accelerations.
+
+    Args:
+        DOF (int): Degrees of freedom.
+        startindex (int): Index of first joint. Defaults to 0.
+
+    Returns:
+        _type_: _description_
+    """
+    q = Matrix(symbols(" ".join(f"q{i}" for i in range(startindex,startindex+DOF))))
+    qd = Matrix(symbols(" ".join(f"dq{i}" for i in range(startindex,startindex+DOF))))
+    q2d = Matrix(symbols(" ".join(f"ddq{i}" for i in range(startindex,startindex+DOF))))
+    return q, qd, q2d
 
 def SE3AdjInvMatrix(C):
     """Compute Inverse of (6x6) Adjoint matrix for SE(3)
