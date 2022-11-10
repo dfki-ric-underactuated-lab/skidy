@@ -4,6 +4,8 @@ setup(
     name="SymbolicKinDyn",
     author="Underactuated Lab DFKI Robotics Innovation Center Bremen",
     version="0.0.0",
+    long_description=open('README.md').read(),
+    long_description_content_type='text/markdown',
     # url="",
     packages=find_packages(),
     install_requires=[

@@ -1,5 +1,5 @@
 from sympy import symbols, Matrix, Identity, init_printing
-from kinematics_generator import SymbolicKinDyn
+from kinematics_generator import SymbolicKinDyn, MassMatrixMixedData, TransformationMatrix
 
 
 if __name__ == "__main__":
@@ -33,16 +33,16 @@ if __name__ == "__main__":
     # Joint screw coordinates in spacial representation
     s.joint_screw_coord.append(Matrix([e2, y2.cross(e2)])) # revolute joint 2
 
-    # Reference configurations of bodies (i.e. of body-fixed reference frames)
+    # Reference configurations of bodies (i.e. of spacial frames)
     r0 = Matrix([0, 0, 0])
     r1 = Matrix([0, 0, 0])
     r2 = Matrix([L1, 0, 0])
 
     s.body_ref_config = []
-    s.body_ref_config.append(Matrix(Identity(3)).row_join(r0).col_join(Matrix([0, 0, 0, 1]).T))
-    s.body_ref_config.append(Matrix(Identity(3)).row_join(r1).col_join(Matrix([0, 0, 0, 1]).T))
-    s.body_ref_config.append(Matrix(Identity(3)).row_join(r2).col_join(Matrix([0, 0, 0, 1]).T))
-
+    s.body_ref_config.append(TransformationMatrix(t=r0))
+    s.body_ref_config.append(TransformationMatrix(t=r1))
+    s.body_ref_config.append(TransformationMatrix(t=r2))
+    
     # Reference configurations of bodies (i.e. of body-fixed reference frames)
     # define config_representation to be body fixed
     # s.config_representation = s.BODY_FIXED
@@ -50,10 +50,10 @@ if __name__ == "__main__":
     # r1 = Matrix([0, 0, 0]) 
     # r2 = Matrix([L1, 0, 0])
 
-    # s.joint_screw_coord = []
-    # s.joint_screw_coord.append(s.TransformationMatrix(t=r0))
-    # s.joint_screw_coord.append(s.TransformationMatrix(t=r1))
-    # s.joint_screw_coord.append(s.TransformationMatrix(t=r2))
+    # s.body_ref_config = []
+    # s.body_ref_config.append(TransformationMatrix(t=r0))
+    # s.body_ref_config.append(TransformationMatrix(t=r1))
+    # s.body_ref_config.append(TransformationMatrix(t=r2))
     
     
     
@@ -78,11 +78,11 @@ if __name__ == "__main__":
     # Mass-Inertia parameters
 
     s.Mb = []
-    s.Mb.append(s.MassMatrixMixedData(
+    s.Mb.append(MassMatrixMixedData(
         m0, Matrix(Identity(3)), Matrix([0, 0, 0])))
-    s.Mb.append(s.MassMatrixMixedData(m1, s.InertiaMatrix(
+    s.Mb.append(MassMatrixMixedData(m1, s.InertiaMatrix(
         Ixx1, Ixy1, Ixz1, Iyy1, Ixz1, Izz1), Matrix([cx1, cy1, cz1])))
-    s.Mb.append(s.MassMatrixMixedData(m2, s.InertiaMatrix(
+    s.Mb.append(MassMatrixMixedData(m2, s.InertiaMatrix(
         Ixx2, Ixy2, Ixz2, Iyy2, Ixz2, Izz2), Matrix([cx2, cy2, cz2])))
 
     # Declaring generalized vectors

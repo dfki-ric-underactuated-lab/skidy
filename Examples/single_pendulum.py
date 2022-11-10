@@ -2,7 +2,7 @@ from sympy import symbols, Matrix, Identity
 import sys
 from os.path import dirname
 sys.path.append(dirname(dirname(__file__)))
-from kinematics_generator import SymbolicKinDyn
+from kinematics_generator import SymbolicKinDyn, MassMatrixMixedData, TransformationMatrix
 
 
 if __name__ == "__main__":
@@ -35,11 +35,11 @@ if __name__ == "__main__":
     r1 = Matrix([0, 0, 0])
     
     body_ref_config = []
-    body_ref_config.append(SymbolicKinDyn.TransformationMatrix(t=r1)) # no rotation, just translation
+    body_ref_config.append(TransformationMatrix(t=r1)) # no rotation, just translation
     
     # End-effector configuration wrt last link body fixed frame in the chain
     re = Matrix([0, -L1, 0])
-    ee = SymbolicKinDyn.TransformationMatrix(t=re)
+    ee = TransformationMatrix(t=re)
 
     
     # Mass-Inertia parameters
@@ -47,7 +47,7 @@ if __name__ == "__main__":
     I1 = m1*L1**2
 
     Mb = []
-    Mb.append(SymbolicKinDyn.MassMatrixMixedData(m1, I1*Identity(3), cg1))
+    Mb.append(MassMatrixMixedData(m1, I1*Identity(3), cg1))
 
     # Declaring generalized vectors
     q = Matrix([q1])

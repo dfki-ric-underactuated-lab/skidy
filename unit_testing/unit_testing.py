@@ -3,6 +3,11 @@ import sys
 from os.path import dirname
 sys.path.append(dirname(dirname(__file__)))
 import kinematics_generator
+from kinematics_generator import (SE3AdjInvMatrix, SE3AdjMatrix, 
+                                  SE3adMatrix, SE3Exp, SE3Inv, SO3Exp, 
+                                  InertiaMatrix, TransformationMatrix, 
+                                  MassMatrixMixedData, rpy_to_matrix, 
+                                  xyz_rpy_to_matrix)
 from sympy import Matrix, cos, sin, symbols, Identity, simplify, zeros
 import random
 
@@ -53,8 +58,8 @@ def prepare(cls):
 
     # # Joint screw coordinates in body-fixed representation computed from screw coordinates in IFR
     # cls.s.joint_screw_coord = []
-    # cls.s.joint_screw_coord.append(cls.s.SE3AdjInvMatrix(cls.s.A[0])*cls.s.Y[0])
-    # cls.s.joint_screw_coord.append(cls.s.SE3AdjInvMatrix(cls.s.A[1])*cls.s.Y[1])
+    # cls.s.joint_screw_coord.append(SE3AdjInvMatrix(cls.s.A[0])*cls.s.Y[0])
+    # cls.s.joint_screw_coord.append(SE3AdjInvMatrix(cls.s.A[1])*cls.s.Y[1])
 
     # Mass-Inertia parameters
     cg1 = Matrix([cls.L1, 0, 0]).T
@@ -63,8 +68,8 @@ def prepare(cls):
     I2 = cls.m2*cls.L2**2
 
     cls.s.Mb = []
-    cls.s.Mb.append(cls.s.MassMatrixMixedData(cls.m1, I1*Identity(3), cg1))
-    cls.s.Mb.append(cls.s.MassMatrixMixedData(cls.m2, I2*Identity(3), cg2))
+    cls.s.Mb.append(MassMatrixMixedData(cls.m1, I1*Identity(3), cg1))
+    cls.s.Mb.append(MassMatrixMixedData(cls.m2, I2*Identity(3), cg2))
 
     # Declaring generalised vectors
     cls.q = Matrix([cls.q1, cls.q2])
@@ -423,13 +428,13 @@ class TestKinGen(unittest.TestCase):
     
     def testInertiaMatrix(self):
         self.assertEqual(
-            self.s.InertiaMatrix(1,2,3,4,5,6), 
+            InertiaMatrix(1,2,3,4,5,6), 
             Matrix([[1,2,3],[2,4,5],[3,5,6]])
         )
         
     def testTransformationMatrix(self):
         self.assertEqual(
-            self.s.TransformationMatrix(Matrix([[1,2,3],[4,5,6],[7,8,9]]),
+            TransformationMatrix(Matrix([[1,2,3],[4,5,6],[7,8,9]]),
                                         Matrix([10,11,12])),
             Matrix([[1,2,3,10],[4,5,6,11],[7,8,9,12],[0,0,0,1]])
         )
@@ -437,18 +442,18 @@ class TestKinGen(unittest.TestCase):
     def testSO3Exp(self):
         t = random.randint(0,100)
         self.assertEqual(
-            self.s.SO3Exp(Matrix([0,0,1]), t),
+            SO3Exp(Matrix([0,0,1]), t),
             Matrix([[cos(t),-sin(t),0],[sin(t),cos(t),0],[0,0,1]])
         )   
     
     def testSE3Exp(self):
         t = random.randint(0,100)
         self.assertEqual(
-            self.s.SE3Exp(Matrix([0,0,0,0,0,1]),t = t),
+            SE3Exp(Matrix([0,0,0,0,0,1]),t = t),
             Matrix([[1,0,0,0],[0,1,0,0],[0,0,1,t],[0,0,0,1]])
         )
         self.assertEqual(
-            self.s.SE3Exp(Matrix([0,0,1,0,0,0]),t = t),
+            SE3Exp(Matrix([0,0,1,0,0,0]),t = t),
             Matrix([[cos(t),-sin(t),0,0],[sin(t),cos(t),0,0],[0,0,1,0],[0,0,0,1]])
         )
         
@@ -478,7 +483,7 @@ class TestKinGen(unittest.TestCase):
         c3=random.randint(0,100)
         com = [c1,c2,c3]
         self.assertEqual(
-            self.s.MassMatrixMixedData(m,I,com),
+            MassMatrixMixedData(m,I,com),
             Matrix([[Ixx,Ixy,Ixz, 0,-m*c3,m*c2],
                     [Ixy,Iyy,Iyz, m*c3,0,-m*c1],
                     [Ixz,Iyz,Izz,-m*c2,m*c1,0],

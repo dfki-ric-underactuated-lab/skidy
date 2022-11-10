@@ -1,4 +1,4 @@
-from kinematics_generator import SymbolicKinDyn
+from kinematics_generator import SymbolicKinDyn, MassMatrixMixedData, TransformationMatrix
 from sympy import symbols, Matrix, Identity, init_printing
 import sys
 from os.path import dirname
@@ -44,12 +44,12 @@ if __name__ == "__main__":
     
     body_ref_config = []
     # no rotation, just translation
-    body_ref_config.append(SymbolicKinDyn.TransformationMatrix(t=r1))
-    body_ref_config.append(SymbolicKinDyn.TransformationMatrix(t=r2))
+    body_ref_config.append(TransformationMatrix(t=r1))
+    body_ref_config.append(TransformationMatrix(t=r2))
     
     # End-effector configuration wrt last link body fixed frame in the chain
     re = Matrix([0, -L2, 0])
-    ee = SymbolicKinDyn.TransformationMatrix(t=re)
+    ee = TransformationMatrix(t=re)
 
     # Mass-Inertia parameters
     cg1 = Matrix([0, -L1, 0]).T
@@ -58,8 +58,8 @@ if __name__ == "__main__":
     I2 = m2*L2**2
 
     Mb = []
-    Mb.append(SymbolicKinDyn.MassMatrixMixedData(m1, I1*Identity(3), cg1))
-    Mb.append(SymbolicKinDyn.MassMatrixMixedData(m2, I2*Identity(3), cg2))
+    Mb.append(MassMatrixMixedData(m1, I1*Identity(3), cg1))
+    Mb.append(MassMatrixMixedData(m2, I2*Identity(3), cg2))
 
     # Declaring generalized vectors
     q = Matrix([q1, q2])

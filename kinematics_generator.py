@@ -15,9 +15,268 @@ from sympy.simplify.fu import fu
 from sympy.utilities.codegen import codegen
 from urdfpy import URDF, matrix_to_xyz_rpy
 
+
+def SE3AdjInvMatrix(C):
+    """Compute Inverse of (6x6) Adjoint matrix for SE(3)
+
+    Args:
+        C ([type]): [description] TODO
+
+    Returns:
+        sympy.Matrix: Inverse of (6x6) Adjoint matrix
+    """
+    AdInv = Matrix([[C[0, 0], C[1, 0], C[2, 0], 0, 0, 0],
+                    [C[0, 1], C[1, 1], C[2, 1], 0, 0, 0],
+                    [C[0, 2], C[1, 2], C[2, 2], 0, 0, 0],
+                    [-C[2, 3]*C[1, 0]+C[1, 3]*C[2, 0], 
+                        C[2, 3]*C[0, 0]-C[0, 3]*C[2, 0],
+                        (-C[1, 3])*C[0, 0]+C[0, 3]*C[1, 0], 
+                        C[0, 0], C[1, 0], C[2, 0]],
+                    [-C[2, 3]*C[1, 1]+C[1, 3]*C[2, 1], 
+                        C[2, 3]*C[0, 1]-C[0, 3]*C[2, 1],
+                        (-C[1, 3])*C[0, 1]+C[0, 3]*C[1, 1], 
+                        C[0, 1], C[1, 1], C[2, 1]],
+                    [-C[2, 3]*C[1, 2]+C[1, 3]*C[2, 2], 
+                        C[2, 3]*C[0, 2]-C[0, 3]*C[2, 2],
+                        (-C[1, 3])*C[0, 2]+C[0, 3]*C[1, 2], 
+                        C[0, 2], C[1, 2], C[2, 2]]])
+    return AdInv
+
+def SE3AdjMatrix(C):
+    """Compute (6x6) Adjoint matrix for SE(3)
+
+    Args:
+        C ([type]): [description] TODO
+
+    Returns:
+    sympy.Matrix: (6x6) Adjoint matrix
+    """
+    Ad = Matrix([[C[0, 0], C[0, 1], C[0, 2], 0, 0, 0],
+                    [C[1, 0], C[1, 1], C[1, 2], 0, 0, 0],
+                    [C[2, 0], C[2, 1], C[2, 2], 0, 0, 0],
+                    [-C[2, 3]*C[1, 0]+C[1, 3]*C[2, 0], 
+                    -C[2, 3]*C[1, 1]+C[1, 3]*C[2, 1],
+                    -C[2, 3]*C[1, 2]+C[1, 3]*C[2, 2], 
+                    C[0, 0], C[0, 1], C[0, 2]],
+                    [C[2, 3]*C[0, 0]-C[0, 3]*C[2, 0],  
+                    C[2, 3]*C[0, 1]-C[0, 3]*C[2, 1],
+                    C[2, 3]*C[0, 2]-C[0, 3]*C[2, 2], 
+                    C[1, 0], C[1, 1], C[1, 2]],
+                    [-C[1, 3]*C[0, 0]+C[0, 3]*C[1, 0], 
+                    -C[1, 3]*C[0, 1]+C[0, 3]*C[1, 1],
+                    -C[1, 3]*C[0, 2]+C[0, 3]*C[1, 2], 
+                    C[2, 0], C[2, 1], C[2, 2]]])
+    return Ad
+
+def SE3adMatrix(X):
+    """Compute (6x6) adjoint matrix for SE(3) 
+        - also known as spatial cross product in the literature.
+
+    Args:
+        X ([type]): [description] TODO
+
+    Returns:
+        sympy.Matrix: (6x6) adjoint matrix
+    """
+    ad = Matrix([[0, -X[2, 0], X[1, 0], 0, 0, 0],
+                    [X[2, 0], 0, -X[0, 0], 0, 0, 0],
+                    [-X[1, 0], X[0, 0], 0, 0, 0, 0],
+                    [0, -X[5, 0], X[4, 0], 0, -X[2, 0], X[1, 0]],
+                    [X[5, 0], 0, -X[3, 0], X[2, 0], 0, -X[0, 0]],
+                    [-X[4, 0], X[3, 0], 0, -X[1, 0], X[0, 0], 0]])
+    return ad
+
+def SE3Exp(XX, t):
+    """compute exponential mapping for SE(3).
+
+    Args:
+        XX ([type]): [description] TODO
+        t ([type]): [description]
+
+    Returns:
+        [type]: [description]
+    """
+    X = XX.T
+    xi = Matrix(X[0:3])
+    eta = Matrix(X[3:6])
+    xihat = Matrix([[0, -X[2], X[1]],
+                    [X[2], 0, -X[0]],
+                    [-X[1], X[0], 0]])
+    R = Matrix(Identity(3)) + sin(t)*xihat + (1-cos(t))*(xihat*xihat)
+    if xi == zeros(3, 1):
+        p = eta * t
+    else:
+        p = (Matrix(Identity(3))-R)*(xihat*eta) + xi*(xi.T*eta)*t
+    C = R.row_join(p).col_join(Matrix([0, 0, 0, 1]).T)
+    return C
+
+def SE3Inv(C):
+    """Compute analytical inverse of exponential mapping for SE(3).
+
+    Args:
+        C ([type]): [description] TODO
+
+    Returns:
+        [type]: [description]
+    """
+    CInv = Matrix([[C[0, 0], C[1, 0], C[2, 0], 
+                    -C[0, 0]*C[0, 3]-C[1, 0]*C[1, 3]-C[2, 0]*C[2, 3]],
+                    [C[0, 1], C[1, 1], C[2, 1], 
+                    -C[0, 1]*C[0, 3]-C[1, 1]*C[1, 3]-C[2, 1]*C[2, 3]],
+                    [C[0, 2], C[1, 2], C[2, 2], -C[0, 2] *
+                        C[0, 3]-C[1, 2]*C[1, 3]-C[2, 2]*C[2, 3]],
+                    [0, 0, 0, 1]])
+    return CInv
+
+def SO3Exp(x, t):
+    """Compute exponential mapping for SO(3).
+
+    Args:
+        x (sympy.Matrix): Rotation axis
+        t (double): Rotation angle
+
+    Returns:
+        sympy.Matrix: Rotation matrix
+    """
+    xhat = Matrix([[0, -x[2, 0], x[1, 0]],
+                    [x[2, 0], 0, -x[0, 0]],
+                    [-x[1, 0], x[0, 0], 0]])
+    R = Matrix(Identity(3)) + sin(t) * xhat + (1-cos(t))*(xhat*xhat)
+    return R
+
+def InertiaMatrix(Ixx, Ixy, Ixz, Iyy, Iyz, Izz):
+    """Create 3 x 3 inertia matrix from independent inertia values.
+
+    Args:
+        Ixx: Inertia value I11
+        Ixy: Inertia value I12SE3adMatrix
+        Ixz: Inertia value I13
+        Iyy: Inertia value I22
+        Iyz: Inertia value I23
+        Izz: Inertia value I33
+
+    Returns:
+        sympy.Matrix: Inertia matrix (3,3)
+    """
+    I = Matrix([[Ixx, Ixy, Ixz],
+                [Ixy, Iyy, Iyz],
+                [Ixz, Iyz, Izz]])
+    return I
+
+def TransformationMatrix(r=Matrix(Identity(3)), t=zeros(3, 1)):
+    """Build transformation matrix from rotation and translation.
+
+    Args:
+        r (sympy.Matrix): 
+            SO(3) Rotation matrix (3,3). 
+            Defaults to sympy.Matrix(Identity(3))
+        t (sympy.Matrix): 
+            Translation vector (3,1). Defaults to sympy.zeros(3,1)
+
+    Returns:
+        sympy.Matrix: Transformation matrix (4,4)
+    """
+    T = r.row_join(t).col_join(Matrix([[0, 0, 0, 1]]))
+    return T
+
+def MassMatrixMixedData(m, Theta, COM):
+    """Build mass-inertia matrix in SE(3) from mass, inertia and 
+    center of mass information.
+
+    Args:
+        m (float): Mass.
+        Theta (array_like): Inertia (3,3).
+        COM (array_like): Center of mass (3,1).
+
+    Returns:
+        sympy.Matrix: Mass-inertia matrix (6,6).
+    """
+    M = Matrix([[Theta[0, 0], Theta[0, 1], Theta[0, 2], 0, 
+                    (-COM[2])*m, COM[1]*m],
+                [Theta[0, 1], Theta[1, 1], Theta[1, 2],
+                    COM[2]*m, 0, (-COM[0]*m)],
+                [Theta[0, 2], Theta[1, 2], Theta[2, 2],
+                    (-COM[1])*m, COM[0]*m, 0],
+                [0, COM[2]*m, (-COM[1]*m), m, 0, 0],
+                [(-COM[2])*m, 0, COM[0]*m, 0, m, 0],
+                [COM[1]*m, (-COM[0])*m, 0, 0, 0, m]])
+    return M
+
+def rpy_to_matrix(coords):
+    """Convert roll-pitch-yaw coordinates to a 3x3 homogenous rotation matrix.
+
+    Adapted from urdfpy 
+
+    The roll-pitch-yaw axes in a typical URDF are defined as a
+    rotation of ``r`` radians around the x-axis followed by a rotation of
+    ``p`` radians around the y-axis followed by a rotation of ``y`` radians
+    around the z-axis. These are the Z1-Y2-X3 Tait-Bryan angles. See
+    Wikipedia_ for more information.
+
+    .. _Wikipedia: https://en.wikipedia.org/wiki/Euler_angles#Rotation_matrix
+
+    Parameters
+    ----------
+    coords : (3,) floatxyz_rpy_to_matrix
+        The roll-pitch-yaw coordinates in order (x-rot, y-rot, z-rot).
+
+    Returns
+    -------
+    R : (3,3) float
+        The corresponding homogenous 3x3 rotation matrix.
+    """
+    c3 = cos(coords[0])
+    c2 = cos(coords[1])
+    c1 = cos(coords[2])
+    s3 = sin(coords[0])
+    s2 = sin(coords[1])
+    s1 = sin(coords[2])
+    return Matrix([
+        [c1 * c2, (c1 * s2 * s3) - (c3 * s1), (s1 * s3) + (c1 * c3 * s2)],
+        [c2 * s1, (c1 * c3) + (s1 * s2 * s3), (c3 * s1 * s2) - (c1 * s3)],
+        [-s2, c2 * s3, c2 * c3]
+    ])
+
+def xyz_rpy_to_matrix(xyz_rpy):
+    """Convert xyz_rpy coordinates to a 4x4 homogenous matrix.
+
+    Adapted from urdfpy
+
+    Parameters
+    ----------
+    xyz_rpy : (6,) float
+        The xyz_rpy vector.
+
+    Returns
+    -------
+    matrix : (4,4) float
+        The homogenous transform matrix.
+    """
+    matrix = Matrix(Identity(4))
+    matrix[:3, 3] = xyz_rpy[:3]
+    matrix[:3, :3] = rpy_to_matrix(xyz_rpy[3:])
+    return matrix
+
+
 class SymbolicKinDyn():
     BODY_FIXED = "body_fixed"
     SPACIAL = "spacial"
+    
+    # compatibility with older version, where these functions have been 
+    # member functions of class.
+    SE3AdjInvMatrix = staticmethod(SE3AdjInvMatrix)
+    SE3AdjMatrix = staticmethod(SE3AdjMatrix)
+    SE3adMatrix = staticmethod(SE3adMatrix)
+    SE3Exp = staticmethod(SE3Exp)
+    SE3Inv = staticmethod(SE3Inv)
+    SO3Exp = staticmethod(SO3Exp)
+    InertiaMatrix = staticmethod(InertiaMatrix)
+    TransformationMatrix = staticmethod(TransformationMatrix)
+    MassMatrixMixedData = staticmethod(MassMatrixMixedData)
+    rpy_to_matrix = staticmethod(rpy_to_matrix)
+    xyz_rpy_to_matrix = staticmethod(xyz_rpy_to_matrix)
+    
+    
     
     def __init__(self, gravity_vector=None, ee=None, body_ref_config = [], 
                  joint_screw_coord = [], config_representation = "body_fixed", 
@@ -100,22 +359,22 @@ class SymbolicKinDyn():
                 (i.e. of body-fixed reference frames):
                 >>> body_ref_config = []
                 >>> body_ref_config.append(
-                ...     SymbolicKinDyn.TransformationMatrix(
+                ...     TransformationMatrix(
                 ...     t=sympy.Matrix([0, 0, 0]))
                 >>> body_ref_config.append(
-                ...     SymbolicKinDyn.TransformationMatrix(
+                ...     TransformationMatrix(
                 ...     t=sympy.Matrix([L1, 0, 0]))
             
                 End-effector configuration wrt last link body fixed 
                 frame in the chain:
-                >>> ee = SymbolicKinDyn.TransformationMatrix(
+                >>> ee = TransformationMatrix(
                 ...     t=sympy.Matrix([L2, 0, 0]))
 
                 Mass-Intertia parameters:
                 >>> Mb = []
-                >>> Mb.append(SymbolicKinDyn.MassMatrixMixedData(
+                >>> Mb.append(MassMatrixMixedData(
                 ...     m1, (m1*L1**2) * sympy.Identity(3), cg1))
-                >>> Mb.append(SymbolicKinDyn.MassMatrixMixedData(
+                >>> Mb.append(MassMatrixMixedData(
                 ...     m2, (m2*L2**2) * sympy.Identity(3), cg2))
 
                 Declaring generalized vectors:
@@ -743,7 +1002,7 @@ class SymbolicKinDyn():
             Vb_BFn = self.simplify(Vb_BFn, cse_ex)
         elif cse_ex:
             Vb_BFn = self._cse_expression(Vb_BFn)
-        Vh_BFn = self.SE3AdjMatrix(R_BFn)*Vb_BFn
+        Vh_BFn = SE3AdjMatrix(R_BFn)*Vb_BFn
         if simplify_expressions:
             Vh_BFn = self.simplify(Vh_BFn, cse_ex)
         elif cse_ex:
@@ -752,13 +1011,13 @@ class SymbolicKinDyn():
         self.Vh_BFn = Vh_BFn
 
         # Body fixed twist of end-effector frame
-        Vb_ee = self.SE3AdjMatrix(self.SE3Inv(self.ee))*Vb_BFn
+        Vb_ee = SE3AdjMatrix(SE3Inv(self.ee))*Vb_BFn
         if simplify_expressions:
             Vb_ee = self.simplify(Vb_ee, cse_ex)
         elif cse_ex:
             Vb_ee = self._cse_expression(Vb_ee)
         # Hybrid twist of end-effector frame
-        Vh_ee = self.SE3AdjMatrix(R_i)*Vb_ee
+        Vh_ee = SE3AdjMatrix(R_i)*Vb_ee
         if simplify_expressions:
             Vh_ee = self.simplify(Vh_ee, cse_ex)
         elif cse_ex:
@@ -768,16 +1027,16 @@ class SymbolicKinDyn():
         self.Vh_ee = Vh_ee
 
         # Body fixed Jacobian of end-effector frame
-        Jb_ee = self.SE3AdjMatrix(self.SE3Inv(self.ee))*Jb
+        Jb_ee = SE3AdjMatrix(SE3Inv(self.ee))*Jb
         if simplify_expressions:
             Jb_ee = self.simplify(Jb_ee, cse_ex)
         elif cse_ex:
             Jb_ee = self._cse_expression(Jb_ee)
 
         # Hybrid Jacobian of end-effector frame
-        Jh_ee = self.SE3AdjMatrix(R_i)*Jb_ee
+        Jh_ee = SE3AdjMatrix(R_i)*Jb_ee
         # Hybrid Jacobian of last moving body
-        Jh = self.SE3AdjMatrix(R_i)*Jb  
+        Jh = SE3AdjMatrix(R_i)*Jb  
 
         if simplify_expressions:
             Jh_ee = self.simplify(Jh_ee, cse_ex)
@@ -798,7 +1057,7 @@ class SymbolicKinDyn():
             # Block diagonal matrix a (6n x 6n)
             a = zeros(6*self.n, 6*self.n)
             for i in range(self.n):
-                a[6*i:6*i+6, 6*i:6*i+6] = self.SE3adMatrix(self.X[i])*qd[i]
+                a[6*i:6*i+6, 6*i:6*i+6] = SE3adMatrix(self.X[i])*qd[i]
             if simplify_expressions:
                 a = self.simplify(a, cse_ex)
             elif cse_ex:
@@ -824,10 +1083,10 @@ class SymbolicKinDyn():
             Vbd_BFn = self._cse_expression(Vbd_BFn)
         # Hybrid twist of end-effector frame 
         # TODO: check comments
-        Vhd_BFn = (self.SE3AdjMatrix(R_BFn)*Vbd_BFn 
-                   + self.SE3adMatrix(Matrix(Vh_BFn[:3, :])
+        Vhd_BFn = (SE3AdjMatrix(R_BFn)*Vbd_BFn 
+                   + SE3adMatrix(Matrix(Vh_BFn[:3, :])
                                       .col_join(Matrix([0, 0, 0])))
-                   * self.SE3AdjMatrix(R_BFn)*Vb_BFn)  
+                   * SE3AdjMatrix(R_BFn)*Vb_BFn)  
 
         if simplify_expressions:
             Vhd_BFn = self.simplify(Vhd_BFn, cse_ex)
@@ -839,15 +1098,15 @@ class SymbolicKinDyn():
 
         # Body fixed twist of end-effector frame
         # Hybrid acceleration of the EE
-        Vbd_ee = self.SE3AdjMatrix(self.SE3Inv(self.ee))*Vbd_BFn
+        Vbd_ee = SE3AdjMatrix(SE3Inv(self.ee))*Vbd_BFn
         if simplify_expressions:
             Vbd_ee = self.simplify(Vbd_ee, cse_ex)
         elif cse_ex:
             Vbd_ee = self._cse_expression(Vbd_ee)
         # Hybrid twist of end-effector frame
-        Vhd_ee = self.SE3AdjMatrix(R_i)*Vbd_ee + self.SE3adMatrix(Matrix(
+        Vhd_ee = SE3AdjMatrix(R_i)*Vbd_ee + SE3adMatrix(Matrix(
             Vh_ee[:3, :]).col_join(Matrix([0, 0, 0])))*\
-                self.SE3AdjMatrix(R_i)*Vb_ee  
+                SE3AdjMatrix(R_i)*Vb_ee  
         if simplify_expressions:
             Vhd_ee = self.simplify(Vhd_ee, cse_ex)
         elif cse_ex:
@@ -863,7 +1122,7 @@ class SymbolicKinDyn():
         self.Jb_dot = Jb_dot
 
         # For the EE
-        Jb_ee_dot = self.SE3AdjMatrix(self.SE3Inv(self.ee))*Jb_dot
+        Jb_ee_dot = SE3AdjMatrix(SE3Inv(self.ee))*Jb_dot
         if simplify_expressions:
             Jb_ee_dot = self.simplify(Jb_ee_dot, cse_ex)
         elif cse_ex:
@@ -872,9 +1131,9 @@ class SymbolicKinDyn():
 
         # Hybrid Jacobian time derivative
         # For the last moving body
-        Jh_dot = self.SE3AdjMatrix(R_BFn)*Jb_dot + self.SE3adMatrix(
+        Jh_dot = SE3AdjMatrix(R_BFn)*Jb_dot + SE3adMatrix(
             Matrix(Vh_BFn[:3, :]).col_join(Matrix([0, 0, 0])))*\
-                self.SE3AdjMatrix(R_BFn)*Jb
+                SE3AdjMatrix(R_BFn)*Jb
         if simplify_expressions:
             Jh_dot = self.simplify(Jh_dot, cse_ex)
         elif cse_ex:
@@ -882,9 +1141,9 @@ class SymbolicKinDyn():
         self.Jh_dot = Jh_dot
 
         # For the EE
-        Jh_ee_dot = self.SE3AdjMatrix(R_i)*Jb_ee_dot + self.SE3adMatrix(
+        Jh_ee_dot = SE3AdjMatrix(R_i)*Jb_ee_dot + SE3adMatrix(
             Matrix(Vh_ee[:3, :]).col_join(Matrix([0, 0, 0])))*\
-                self.SE3AdjMatrix(R_i)*Jb_ee
+                SE3AdjMatrix(R_i)*Jb_ee
         if simplify_expressions:
             Jh_ee_dot = self.simplify(Jh_ee_dot, cse_ex)
         elif cse_ex:
@@ -968,7 +1227,7 @@ class SymbolicKinDyn():
             # Block diagonal matrix a (6n x 6n)
             a = zeros(6*self.n, 6*self.n)
             for i in range(self.n):
-                a[6*i:6*i+6, 6*i:6*i+6] = self.SE3adMatrix(self.X[i])*qd[i]
+                a[6*i:6*i+6, 6*i:6*i+6] = SE3adMatrix(self.X[i])*qd[i]
             self._a = a
 
         # System acceleration (6n x 1)
@@ -983,7 +1242,7 @@ class SymbolicKinDyn():
         # Block diagonal matrix b (6n x 6n) used in Coriolis matrix
         b = zeros(6*self.n, 6*self.n)
         for i in range(self.n):
-            b[i*6:i*6+6, i*6:i*6+6] = self.SE3adMatrix(Matrix(V[6*i:6*i+6]))
+            b[i*6:i*6+6, i*6:i*6+6] = SE3adMatrix(Matrix(V[6*i:6*i+6]))
 
         # Block diagonal matrix Cb (6n x 6n)
         Cb = -Mb*A*a - b.T * Mb
@@ -1005,9 +1264,9 @@ class SymbolicKinDyn():
             C = self._cse_expression(C)
 
         # Gravity Term
-        U = self.SE3AdjInvMatrix(FK_C[0])
+        U = SE3AdjInvMatrix(FK_C[0])
         for k in range(1, self.n):
-            U = U.col_join(self.SE3AdjInvMatrix(FK_C[k]))
+            U = U.col_join(SE3AdjInvMatrix(FK_C[k]))
 
         Vd_0 = zeros(6, 1)
         Vd_0[3:6, 0] = self.gravity_vector
@@ -1163,7 +1422,7 @@ class SymbolicKinDyn():
         elif cse_ex:
             self._start_cse_process("Vb_BFn")
 
-        self._set_value_as_process("Vh_BFn", lambda: self.SE3AdjMatrix(
+        self._set_value_as_process("Vh_BFn", lambda: SE3AdjMatrix(
             self._get_value("R_BFn"))*self._get_value("Vb_BFn"))
         if simplify_expressions:
             self._start_simplification_process("Vh_BFn", cse_ex)
@@ -1171,14 +1430,14 @@ class SymbolicKinDyn():
             self._start_cse_process("Vh_BFn")
 
         # Body fixed twist of end-effector frame
-        self._set_value_as_process("Vb_ee", lambda: self.SE3AdjMatrix(
-            self.SE3Inv(self.ee))*self._get_value("Vb_BFn"))
+        self._set_value_as_process("Vb_ee", lambda: SE3AdjMatrix(
+            SE3Inv(self.ee))*self._get_value("Vb_BFn"))
         if simplify_expressions:
             self._start_simplification_process("Vb_ee", cse_ex)
         elif cse_ex:
             self._start_cse_process("Vb_ee")
         # Hybrid twist of end-effector frame
-        self._set_value_as_process("Vh_ee", lambda: self.SE3AdjMatrix(
+        self._set_value_as_process("Vh_ee", lambda: SE3AdjMatrix(
             self._get_value("R_i"))*self._get_value("Vb_ee"))
         if simplify_expressions:
             self._start_simplification_process("Vh_ee", cse_ex)
@@ -1186,18 +1445,18 @@ class SymbolicKinDyn():
             self._start_cse_process("Vh_ee")
 
         # Body fixed Jacobian of end-effector frame
-        self._set_value_as_process("Jb_ee", lambda: self.SE3AdjMatrix(
-            self.SE3Inv(self.ee))*self._get_value("Jb"))
+        self._set_value_as_process("Jb_ee", lambda: SE3AdjMatrix(
+            SE3Inv(self.ee))*self._get_value("Jb"))
         if simplify_expressions:
             self._start_simplification_process("Jb_ee", cse_ex)
         elif cse_ex:
             self._start_cse_process("Jb_ee")
 
         # Hybrid Jacobian of end-effector frame
-        self._set_value_as_process("Jh_ee", lambda: self.SE3AdjMatrix(
+        self._set_value_as_process("Jh_ee", lambda: SE3AdjMatrix(
             self._get_value("R_i"))*self._get_value("Jb_ee"))
         # Hybrid Jacobian of last moving body
-        self._set_value_as_process("Jh", lambda: self.SE3AdjMatrix(
+        self._set_value_as_process("Jh", lambda: SE3AdjMatrix(
             self._get_value("R_i"))*self._get_value("Jb"))
 
         if simplify_expressions:
@@ -1214,7 +1473,7 @@ class SymbolicKinDyn():
             # Block diagonal matrix a (6n x 6n)
             a = zeros(6*self.n, 6*self.n)
             for i in range(self.n):
-                a[6*i:6*i+6, 6*i:6*i+6] = self.SE3adMatrix(self.X[i])*qd[i]
+                a[6*i:6*i+6, 6*i:6*i+6] = SE3adMatrix(self.X[i])*qd[i]
             self._set_value("a", a)
             if simplify_expressions:
                 self._start_simplification_process("a", cse_ex)
@@ -1246,11 +1505,11 @@ class SymbolicKinDyn():
         self._set_value_as_process(
             "Vhd_BFn", 
             lambda: 
-                self.SE3AdjMatrix(self._get_value("R_BFn"))
+                SE3AdjMatrix(self._get_value("R_BFn"))
                 * self._get_value("Vbd_BFn") 
-                + self.SE3adMatrix(Matrix(self._get_value("Vh_BFn")[:3, :])
+                + SE3adMatrix(Matrix(self._get_value("Vh_BFn")[:3, :])
                                    .col_join(Matrix([0, 0, 0])))
-                * self.SE3AdjMatrix(self._get_value("R_BFn"))
+                * SE3AdjMatrix(self._get_value("R_BFn"))
                 * self._get_value("Vb_BFn")
             )
 
@@ -1261,8 +1520,8 @@ class SymbolicKinDyn():
 
         # Body fixed twist of end-effector frame
         # Hybrid acceleration of the EE
-        self._set_value_as_process("Vbd_ee", lambda: self.SE3AdjMatrix(
-            self.SE3Inv(self.ee))*self._get_value("Vbd_BFn"))
+        self._set_value_as_process("Vbd_ee", lambda: SE3AdjMatrix(
+            SE3Inv(self.ee))*self._get_value("Vbd_BFn"))
         if simplify_expressions:
             self._start_simplification_process("Vbd_ee", cse_ex)
         elif cse_ex:
@@ -1271,11 +1530,11 @@ class SymbolicKinDyn():
         self._set_value_as_process(
             "Vhd_ee", 
             lambda: 
-                self.SE3AdjMatrix(self._get_value("R_i")) 
+                SE3AdjMatrix(self._get_value("R_i")) 
                 * self._get_value("Vbd_ee") 
-                + self.SE3adMatrix(Matrix(self._get_value("Vh_ee")[:3, :])
+                + SE3adMatrix(Matrix(self._get_value("Vh_ee")[:3, :])
                                    .col_join(Matrix([0, 0, 0])))
-                * self.SE3AdjMatrix(self._get_value("R_i"))
+                * SE3AdjMatrix(self._get_value("R_i"))
                 * self._get_value("Vb_ee")
             )  # Hybrid twist of end-effector frame
 
@@ -1291,8 +1550,8 @@ class SymbolicKinDyn():
             "Jb_dot", lambda: self._get_value("Jdot")[-6:, :])
 
         # For the EE
-        self._set_value_as_process("Jb_ee_dot", lambda: self.SE3AdjMatrix(
-            self.SE3Inv(self.ee))*self._get_value("Jb_dot"))
+        self._set_value_as_process("Jb_ee_dot", lambda: SE3AdjMatrix(
+            SE3Inv(self.ee))*self._get_value("Jb_dot"))
         if simplify_expressions:
             self._start_simplification_process("Jb_ee_dot", cse_ex)
         elif cse_ex:
@@ -1303,11 +1562,11 @@ class SymbolicKinDyn():
         self._set_value_as_process(
             "Jh_dot", 
             lambda: 
-                self.SE3AdjMatrix(self._get_value("R_BFn"))
+                SE3AdjMatrix(self._get_value("R_BFn"))
                 * self._get_value("Jb_dot") 
-                + self.SE3adMatrix(Matrix(self._get_value("Vh_BFn")[:3, :])
+                + SE3adMatrix(Matrix(self._get_value("Vh_BFn")[:3, :])
                                    .col_join(Matrix([0, 0, 0])))
-                * self.SE3AdjMatrix(self._get_value("R_BFn"))
+                * SE3AdjMatrix(self._get_value("R_BFn"))
                 * self._get_value("Jb")
             )
         if simplify_expressions:
@@ -1319,11 +1578,11 @@ class SymbolicKinDyn():
         self._set_value_as_process(
             "Jh_ee_dot", 
             lambda: 
-                self.SE3AdjMatrix(self._get_value("R_i"))
+                SE3AdjMatrix(self._get_value("R_i"))
                 * self._get_value("Jb_ee_dot") 
-                + self.SE3adMatrix(Matrix(self._get_value("Vh_ee")[:3, :])
+                + SE3adMatrix(Matrix(self._get_value("Vh_ee")[:3, :])
                                    .col_join(Matrix([0, 0, 0])))
-                * self.SE3AdjMatrix(self._get_value("R_i"))
+                * SE3AdjMatrix(self._get_value("R_i"))
                 * self._get_value("Jb_ee")
             )
         if simplify_expressions:
@@ -1462,7 +1721,7 @@ class SymbolicKinDyn():
             # Block diagonal matrix a (6n x 6n)
             a = zeros(6*self.n, 6*self.n)
             for i in range(self.n):
-                a[6*i:6*i+6, 6*i:6*i+6] = self.SE3adMatrix(self.X[i])*qd[i]
+                a[6*i:6*i+6, 6*i:6*i+6] = SE3adMatrix(self.X[i])*qd[i]
             self._a = a
 
         # System acceleration (6n x 1)
@@ -1481,7 +1740,7 @@ class SymbolicKinDyn():
             nonlocal self
             b = zeros(6*self.n, 6*self.n)
             for i in range(self.n):
-                b[i*6:i*6+6, i*6:i*6 + 6] = self.SE3adMatrix(
+                b[i*6:i*6+6, i*6:i*6 + 6] = SE3adMatrix(
                     Matrix(self._get_value("V")[6*i:6*i+6]))
             return b
         self._set_value_as_process("b", _b)
@@ -1509,9 +1768,9 @@ class SymbolicKinDyn():
             self._start_cse_process("C")
 
         # Gravity Term
-        U = self.SE3AdjInvMatrix(FK_C[0])
+        U = SE3AdjInvMatrix(FK_C[0])
         for k in range(1, self.n):
-            U = U.col_join(self.SE3AdjInvMatrix(FK_C[k]))
+            U = U.col_join(SE3AdjInvMatrix(FK_C[k]))
 
         Vd_0 = zeros(6, 1)
         Vd_0[3:6, 0] = self.gravity_vector
@@ -1768,7 +2027,7 @@ class SymbolicKinDyn():
                             xyzrpylist.append(xyz_rpy_syms[jia][i])
                             self.assignment_dict[xyz_rpy_syms[jia]
                                                  [i]] = xyz_rpy[i]
-                origin = self.xyz_rpy_to_matrix(xyzrpylist)
+                origin = xyz_rpy_to_matrix(xyzrpylist)
                 if cse_ex:
                     origin = self._cse_expression(origin)
             elif simplify_numbers:
@@ -1825,7 +2084,7 @@ class SymbolicKinDyn():
                 I_syms = symbols("Ixx_%s Ixy_%s Ixz_%s Iyy_%s Iyz_%s Izz_%s" % (
                     name, name, name, name, name, name))
                 c_syms = symbols("cx_%s cy_%s cz_%s" % (name, name, name))
-                I = self.InertiaMatrix(*I_syms)
+                I = InertiaMatrix(*I_syms)
                 m = symbols("m_%s" % name)
                 cg = Matrix([*c_syms])
             else:
@@ -1848,13 +2107,13 @@ class SymbolicKinDyn():
             # cg =
             # I =
             # m =
-            M = self.MassMatrixMixedData(m, I, cg)
+            M = MassMatrixMixedData(m, I, cg)
             if name in [x[1] for x in fixed_links]:
                 j = i
                 # transform Mass matrix
                 while robot.links[j].name in [x[1] for x in fixed_links]:
-                    M = self.SE3AdjInvMatrix(
-                        joint_origins[j-1]).T * M * self.SE3AdjInvMatrix(joint_origins[j-1])
+                    M = SE3AdjInvMatrix(
+                        joint_origins[j-1]).T * M * SE3AdjInvMatrix(joint_origins[j-1])
                     j -= 1
                 self.Mb[-1] += M
                 i += 1
@@ -1863,7 +2122,7 @@ class SymbolicKinDyn():
             i += 1
 
         # for link in robot.links:
-        #     self.Mb.append(self.MassMatrixMixedData())
+        #     self.Mb.append(MassMatrixMixedData())
         return
 
     def dhToScrewCoord(self, DH_param_table):
@@ -1891,10 +2150,10 @@ class SymbolicKinDyn():
             d = frame[2]
             theta = frame[3]
             r = frame[4]
-            self.B.append(self.SO3Exp(Matrix([1, 0, 0]), alpha)
+            self.B.append(SO3Exp(Matrix([1, 0, 0]), alpha)
                           .row_join(Matrix([d, 0, 0]))
                           .col_join(Matrix([0, 0, 0, 1]).T)
-                          * self.SO3Exp(Matrix([0, 0, 1]), theta)
+                          * SO3Exp(Matrix([0, 0, 1]), theta)
                           .row_join(Matrix([0, 0, r]))
                           .col_join(Matrix([0, 0, 0, 1]).T)
                           )
@@ -1904,258 +2163,6 @@ class SymbolicKinDyn():
                 self.X.append(Matrix([0, 0, 1, 0, 0, 0]))
             else:
                 self.X.append(Matrix([0, 0, 0, 0, 0, 1]))
-
-    @staticmethod
-    def SE3AdjInvMatrix(C):
-        """Compute Inverse of (6x6) Adjoint matrix for SE(3)
-
-        Args:
-            C ([type]): [description] TODO
-
-        Returns:
-            sympy.Matrix: Inverse of (6x6) Adjoint matrix
-        """
-        AdInv = Matrix([[C[0, 0], C[1, 0], C[2, 0], 0, 0, 0],
-                        [C[0, 1], C[1, 1], C[2, 1], 0, 0, 0],
-                        [C[0, 2], C[1, 2], C[2, 2], 0, 0, 0],
-                        [-C[2, 3]*C[1, 0]+C[1, 3]*C[2, 0], 
-                         C[2, 3]*C[0, 0]-C[0, 3]*C[2, 0],
-                         (-C[1, 3])*C[0, 0]+C[0, 3]*C[1, 0], 
-                         C[0, 0], C[1, 0], C[2, 0]],
-                        [-C[2, 3]*C[1, 1]+C[1, 3]*C[2, 1], 
-                         C[2, 3]*C[0, 1]-C[0, 3]*C[2, 1],
-                         (-C[1, 3])*C[0, 1]+C[0, 3]*C[1, 1], 
-                         C[0, 1], C[1, 1], C[2, 1]],
-                        [-C[2, 3]*C[1, 2]+C[1, 3]*C[2, 2], 
-                         C[2, 3]*C[0, 2]-C[0, 3]*C[2, 2],
-                         (-C[1, 3])*C[0, 2]+C[0, 3]*C[1, 2], 
-                         C[0, 2], C[1, 2], C[2, 2]]])
-        return AdInv
-
-    @staticmethod
-    def SE3AdjMatrix(C):
-        """Compute (6x6) Adjoint matrix for SE(3)
-
-        Args:
-            C ([type]): [description] TODO
-
-        Returns:
-        sympy.Matrix: (6x6) Adjoint matrix
-        """
-        Ad = Matrix([[C[0, 0], C[0, 1], C[0, 2], 0, 0, 0],
-                     [C[1, 0], C[1, 1], C[1, 2], 0, 0, 0],
-                     [C[2, 0], C[2, 1], C[2, 2], 0, 0, 0],
-                     [-C[2, 3]*C[1, 0]+C[1, 3]*C[2, 0], 
-                      -C[2, 3]*C[1, 1]+C[1, 3]*C[2, 1],
-                      -C[2, 3]*C[1, 2]+C[1, 3]*C[2, 2], 
-                      C[0, 0], C[0, 1], C[0, 2]],
-                     [C[2, 3]*C[0, 0]-C[0, 3]*C[2, 0],  
-                      C[2, 3]*C[0, 1]-C[0, 3]*C[2, 1],
-                      C[2, 3]*C[0, 2]-C[0, 3]*C[2, 2], 
-                      C[1, 0], C[1, 1], C[1, 2]],
-                     [-C[1, 3]*C[0, 0]+C[0, 3]*C[1, 0], 
-                      -C[1, 3]*C[0, 1]+C[0, 3]*C[1, 1],
-                      -C[1, 3]*C[0, 2]+C[0, 3]*C[1, 2], 
-                      C[2, 0], C[2, 1], C[2, 2]]])
-        return Ad
-
-    @staticmethod
-    def SE3adMatrix(X):
-        """Compute (6x6) adjoint matrix for SE(3) 
-            - also known as spatial cross product in the literature.
-
-        Args:
-            X ([type]): [description] TODO
-
-        Returns:
-            sympy.Matrix: (6x6) adjoint matrix
-        """
-        ad = Matrix([[0, -X[2, 0], X[1, 0], 0, 0, 0],
-                     [X[2, 0], 0, -X[0, 0], 0, 0, 0],
-                     [-X[1, 0], X[0, 0], 0, 0, 0, 0],
-                     [0, -X[5, 0], X[4, 0], 0, -X[2, 0], X[1, 0]],
-                     [X[5, 0], 0, -X[3, 0], X[2, 0], 0, -X[0, 0]],
-                     [-X[4, 0], X[3, 0], 0, -X[1, 0], X[0, 0], 0]])
-        return ad
-
-    @staticmethod
-    def SE3Exp(XX, t):
-        """compute exponential mapping for SE(3).
-
-        Args:
-            XX ([type]): [description] TODO
-            t ([type]): [description]
-
-        Returns:
-            [type]: [description]
-        """
-        X = XX.T
-        xi = Matrix(X[0:3])
-        eta = Matrix(X[3:6])
-        xihat = Matrix([[0, -X[2], X[1]],
-                        [X[2], 0, -X[0]],
-                        [-X[1], X[0], 0]])
-        R = Matrix(Identity(3)) + sin(t)*xihat + (1-cos(t))*(xihat*xihat)
-        if xi == zeros(3, 1):
-            p = eta * t
-        else:
-            p = (Matrix(Identity(3))-R)*(xihat*eta) + xi*(xi.T*eta)*t
-        C = R.row_join(p).col_join(Matrix([0, 0, 0, 1]).T)
-        return C
-
-    @staticmethod
-    def SE3Inv(C):
-        """Compute analytical inverse of exponential mapping for SE(3).
-
-        Args:
-            C ([type]): [description] TODO
-
-        Returns:
-            [type]: [description]
-        """
-        CInv = Matrix([[C[0, 0], C[1, 0], C[2, 0], 
-                        -C[0, 0]*C[0, 3]-C[1, 0]*C[1, 3]-C[2, 0]*C[2, 3]],
-                       [C[0, 1], C[1, 1], C[2, 1], 
-                        -C[0, 1]*C[0, 3]-C[1, 1]*C[1, 3]-C[2, 1]*C[2, 3]],
-                       [C[0, 2], C[1, 2], C[2, 2], -C[0, 2] *
-                           C[0, 3]-C[1, 2]*C[1, 3]-C[2, 2]*C[2, 3]],
-                       [0, 0, 0, 1]])
-        return CInv
-
-    @staticmethod
-    def SO3Exp(x, t):
-        """Compute exponential mapping for SO(3).
-
-        Args:
-            x (sympy.Matrix): Rotation axis
-            t (double): Rotation angle
-
-        Returns:
-            sympy.Matrix: Rotation matrix
-        """
-        xhat = Matrix([[0, -x[2, 0], x[1, 0]],
-                       [x[2, 0], 0, -x[0, 0]],
-                       [-x[1, 0], x[0, 0], 0]])
-        R = Matrix(Identity(3)) + sin(t) * xhat + (1-cos(t))*(xhat*xhat)
-        return R
-
-    @staticmethod
-    def InertiaMatrix(Ixx, Ixy, Ixz, Iyy, Iyz, Izz):
-        """Create 3 x 3 inertia matrix from independent inertia values.
-
-        Args:
-            Ixx: Inertia value I11
-            Ixy: Inertia value I12
-            Ixz: Inertia value I13
-            Iyy: Inertia value I22
-            Iyz: Inertia value I23
-            Izz: Inertia value I33
-
-        Returns:
-            sympy.Matrix: Inertia matrix (3,3)
-        """
-        I = Matrix([[Ixx, Ixy, Ixz],
-                    [Ixy, Iyy, Iyz],
-                    [Ixz, Iyz, Izz]])
-        return I
-
-    @staticmethod
-    def TransformationMatrix(r=Matrix(Identity(3)), t=zeros(3, 1)):
-        """Build transformation matrix from rotation and translation.
-
-        Args:
-            r (sympy.Matrix): 
-                SO(3) Rotation matrix (3,3). 
-                Defaults to sympy.Matrix(Identity(3))
-            t (sympy.Matrix): 
-                Translation vector (3,1). Defaults to sympy.zeros(3,1)
-
-        Returns:
-            sympy.Matrix: Transformation matrix (4,4)
-        """
-        T = r.row_join(t).col_join(Matrix([[0, 0, 0, 1]]))
-        return T
-
-    @staticmethod
-    def MassMatrixMixedData(m, Theta, COM):
-        """Build mass-inertia matrix in SE(3) from mass, inertia and 
-        center of mass information.
-
-        Args:
-            m (float): Mass.
-            Theta (array_like): Inertia (3,3).
-            COM (array_like): Center of mass (3,1).
-
-        Returns:
-            sympy.Matrix: Mass-inertia matrix (6,6).
-        """
-        M = Matrix([[Theta[0, 0], Theta[0, 1], Theta[0, 2], 0, 
-                        (-COM[2])*m, COM[1]*m],
-                    [Theta[0, 1], Theta[1, 1], Theta[1, 2],
-                        COM[2]*m, 0, (-COM[0]*m)],
-                    [Theta[0, 2], Theta[1, 2], Theta[2, 2],
-                        (-COM[1])*m, COM[0]*m, 0],
-                    [0, COM[2]*m, (-COM[1]*m), m, 0, 0],
-                    [(-COM[2])*m, 0, COM[0]*m, 0, m, 0],
-                    [COM[1]*m, (-COM[0])*m, 0, 0, 0, m]])
-        return M
-
-    @staticmethod
-    def rpy_to_matrix(coords):
-        """Convert roll-pitch-yaw coordinates to a 3x3 homogenous rotation matrix.
-
-        Adapted from urdfpy 
-
-        The roll-pitch-yaw axes in a typical URDF are defined as a
-        rotation of ``r`` radians around the x-axis followed by a rotation of
-        ``p`` radians around the y-axis followed by a rotation of ``y`` radians
-        around the z-axis. These are the Z1-Y2-X3 Tait-Bryan angles. See
-        Wikipedia_ for more information.
-
-        .. _Wikipedia: https://en.wikipedia.org/wiki/Euler_angles#Rotation_matrix
-
-        Parameters
-        ----------
-        coords : (3,) float
-            The roll-pitch-yaw coordinates in order (x-rot, y-rot, z-rot).
-
-        Returns
-        -------
-        R : (3,3) float
-            The corresponding homogenous 3x3 rotation matrix.
-        """
-        c3 = cos(coords[0])
-        c2 = cos(coords[1])
-        c1 = cos(coords[2])
-        s3 = sin(coords[0])
-        s2 = sin(coords[1])
-        s1 = sin(coords[2])
-        return Matrix([
-            [c1 * c2, (c1 * s2 * s3) - (c3 * s1), (s1 * s3) + (c1 * c3 * s2)],
-            [c2 * s1, (c1 * c3) + (s1 * s2 * s3), (c3 * s1 * s2) - (c1 * s3)],
-            [-s2, c2 * s3, c2 * c3]
-        ])
-
-    @staticmethod
-    def xyz_rpy_to_matrix(xyz_rpy):
-        """Convert xyz_rpy coordinates to a 4x4 homogenous matrix.
-
-        Adapted from urdfpy
-
-        Parameters
-        ----------
-        xyz_rpy : (6,) float
-            The xyz_rpy vector.
-
-        Returns
-        -------
-        matrix : (4,4) float
-            The homogenous transform matrix.
-        """
-        matrix = Matrix(Identity(4))
-        matrix[:3, 3] = xyz_rpy[:3]
-        matrix[:3, :3] = SymbolicKinDyn.rpy_to_matrix(xyz_rpy[3:])
-        return matrix
 
     def _set_value_as_process(self, name, target):
         """Set return value of target as value to queue in 
@@ -2374,23 +2381,23 @@ class SymbolicKinDyn():
             FK_C = self._FK_C
         elif self.A:
             # print("Using absolute configuration (A) of the body frames")
-            FK_f = [self.SE3Exp(self.Y[0], q[0])]
+            FK_f = [SE3Exp(self.Y[0], q[0])]
             FK_C = [FK_f[0]*self.A[0]]
             for i in range(1, self.n):
-                FK_f.append(FK_f[i-1]*self.SE3Exp(self.Y[i], q[i]))
+                FK_f.append(FK_f[i-1]*SE3Exp(self.Y[i], q[i]))
                 FK_C.append(FK_f[i]*self.A[i])
             self._FK_C = FK_C
             if not self.X:
                 # Joint screw coordinates in body-fixed representation 
                 # computed from screw coordinates in IFR
-                self.X = [self.SE3AdjInvMatrix(
+                self.X = [SE3AdjInvMatrix(
                     self.A[i])*self.Y[i] for i in range(self.n)]
 
         elif self.B:
             # print('Using relative configuration (B) of the body frames')
-            FK_C = [self.B[0]*self.SE3Exp(self.X[0], q[0])]
+            FK_C = [self.B[0]*SE3Exp(self.X[0], q[0])]
             for i in range(1, self.n):
-                FK_C.append(FK_C[i-1]*self.B[i]*self.SE3Exp(self.X[i], q[i]))
+                FK_C.append(FK_C[i-1]*self.B[i]*SE3Exp(self.X[i], q[i]))
             self._FK_C = FK_C
         else:
             # 'Absolute (A) or Relative (B) configuration of the bodies should be provided in class!'
@@ -2403,8 +2410,8 @@ class SymbolicKinDyn():
             A = Matrix(Identity(6*self.n))
             for i in range(self.n):
                 for j in range(i):
-                    Crel = self.SE3Inv(FK_C[i])*FK_C[j]
-                    AdCrel = self.SE3AdjMatrix(Crel)
+                    Crel = SE3Inv(FK_C[i])*FK_C[j]
+                    AdCrel = SE3AdjMatrix(Crel)
                     r = 6*(i)
                     c = 6*(j)
                     A[r:r+6, c:c+6] = AdCrel
@@ -2421,16 +2428,16 @@ class SymbolicKinDyn():
             for i in range(self.n):
                 if self.parent[i] == 0: # bodies with no predecessor
                     # Initialization for the first body
-                    FK_f.append(self.SE3Exp(self.Y[i], q[i]))
+                    FK_f.append(SE3Exp(self.Y[i], q[i]))
                     FK_C.append(FK_f[i]*self.A[i])
                 else:
-                    FK_f.append(FK_f[self.parent[i]-1]*self.SE3Exp(self.Y[i], q[i]))
+                    FK_f.append(FK_f[self.parent[i]-1]*SE3Exp(self.Y[i], q[i]))
                     FK_C.append(FK_f[i]*self.A[i])      
             self._FK_C = FK_C
             if not self.X:
                 # Joint screw coordinates in body-fixed representation 
                 # computed from screw coordinates in IFR
-                self.X = [self.SE3AdjInvMatrix(
+                self.X = [SE3AdjInvMatrix(
                     self.A[i])*self.Y[i] for i in range(self.n)]
 
         elif self.B:
@@ -2439,9 +2446,9 @@ class SymbolicKinDyn():
             for i in range(self.n):
                 if self.parent[i] == 0: # bodies with no predecessor
                     # Initialization for the first body
-                    FK_C.append(self.B[i]*self.SE3Exp(self.X[i], q[i]))
+                    FK_C.append(self.B[i]*SE3Exp(self.X[i], q[i]))
                 else:
-                    FK_C.append(FK_C[self.parent[i]-1]*self.B[i]*self.SE3Exp(self.X[i], q[i]))
+                    FK_C.append(FK_C[self.parent[i]-1]*self.B[i]*SE3Exp(self.X[i], q[i]))
         else:
             # 'Absolute (A) or Relative (B) configuration of the bodies should be provided in class!'
             raise ValueError("Joint screw coordinates and/or reference configuration of bodies not set.")
@@ -2456,8 +2463,8 @@ class SymbolicKinDyn():
                 # if self.parent[i] != 0:
                     for k in self.support[i]:
                         j = k-1
-                        Crel = self.SE3Inv(FK_C[i])*FK_C[j]
-                        AdCrel = self.SE3AdjMatrix(Crel)
+                        Crel = SE3Inv(FK_C[i])*FK_C[j]
+                        AdCrel = SE3AdjMatrix(Crel)
                         r = 6*(i)
                         c = 6*(j)
                         A[r:r+6, c:c+6] = AdCrel

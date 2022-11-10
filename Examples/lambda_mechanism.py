@@ -1,6 +1,6 @@
 from sympy import symbols, Matrix, Identity
 from kinematics_generator import SymbolicKinDyn as skd
-
+from kinematics_generator import TransformationMatrix, MassMatrixMixedData
 if __name__ == "__main__":
 
     # Declaration of symbolic variables
@@ -48,20 +48,20 @@ if __name__ == "__main__":
     A.append(Matrix(Identity(4)))
     
     r2 = Matrix([L1,0,0])
-    A.append(skd.TransformationMatrix(t=r2))
+    A.append(TransformationMatrix(t=r2))
     
     r3 = Matrix([L1,0,0])
-    A.append(skd.TransformationMatrix(t=r3))
+    A.append(TransformationMatrix(t=r3))
     
     # End-effector configuration wrt last link body fixed frame in the chain
     re = Matrix([L2, 0, 0])
-    ee = skd.TransformationMatrix(t=re)
+    ee = TransformationMatrix(t=re)
     
     # Mass Inertia Parameters
     Mb = []
-    Mb.append(skd.MassMatrixMixedData(m1,I1*Identity(3),Matrix([Lc1, 0, 0])))
-    Mb.append(skd.MassMatrixMixedData(m2,I2*Identity(3),Matrix([Lc2, 0, 0])))
-    Mb.append(skd.MassMatrixMixedData(m3,I3*Identity(3),Matrix([Lc3, 0, 0])))
+    Mb.append(MassMatrixMixedData(m1,I1*Identity(3),Matrix([Lc1, 0, 0])))
+    Mb.append(MassMatrixMixedData(m2,I2*Identity(3),Matrix([Lc2, 0, 0])))
+    Mb.append(MassMatrixMixedData(m3,I3*Identity(3),Matrix([Lc3, 0, 0])))
     
     # EOM for the subsystem II i.e. RP Leg
     q = Matrix([q1,q2,q3])
