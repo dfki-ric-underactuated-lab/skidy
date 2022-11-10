@@ -1,4 +1,4 @@
-from kinematics_generator import SymbolicKinDyn
+from KinematicsGenerator.kinematics_generator import SymbolicKinDyn
 import os
 
 from sympy import symbols, Matrix, Identity
@@ -30,5 +30,5 @@ F = s.closed_form_kinematics_body_fixed(q, qd, q2d, simplify_expressions=0,cse_e
 # Q = s.closed_form_inv_dyn_body_fixed(q,qd,q2d, simplify_expressions=0)
 
 print(F)
-s.generateCode(python=1,C=0,Matlab=0,name="hlurdfcse")
+s.generateCode(python=0,C=1,Matlab=0,name="hlurdfcse")
 # print(Q)

@@ -7,7 +7,7 @@ setup(
     long_description=open('README.md').read(),
     long_description_content_type='text/markdown',
     # url="",
-    packages=find_packages(),
+    packages=find_packages(exclude="unit_testing"),
     install_requires=[
         "numpy",
         "sympy>=1.8",

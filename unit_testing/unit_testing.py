@@ -2,8 +2,8 @@ import unittest
 import sys
 from os.path import dirname
 sys.path.append(dirname(dirname(__file__)))
-import kinematics_generator
-from kinematics_generator import (SE3AdjInvMatrix, SE3AdjMatrix, 
+import KinematicsGenerator.kinematics_generator as kinematics_generator
+from KinematicsGenerator.kinematics_generator import (SE3AdjInvMatrix, SE3AdjMatrix, 
                                   SE3adMatrix, SE3Exp, SE3Inv, SO3Exp, 
                                   InertiaMatrix, TransformationMatrix, 
                                   MassMatrixMixedData, rpy_to_matrix, 

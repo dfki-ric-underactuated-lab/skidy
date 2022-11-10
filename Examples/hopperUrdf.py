@@ -1,4 +1,4 @@
-from kinematics_generator import SymbolicKinDyn
+from KinematicsGenerator.kinematics_generator import SymbolicKinDyn
 
 from sympy import *
 

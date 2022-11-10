@@ -1,0 +1,4 @@
+numpy
+sympy>=1.8
+urdfpy
+regex

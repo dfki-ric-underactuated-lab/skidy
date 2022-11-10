@@ -15,426 +15,13 @@ from sympy.simplify.fu import fu
 from sympy.utilities.codegen import codegen
 from urdfpy import URDF, matrix_to_xyz_rpy
 
+from KinematicsGenerator.matrices import (
+    SE3AdjInvMatrix, SE3AdjMatrix, SE3adMatrix, SE3Exp, SE3Inv, SO3Exp, 
+    InertiaMatrix, TransformationMatrix, MassMatrixMixedData, rpy_to_matrix, 
+    xyz_rpy_to_matrix)
 
-def SE3AdjInvMatrix(C):
-    """Compute Inverse of (6x6) Adjoint matrix for SE(3)
-
-    Args:
-        C ([type]): [description] TODO
-
-    Returns:
-        sympy.Matrix: Inverse of (6x6) Adjoint matrix
-    """
-    AdInv = Matrix([[C[0, 0], C[1, 0], C[2, 0], 0, 0, 0],
-                    [C[0, 1], C[1, 1], C[2, 1], 0, 0, 0],
-                    [C[0, 2], C[1, 2], C[2, 2], 0, 0, 0],
-                    [-C[2, 3]*C[1, 0]+C[1, 3]*C[2, 0], 
-                        C[2, 3]*C[0, 0]-C[0, 3]*C[2, 0],
-                        (-C[1, 3])*C[0, 0]+C[0, 3]*C[1, 0], 
-                        C[0, 0], C[1, 0], C[2, 0]],
-                    [-C[2, 3]*C[1, 1]+C[1, 3]*C[2, 1], 
-                        C[2, 3]*C[0, 1]-C[0, 3]*C[2, 1],
-                        (-C[1, 3])*C[0, 1]+C[0, 3]*C[1, 1], 
-                        C[0, 1], C[1, 1], C[2, 1]],
-                    [-C[2, 3]*C[1, 2]+C[1, 3]*C[2, 2], 
-                        C[2, 3]*C[0, 2]-C[0, 3]*C[2, 2],
-                        (-C[1, 3])*C[0, 2]+C[0, 3]*C[1, 2], 
-                        C[0, 2], C[1, 2], C[2, 2]]])
-    return AdInv
-
-def SE3AdjMatrix(C):
-    """Compute (6x6) Adjoint matrix for SE(3)
-
-    Args:
-        C ([type]): [description] TODO
-
-    Returns:
-    sympy.Matrix: (6x6) Adjoint matrix
-    """
-    Ad = Matrix([[C[0, 0], C[0, 1], C[0, 2], 0, 0, 0],
-                    [C[1, 0], C[1, 1], C[1, 2], 0, 0, 0],
-                    [C[2, 0], C[2, 1], C[2, 2], 0, 0, 0],
-                    [-C[2, 3]*C[1, 0]+C[1, 3]*C[2, 0], 
-                    -C[2, 3]*C[1, 1]+C[1, 3]*C[2, 1],
-                    -C[2, 3]*C[1, 2]+C[1, 3]*C[2, 2], 
-                    C[0, 0], C[0, 1], C[0, 2]],
-                    [C[2, 3]*C[0, 0]-C[0, 3]*C[2, 0],  
-                    C[2, 3]*C[0, 1]-C[0, 3]*C[2, 1],
-                    C[2, 3]*C[0, 2]-C[0, 3]*C[2, 2], 
-                    C[1, 0], C[1, 1], C[1, 2]],
-                    [-C[1, 3]*C[0, 0]+C[0, 3]*C[1, 0], 
-                    -C[1, 3]*C[0, 1]+C[0, 3]*C[1, 1],
-                    -C[1, 3]*C[0, 2]+C[0, 3]*C[1, 2], 
-                    C[2, 0], C[2, 1], C[2, 2]]])
-    return Ad
-
-def SE3adMatrix(X):
-    """Compute (6x6) adjoint matrix for SE(3) 
-        - also known as spatial cross product in the literature.
-
-    Args:
-        X ([type]): [description] TODO
-
-    Returns:
-        sympy.Matrix: (6x6) adjoint matrix
-    """
-    ad = Matrix([[0, -X[2, 0], X[1, 0], 0, 0, 0],
-                    [X[2, 0], 0, -X[0, 0], 0, 0, 0],
-                    [-X[1, 0], X[0, 0], 0, 0, 0, 0],
-                    [0, -X[5, 0], X[4, 0], 0, -X[2, 0], X[1, 0]],
-                    [X[5, 0], 0, -X[3, 0], X[2, 0], 0, -X[0, 0]],
-                    [-X[4, 0], X[3, 0], 0, -X[1, 0], X[0, 0], 0]])
-    return ad
-
-def SE3Exp(XX, t):
-    """compute exponential mapping for SE(3).
-
-    Args:
-        XX ([type]): [description] TODO
-        t ([type]): [description]
-
-    Returns:
-        [type]: [description]
-    """
-    X = XX.T
-    xi = Matrix(X[0:3])
-    eta = Matrix(X[3:6])
-    xihat = Matrix([[0, -X[2], X[1]],
-                    [X[2], 0, -X[0]],
-                    [-X[1], X[0], 0]])
-    R = Matrix(Identity(3)) + sin(t)*xihat + (1-cos(t))*(xihat*xihat)
-    if xi == zeros(3, 1):
-        p = eta * t
-    else:
-        p = (Matrix(Identity(3))-R)*(xihat*eta) + xi*(xi.T*eta)*t
-    C = R.row_join(p).col_join(Matrix([0, 0, 0, 1]).T)
-    return C
-
-def SE3Inv(C):
-    """Compute analytical inverse of exponential mapping for SE(3).
-
-    Args:
-        C ([type]): [description] TODO
-
-    Returns:
-        [type]: [description]
-    """
-    CInv = Matrix([[C[0, 0], C[1, 0], C[2, 0], 
-                    -C[0, 0]*C[0, 3]-C[1, 0]*C[1, 3]-C[2, 0]*C[2, 3]],
-                    [C[0, 1], C[1, 1], C[2, 1], 
-                    -C[0, 1]*C[0, 3]-C[1, 1]*C[1, 3]-C[2, 1]*C[2, 3]],
-                    [C[0, 2], C[1, 2], C[2, 2], -C[0, 2] *
-                        C[0, 3]-C[1, 2]*C[1, 3]-C[2, 2]*C[2, 3]],
-                    [0, 0, 0, 1]])
-    return CInv
-
-def SO3Exp(x, t):
-    """Compute exponential mapping for SO(3).
-
-    Args:
-        x (sympy.Matrix): Rotation axis
-        t (double): Rotation angle
-
-    Returns:
-        sympy.Matrix: Rotation matrix
-    """
-    xhat = Matrix([[0, -x[2, 0], x[1, 0]],
-                    [x[2, 0], 0, -x[0, 0]],
-                    [-x[1, 0], x[0, 0], 0]])
-    R = Matrix(Identity(3)) + sin(t) * xhat + (1-cos(t))*(xhat*xhat)
-    return R
-
-def InertiaMatrix(Ixx, Ixy, Ixz, Iyy, Iyz, Izz):
-    """Create 3 x 3 inertia matrix from independent inertia values.
-
-    Args:
-        Ixx: Inertia value I11
-        Ixy: Inertia value I12SE3adMatrix
-        Ixz: Inertia value I13
-        Iyy: Inertia value I22
-        Iyz: Inertia value I23
-        Izz: Inertia value I33
-
-    Returns:
-        sympy.Matrix: Inertia matrix (3,3)
-    """
-    I = Matrix([[Ixx, Ixy, Ixz],
-                [Ixy, Iyy, Iyz],
-                [Ixz, Iyz, Izz]])
-    return I
-
-def TransformationMatrix(r=Matrix(Identity(3)), t=zeros(3, 1)):
-    """Build transformation matrix from rotation and translation.
-
-    Args:
-        r (sympy.Matrix): 
-            SO(3) Rotation matrix (3,3). 
-            Defaults to sympy.Matrix(Identity(3))
-        t (sympy.Matrix): 
-            Translation vector (3,1). Defaults to sympy.zeros(3,1)
-
-    Returns:
-        sympy.Matrix: Transformation matrix (4,4)
-    """
-    T = r.row_join(t).col_join(Matrix([[0, 0, 0, 1]]))
-    return T
-
-def MassMatrixMixedData(m, Theta, COM):
-    """Build mass-inertia matrix in SE(3) from mass, inertia and 
-    center of mass information.
-
-    Args:
-        m (float): Mass.
-        Theta (array_like): Inertia (3,3).
-        COM (array_like): Center of mass (3,1).
-
-    Returns:
-        sympy.Matrix: Mass-inertia matrix (6,6).
-    """
-    M = Matrix([[Theta[0, 0], Theta[0, 1], Theta[0, 2], 0, 
-                    (-COM[2])*m, COM[1]*m],
-                [Theta[0, 1], Theta[1, 1], Theta[1, 2],
-                    COM[2]*m, 0, (-COM[0]*m)],
-                [Theta[0, 2], Theta[1, 2], Theta[2, 2],
-                    (-COM[1])*m, COM[0]*m, 0],
-                [0, COM[2]*m, (-COM[1]*m), m, 0, 0],
-                [(-COM[2])*m, 0, COM[0]*m, 0, m, 0],
-                [COM[1]*m, (-COM[0])*m, 0, 0, 0, m]])
-    return M
-
-def rpy_to_matrix(coords):
-    """Convert roll-pitch-yaw coordinates to a 3x3 homogenous rotation matrix.
-
-    Adapted from urdfpy 
-
-    The roll-pitch-yaw axes in a typical URDF are defined as a
-    rotation of ``r`` radians around the x-axis followed by a rotation of
-    ``p`` radians around the y-axis followed by a rotation of ``y`` radians
-    around the z-axis. These are the Z1-Y2-X3 Tait-Bryan angles. See
-    Wikipedia_ for more information.
-
-    .. _Wikipedia: https://en.wikipedia.org/wiki/Euler_angles#Rotation_matrix
-
-    Parameters
-    ----------
-    coords : (3,) floatxyz_rpy_to_matrix
-        The roll-pitch-yaw coordinates in order (x-rot, y-rot, z-rot).
-
-    Returns
-    -------
-    R : (3,3) float
-        The corresponding homogenous 3x3 rotation matrix.
-    """
-    c3 = cos(coords[0])
-    c2 = cos(coords[1])
-    c1 = cos(coords[2])
-    s3 = sin(coords[0])
-    s2 = sin(coords[1])
-    s1 = sin(coords[2])
-    return Matrix([
-        [c1 * c2, (c1 * s2 * s3) - (c3 * s1), (s1 * s3) + (c1 * c3 * s2)],
-        [c2 * s1, (c1 * c3) + (s1 * s2 * s3), (c3 * s1 * s2) - (c1 * s3)],
-        [-s2, c2 * s3, c2 * c3]
-    ])
-
-def xyz_rpy_to_matrix(xyz_rpy):
-    """Convert xyz_rpy coordinates to a 4x4 homogenous matrix.
-
-    Adapted from urdfpy
-
-    Parameters
-    ----------
-    xyz_rpy : (6,) float
-        The xyz_rpy vector.
-
-    Returns
-    -------
-    matrix : (4,4) float
-        The homogenous transform matrix.
-    """
-    matrix = Matrix(Identity(4))
-    matrix[:3, 3] = xyz_rpy[:3]
-    matrix[:3, :3] = rpy_to_matrix(xyz_rpy[3:])
-    return matrix
-
-
-class SymbolicKinDyn():
-    BODY_FIXED = "body_fixed"
-    SPACIAL = "spacial"
-    
-    # compatibility with older version, where these functions have been 
-    # member functions of class.
-    SE3AdjInvMatrix = staticmethod(SE3AdjInvMatrix)
-    SE3AdjMatrix = staticmethod(SE3AdjMatrix)
-    SE3adMatrix = staticmethod(SE3adMatrix)
-    SE3Exp = staticmethod(SE3Exp)
-    SE3Inv = staticmethod(SE3Inv)
-    SO3Exp = staticmethod(SO3Exp)
-    InertiaMatrix = staticmethod(InertiaMatrix)
-    TransformationMatrix = staticmethod(TransformationMatrix)
-    MassMatrixMixedData = staticmethod(MassMatrixMixedData)
-    rpy_to_matrix = staticmethod(rpy_to_matrix)
-    xyz_rpy_to_matrix = staticmethod(xyz_rpy_to_matrix)
-    
-    
-    
-    def __init__(self, gravity_vector=None, ee=None, body_ref_config = [], 
-                 joint_screw_coord = [], config_representation = "body_fixed", 
-                 Mb=[], parent = [], support = [], child = [], **kwargs):
-        """SymbolicKinDyn
-        Symbolic tool to compute equations of motion of serial chain 
-        robots and autogenerate code from the calculated equations. 
-        This tool supports generation of python, C and Matlab code.
-
-        Args:
-            gravity_vector (sympy.Matrix, optional): 
-                Vector of gravity. Defaults to None.
-            ee (sympy.Matrix, optional): 
-                End-effector configuration with reference to last link 
-                body fixed frame in the chain. Defaults to None.
-            body_ref_config (list of sympy.Matrix, optional): 
-                List of reference configurations of bodies in body-fixed
-                or spacial representation, dependent on selected 
-                config_representation. 
-                Leave empty for dH Parameter usage (dhToScrewCoord(...)). 
-                Defaults to [].
-            joint_screw_coord (list of sympy.Matrix, optional): 
-                List of joint screw coordinates in body-fixed 
-                or spacial representation, dependent on selected 
-                config_representation. 
-                Leave empty for dH Parameter usage (dhToScrewCoord(...)). 
-                Defaults to [].
-            config_representation (str):
-                Use body fixed or spacial representation for reference 
-                configuration of bodies and joint screw coordinates.
-                Has to be "body_fixed" or "spacial". 
-                Defaults to "body_fixed".
-            Mb (list of sympy.Matrix, optional): 
-                List of Mass Inertia matrices for all links. Only 
-                necessary for inverse dynamics. Defaults to [].
-            parent (list, optional):
-                TODO
-                Defaults to [].
-            support (list, optional):
-                TODO
-                Defaults to [].
-            child (list, optional):
-                TODO
-                Defaults to [].
-                
-        Usage:
-            Example of an 2R Serial chain robot:
-            Imports:
-                >>> import sympy 
-            
-            Declaration of symbolic variables:
-                joint positions:
-                >>> q1, q2 = sympy.symbols("q1 q2")
-                
-                joint velocities:
-                >>> dq1, dq2 = sympy.symbols("dq1 dq2")
-                
-                joint accelerations:
-                >>> ddq1, ddq2 = sympy.symbols("ddq1 ddq2")
-                
-                mass:
-                >>> m1, m2 = sympy.symbols("m1 m2", real=1, constant=1)
-                
-                center of gravity and gravity
-                >>> cg1, cg2, g = sympy.symbols("cg1 cg2 g", constant=1)
-                
-                link lengths:
-                >>> L1, L2 = sympy.symbols("L1 L2", real=1, constant=1)
-                
-            Definition of arguments:
-                Gravity vector:
-                >>> gravity_vector = sympy.Matrix([0, g, 0])
-                
-                Joint screw coordinate in body fixed representation:
-                >>> joint_screw_coord = []
-                >>> joint_screw_coord.append(sympy.Matrix([0, 0, 1, 0, 0, 0]).T)
-                >>> joint_screw_coord.append(sympy.Matrix([0, 0, 1, 0, -L1, 0]).T)
-                
-                Reference configurations of bodies 
-                (i.e. of body-fixed reference frames):
-                >>> body_ref_config = []
-                >>> body_ref_config.append(
-                ...     TransformationMatrix(
-                ...     t=sympy.Matrix([0, 0, 0]))
-                >>> body_ref_config.append(
-                ...     TransformationMatrix(
-                ...     t=sympy.Matrix([L1, 0, 0]))
-            
-                End-effector configuration wrt last link body fixed 
-                frame in the chain:
-                >>> ee = TransformationMatrix(
-                ...     t=sympy.Matrix([L2, 0, 0]))
-
-                Mass-Intertia parameters:
-                >>> Mb = []
-                >>> Mb.append(MassMatrixMixedData(
-                ...     m1, (m1*L1**2) * sympy.Identity(3), cg1))
-                >>> Mb.append(MassMatrixMixedData(
-                ...     m2, (m2*L2**2) * sympy.Identity(3), cg2))
-
-                Declaring generalized vectors:
-                >>> q = Matrix([q1, q2])
-                >>> qd = Matrix([dq1, dq2])
-                >>> q2d = Matrix([ddq1, ddq2])
-            
-            Initialization and usage of SymbolicKinDyn:
-                Init:
-                >>> skd = SymbolicKinDyn(gravity_vector=gravity_vector, 
-                ...                      ee=ee, 
-                ...                      body_ref_config = body_ref_config, 
-                ...                      joint_screw_coord = joint_screw_coord, 
-                ...                      config_representation = "body_fixed", 
-                ...                      Mb=Mb)
-                
-                Generate Kinematics:
-                >>> skd.closed_form_kinematics_body_fixed(q, qd, q2d)
-                
-                Generate Dynamics:
-                >>> skd.closed_form_inv_dyn_body_fixed(q, qd, q2d)
-                
-                Generate Code:
-                >>> skd.generateCode(python=True, C=True, Matlab=True,  
-                ...                  name="R2_plant_example")
-        """
-        self.n = None  # degrees of freedom
-        self.gravity_vector = gravity_vector
-        self.ee = ee
-        self.B = [] # List of reference configurations of bodies in body-fixed representation.
-        self.A = [] # List of reference configurations of bodies in spacial representation.
-        self.X = [] # List of joint screw coordinates in body-fixed representation.
-        self.Y = [] # List of joint screw coordinates in spacial representation.
-        
-        self.config_representation = config_representation # @property: checks for valid value 
-        if body_ref_config != []:
-            self.body_ref_config = body_ref_config # @property: sets A or B
-        if joint_screw_coord != []:
-            self.joint_screw_coord = joint_screw_coord # @property: sets X or Y
-        # support of old syntax
-        if "A" in kwargs:
-            self.A = kwargs["A"]
-        if "B" in kwargs:
-            self.B = kwargs["B"]
-        if "X" in kwargs:
-            self.X = kwargs["X"]
-        if "Y" in kwargs:
-            self.Y = kwargs["Y"]
-            
-        self.Mb = Mb
-        self.parent = parent
-        self.child = child
-        self.support = support
-
-        # temporary vars
-        self._FK_C = None
-        self._A = None
-        self._a = None
-        self._V = None  # system twist
-
+class _AbstractCodeGeneration():
+    def __init__(self):
         # variables for Code Generation:
         self.fkin = None  # forward_kinematics
         self.J = None  # system_jacobian_matrix
@@ -462,13 +49,7 @@ class SymbolicKinDyn():
 
         # set of variable symbols to use in generated functions as arguments
         self.var_syms = set()
-
-        # Multiprocessing
-        # dict of queues, which saves values and results
-        self.queue_dict = {}  
-        # dict of running processes
-        self.process_dict = {}  
-
+        
         # Value assignment
         # dict with assigned variables for code generation
         self.assignment_dict = {}  
@@ -477,44 +58,7 @@ class SymbolicKinDyn():
 
         self.all_symbols = set()  # set with all used symbols
 
-    @property
-    def config_representation(self):
-        return self._config_representation
-    
-    @config_representation.setter
-    def config_representation(self, value):
-        if value not in {self.BODY_FIXED, self.SPACIAL}:
-            raise ValueError("config_representation has to be 'body_fixed' or 'spacial'")
-        self._config_representation = value
-    
-    @property
-    def body_ref_config(self):
-        if self.config_representation == self.BODY_FIXED:
-            return self.B
-        elif self.config_representation == self.SPACIAL:
-            return self.A
-    
-    @body_ref_config.setter
-    def body_ref_config(self, value):
-        if self.config_representation == self.BODY_FIXED:
-            self.B = value
-        elif self.config_representation == self.SPACIAL:
-            self.A = value
-    
-    @property
-    def joint_screw_coord(self):
-        if self.config_representation == self.BODY_FIXED:
-            return self.X
-        elif self.config_representation == self.SPACIAL:
-            return self.Y
-    
-    @joint_screw_coord.setter
-    def joint_screw_coord(self, value):
-        if self.config_representation == self.BODY_FIXED:
-            self.X = value
-        elif self.config_representation == self.SPACIAL:
-            self.Y = value
-    
+
     def get_expressions_dict(self, filterNone=True):
         """Get dictionary with expression names (key) and generated 
         expressions (value).
@@ -788,6 +332,234 @@ class SymbolicKinDyn():
                     f.write(m_code)
             print("Done")
 
+
+
+class SymbolicKinDyn(_AbstractCodeGeneration):
+    BODY_FIXED = "body_fixed"
+    SPACIAL = "spacial"
+    
+    # compatibility with older version, where these functions have been 
+    # member functions of class.
+    SE3AdjInvMatrix = staticmethod(SE3AdjInvMatrix)
+    SE3AdjMatrix = staticmethod(SE3AdjMatrix)
+    SE3adMatrix = staticmethod(SE3adMatrix)
+    SE3Exp = staticmethod(SE3Exp)
+    SE3Inv = staticmethod(SE3Inv)
+    SO3Exp = staticmethod(SO3Exp)
+    InertiaMatrix = staticmethod(InertiaMatrix)
+    TransformationMatrix = staticmethod(TransformationMatrix)
+    MassMatrixMixedData = staticmethod(MassMatrixMixedData)
+    rpy_to_matrix = staticmethod(rpy_to_matrix)
+    xyz_rpy_to_matrix = staticmethod(xyz_rpy_to_matrix)
+    
+    
+    
+    def __init__(self, gravity_vector=None, ee=None, body_ref_config = [], 
+                 joint_screw_coord = [], config_representation = "body_fixed", 
+                 Mb=[], parent = [], support = [], child = [], **kwargs):
+        """SymbolicKinDyn
+        Symbolic tool to compute equations of motion of serial chain 
+        robots and autogenerate code from the calculated equations. 
+        This tool supports generation of python, C and Matlab code.
+
+        Args:
+            gravity_vector (sympy.Matrix, optional): 
+                Vector of gravity. Defaults to None.
+            ee (sympy.Matrix, optional): 
+                End-effector configuration with reference to last link 
+                body fixed frame in the chain. Defaults to None.
+            body_ref_config (list of sympy.Matrix, optional): 
+                List of reference configurations of bodies in body-fixed
+                or spacial representation, dependent on selected 
+                config_representation. 
+                Leave empty for dH Parameter usage (dhToScrewCoord(...)). 
+                Defaults to [].
+            joint_screw_coord (list of sympy.Matrix, optional): 
+                List of joint screw coordinates in body-fixed 
+                or spacial representation, dependent on selected 
+                config_representation. 
+                Leave empty for dH Parameter usage (dhToScrewCoord(...)). 
+                Defaults to [].
+            config_representation (str):
+                Use body fixed or spacial representation for reference 
+                configuration of bodies and joint screw coordinates.
+                Has to be "body_fixed" or "spacial". 
+                Defaults to "body_fixed".
+            Mb (list of sympy.Matrix, optional): 
+                List of Mass Inertia matrices for all links. Only 
+                necessary for inverse dynamics. Defaults to [].
+            parent (list, optional):
+                TODO
+                Defaults to [].
+            support (list, optional):
+                TODO
+                Defaults to [].
+            child (list, optional):
+                TODO
+                Defaults to [].
+                
+        Usage:
+            Example of an 2R Serial chain robot:
+            Imports:
+                >>> import sympy 
+            
+            Declaration of symbolic variables:
+                joint positions:
+                >>> q1, q2 = sympy.symbols("q1 q2")
+                
+                joint velocities:
+                >>> dq1, dq2 = sympy.symbols("dq1 dq2")
+                
+                joint accelerations:
+                >>> ddq1, ddq2 = sympy.symbols("ddq1 ddq2")
+                
+                mass:
+                >>> m1, m2 = sympy.symbols("m1 m2", real=1, constant=1)
+                
+                center of gravity and gravity
+                >>> cg1, cg2, g = sympy.symbols("cg1 cg2 g", constant=1)
+                
+                link lengths:
+                >>> L1, L2 = sympy.symbols("L1 L2", real=1, constant=1)
+                
+            Definition of arguments:
+                Gravity vector:
+                >>> gravity_vector = sympy.Matrix([0, g, 0])
+                
+                Joint screw coordinate in body fixed representation:
+                >>> joint_screw_coord = []
+                >>> joint_screw_coord.append(sympy.Matrix([0, 0, 1, 0, 0, 0]).T)
+                >>> joint_screw_coord.append(sympy.Matrix([0, 0, 1, 0, -L1, 0]).T)
+                
+                Reference configurations of bodies 
+                (i.e. of body-fixed reference frames):
+                >>> body_ref_config = []
+                >>> body_ref_config.append(
+                ...     TransformationMatrix(
+                ...     t=sympy.Matrix([0, 0, 0]))
+                >>> body_ref_config.append(
+                ...     TransformationMatrix(
+                ...     t=sympy.Matrix([L1, 0, 0]))
+            
+                End-effector configuration wrt last link body fixed 
+                frame in the chain:
+                >>> ee = TransformationMatrix(
+                ...     t=sympy.Matrix([L2, 0, 0]))
+
+                Mass-Intertia parameters:
+                >>> Mb = []
+                >>> Mb.append(MassMatrixMixedData(
+                ...     m1, (m1*L1**2) * sympy.Identity(3), cg1))
+                >>> Mb.append(MassMatrixMixedData(
+                ...     m2, (m2*L2**2) * sympy.Identity(3), cg2))
+
+                Declaring generalized vectors:
+                >>> q = Matrix([q1, q2])
+                >>> qd = Matrix([dq1, dq2])
+                >>> q2d = Matrix([ddq1, ddq2])
+            
+            Initialization and usage of SymbolicKinDyn:
+                Init:
+                >>> skd = SymbolicKinDyn(gravity_vector=gravity_vector, 
+                ...                      ee=ee, 
+                ...                      body_ref_config = body_ref_config, 
+                ...                      joint_screw_coord = joint_screw_coord, 
+                ...                      config_representation = "body_fixed", 
+                ...                      Mb=Mb)
+                
+                Generate Kinematics:
+                >>> skd.closed_form_kinematics_body_fixed(q, qd, q2d)
+                
+                Generate Dynamics:
+                >>> skd.closed_form_inv_dyn_body_fixed(q, qd, q2d)
+                
+                Generate Code:
+                >>> skd.generateCode(python=True, C=True, Matlab=True,  
+                ...                  name="R2_plant_example")
+        """
+        super().__init__()
+        self.n = None  # degrees of freedom
+        self.gravity_vector = gravity_vector
+        self.ee = ee
+
+        self.B = [] # List of reference configurations of bodies in body-fixed representation.
+        self.X = [] # List of joint screw coordinates in body-fixed representation.
+
+        self.A = [] # List of reference configurations of bodies in spacial representation.
+        self.Y = [] # List of joint screw coordinates in spacial representation.
+        
+        self.config_representation = config_representation # @property: checks for valid value 
+        if body_ref_config != []:
+            self.body_ref_config = body_ref_config # @property: sets A or B
+        if joint_screw_coord != []:
+            self.joint_screw_coord = joint_screw_coord # @property: sets X or Y
+        # support of old syntax
+        if "A" in kwargs:
+            self.A = kwargs["A"]
+        if "B" in kwargs:
+            self.B = kwargs["B"]
+        if "X" in kwargs:
+            self.X = kwargs["X"]
+        if "Y" in kwargs:
+            self.Y = kwargs["Y"]
+            
+        self.Mb = Mb
+        self.parent = parent
+        self.child = child
+        self.support = support
+
+        # temporary vars
+        self._FK_C = None
+        self._A = None
+        self._a = None
+        self._V = None  # system twist
+
+        
+        # Multiprocessing
+        # dict of queues, which saves values and results
+        self.queue_dict = {}  
+        # dict of running processes
+        self.process_dict = {}  
+
+        
+    @property
+    def config_representation(self):
+        return self._config_representation
+    
+    @config_representation.setter
+    def config_representation(self, value):
+        if value not in {self.BODY_FIXED, self.SPACIAL}:
+            raise ValueError("config_representation has to be 'body_fixed' or 'spacial'")
+        self._config_representation = value
+    
+    @property
+    def body_ref_config(self):
+        if self.config_representation == self.BODY_FIXED:
+            return self.B
+        elif self.config_representation == self.SPACIAL:
+            return self.A
+    
+    @body_ref_config.setter
+    def body_ref_config(self, value):
+        if self.config_representation == self.BODY_FIXED:
+            self.B = value
+        elif self.config_representation == self.SPACIAL:
+            self.A = value
+    
+    @property
+    def joint_screw_coord(self):
+        if self.config_representation == self.BODY_FIXED:
+            return self.X
+        elif self.config_representation == self.SPACIAL:
+            return self.Y
+    
+    @joint_screw_coord.setter
+    def joint_screw_coord(self, value):
+        if self.config_representation == self.BODY_FIXED:
+            self.X = value
+        elif self.config_representation == self.SPACIAL:
+            self.Y = value
+    
     def closed_form_kinematics_body_fixed(
         self, q, qd, q2d, simplify_expressions=True, cse_ex=False, parallel=True):
         """Position, Velocity and Acceleration Kinematics using Body 
