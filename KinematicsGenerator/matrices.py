@@ -19,6 +19,28 @@ def generalized_vectors(DOF, startindex=0):
     q2d = Matrix(symbols(" ".join(f"ddq{i}" for i in range(startindex,startindex+DOF))))
     return q, qd, q2d
 
+def SymbolicInertiaMatrix(index="", pointmass=False):
+    """Create 3 x 3 symbolic inertia matrix with auto generated variable names.
+
+    Args:
+        index (int or str):
+            postfix for variable name. Defaults to "".
+        pointmass (bool):
+            Inertial matrix = I * Identity. Default to False.
+    Returns:
+        sympy.Matrix: Inertia matrix (3,3)
+    """
+    if pointmass:
+        I = symbols(f"I{index}", real=1, constant=1)
+        return I*Identity(3)
+    Ixx, Iyy, Izz, Ixy, Ixz, Iyz = symbols(
+        f"Ixx{index} Iyy{index} Izz{index} Ixy{index} Ixz{index} Iyz{index}")
+    
+    I = Matrix([[Ixx, Ixy, Ixz],
+                [Ixy, Iyy, Iyz],
+                [Ixz, Iyz, Izz]])
+    return I
+
 def SE3AdjInvMatrix(C):
     """Compute Inverse of (6x6) Adjoint matrix for SE(3)
 

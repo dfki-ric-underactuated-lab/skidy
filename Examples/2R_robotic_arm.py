@@ -13,7 +13,7 @@ ddq1, ddq2 = symbols("ddq1 ddq2")  # joint accelerations
 m1, m2, I1, I2 = symbols("m1 m2 I1 I2", real=1, constant=1)
 # center of gravitiy and gravity
 cg1, cg2, g = symbols("cg1 cg2 g", real=1, constant=1)
-L1, L2 = symbols("L1 L2", real=1, constant=1)  # link lenghts
+L1, L2 = symbols("L1 L2", real=1, constant=1)  # link lengths
 pi = symbols("pi", real=1, constant=1)  # pi
 
 gravity_vector = Matrix([0, g, 0])  # define gravity vector

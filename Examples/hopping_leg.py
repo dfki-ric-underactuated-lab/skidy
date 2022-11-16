@@ -58,7 +58,7 @@ s.body_ref_config.append(TransformationMatrix(t=r2))
 
 # End-effector configuration wrt last link body fixed frame in the chain
 re = Matrix([L2, 0, 0])
-s.ee = Matrix(Identity(3)).row_join(re).col_join(Matrix([0, 0, 0, 1]).T)
+s.ee = TransformationMatrix(t=re)
 
 # Joint screw coordinates in body-fixed representation computed from screw coordinates in IFR
 # s.joint_screw_coord = []

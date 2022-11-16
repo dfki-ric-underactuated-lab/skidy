@@ -298,12 +298,58 @@ class _AbstractCodeGeneration():
                         i += 1
                 i += 1
             c_code = "".join(c_lines)
+            
+            # save assinged parameters 
+            c_def_name = f"{c_name[:-2]}_parameters.c"
+            header_insert = []
+            c_definitions = [f'#include "{h_name}"\n']
+            c_definitions.append("#include <math.h>\n")
+            c_definitions.append("\n")
+            
+            if not_assigned_syms:
+                header_insert.append(f"/* Please uncomment and assign values in '{c_def_name}'\n")
+                c_definitions.append(f"/* Please assign values and uncomment in '{h_name}'\n")
+                for var in sorted([str(i) for i in not_assigned_syms]):
+                    header_insert.append(f"extern const float {var};\n")
+                    if var == "g":
+                        c_definitions.append(f"const float {var} = 9.81;\n")
+                    else:
+                        c_definitions.append(f"const float {var} = 0;\n")
+                header_insert.append("*/ \n")
+                c_definitions.append("*/ \n")
+            
+            for var in sorted([str(i) for i in self.assignment_dict]):
+                val = str(self.assignment_dict[symbols(var)])
+                header_insert.append(f"extern const float {var};\n")
+                c_definitions.append(f"const float {var} = {val};\n")
+
+
+            # append cse expressions
+            for var in sorted([str(j) for j in self.subex_dict], key=lambda x: int(regex.findall("(?<=sub)\d*",x)[0])):
+                val = str(self.subex_dict[symbols(var)])
+                header_insert.append(f"extern const float {var};\n")
+                c_definitions.append(f"const float {var} = {val};\n")
+
+            
+            
+            if header_insert:
+                header_insert.append("\n")
+                h_lines = c_header.splitlines(True)
+                for i in range(len(h_lines)):
+                    if "#endif" in h_lines[i]:
+                        h_lines[i:i] = header_insert 
+                        break
+                c_header = "".join(h_lines)
 
             # write code files
             with open(os.path.join(folder, "C", c_name), "w+") as f:
                 f.write(c_code)
             with open(os.path.join(folder, "C", h_name), "w+") as f:
                 f.write(c_header)
+            if header_insert:
+                with open(os.path.join(folder, "C", c_def_name), "w+") as f:
+                    f.writelines(c_definitions)
+                
             print("Done")
 
         if Matlab:
