@@ -377,7 +377,148 @@ class _AbstractCodeGeneration():
                 with open(os.path.join(folder, "matlab", m_name), "w+") as f:
                     f.write(m_code)
             print("Done")
+            
+        if 0:
+            m_class = []
+            m_class.append(f"classdef {name}\n")
+            
+            # properties
+            m_class.append(f"\tproperties\n")
+            for var in const_syms:
+                m_class.append(f"\t\t{var}\n")
+            m_class.append("\tend\n\n")
+            
+            # methods
+            m_class.append(f"\tmethods\n")
+            
+            # init function
+            var_substr = ", ".join(
+                    [str(not_assigned_syms[i]) 
+                     for i in range(len(not_assigned_syms))] 
+                    + [str(i) for i in self.assignment_dict])
+            m_class.append(f"\t\tfunction obj = {name}({var_substr})\n")
+            if not_assigned_syms:
+                m_class.append(f"\t\t\t% TODO: Assign missing variables here:\n")
+                for var in not_assigned_syms:
+                    if str(var) == "g":
+                        m_class.append(f"\t\t\t% if ~exist('{str(var)}','var'); {str(var)} = 9.81; end\n")
+                    else:
+                        m_class.append(f"\t\t\t% if ~exist('{str(var)}','var'); {str(var)} = 0; end\n")
+            for var in self.assignment_dict:
+                m_class.append(f"\t\t\tif ~exist('{str(var)}','var'); {str(var)} = {self.assignment_dict[var]}; end\n")
+            m_class.append("")
+            for var in not_assigned_syms:
+                m_class.append(f"\t\t\tobj.{str(var)} = {str(var)};\n")
+            for var in self.assignment_dict:
+                m_class.append(f"\t\t\tobj.{str(var)} = {str(var)};\n")
+            for var in sorted([str(j) for j in self.subex_dict], key=lambda x: int(regex.findall("(?<=sub)\d*",x)[0])):
+                val = str(self.subex_dict[symbols(var)])
+                m_class.append(f"\t\t\tobj.{str(var)} = {val};\n")       
+            m_class.append("\t\tend\n\n")
+            
+            # Add generated functions
+            for i in range(len(expressions)):
+                [(m_name, m_code)] = codegen(
+                    (names[i], expressions[i]), "Octave", project=project, 
+                    header=False, empty=True, 
+                    argument_sequence=self._sort_variables(self.all_symbols)
+                    )
+                m_func = m_code.splitlines(True)
+                for var in regex.findall(
+                    "(" + '|'.join([f' {v},|\({v}, |, {v}\)' for v in const_syms])+")",
+                    m_func[0]
+                    ):
+                    m_func[0] = m_func[0].replace(var,"")
+                for i in range(1, len(m_func)):
+                    m_func[i] = regex.sub(f"(?<=\W)(?=({'|'.join([str(s) for s in const_syms])})\W)","obj.",m_func[i])        
+                m_func.append("\n")
+                m_class.extend(m_func)
+            
+            m_class.append("\tend\n")
+            m_class.append("end\n")
+            print("".join(m_class))
 
+            return
+            s.append("class "+name.capitalize()+"():")
+            # define __init__ function
+            s.append("    def __init__(self, %s):" % (
+                ", ".join(
+                    [str(not_assigned_syms[i]) 
+                     for i in range(len(not_assigned_syms))] 
+                    + [str(i)+" = " + str(self.assignment_dict[i]) 
+                       for i in self.assignment_dict])))
+            if len(not_assigned_syms) > 0:
+                s.append("        "
+                         + ", ".join(["self."+str(not_assigned_syms[i]) 
+                                      for i in range(len(not_assigned_syms))])
+                         + " = " 
+                         + ", ".join([str(not_assigned_syms[i]) 
+                                      for i in range(len(not_assigned_syms))])
+                         )
+
+            # append preassigned values to __init__ function
+            if len(self.assignment_dict) > 0:
+                s.append("        "
+                         + ", ".join(sorted(["self."+str(i) 
+                                             for i in self.assignment_dict]))
+                         + " = " 
+                         + ", ".join(sorted([str(i) 
+                                             for i in self.assignment_dict]))
+                         )
+
+            # append cse expressions to __init__ function
+            if len(self.subex_dict) > 0:
+                for i in sorted([str(j) for j in self.subex_dict], key=lambda x: int(regex.findall("(?<=sub)\d*",x)[0])):
+                    modstring = str(self.subex_dict[symbols(i)])
+                    for j in sorted([str(h) 
+                                     for h in self.subex_dict[symbols(i)].free_symbols],
+                                    reverse=1):
+                        modstring = regex.sub(
+                            str(j), "self."+str(j), modstring)
+                        # remove double self
+                        modstring = regex.sub("self.self.", "self.", modstring)
+                    s.append("        self."+str(i)+" = " + modstring)
+
+            # define functions
+            for i in range(len(expressions)):
+                var_syms = self._sort_variables(self.var_syms.intersection(
+                    expressions[i].free_symbols))
+                const_syms = self._sort_variables(
+                    set(constant_syms).intersection(
+                        expressions[i].free_symbols))
+                if len(var_syms) > 0:
+                    s.append("\n    def "+names[i]+"(self, %s):" % (
+                        ", ".join([str(var_syms[i]) 
+                                   for i in range(len(var_syms))])))
+
+                else:
+                    s.append("\n    def "+names[i]+"(self):")
+                if len(const_syms) > 0:
+                    s.append("        "
+                             + ", ".join([str(const_syms[i]) 
+                                          for i in range(len(const_syms))])
+                             + " = " 
+                             + ", ".join(["self."+str(const_syms[i]) 
+                                          for i in range(len(const_syms))])
+                             )
+
+                s.append("        "
+                         + names[i] 
+                         + " = " 
+                         + p.doprint(expressions[i]))
+                s.append("        return " + names[i])
+
+            # replace numpy with np for better readability
+            s = list(map(lambda x: x.replace("numpy.", "np."), s))
+            s[0] = "import numpy as np\n\n"
+
+            # join list to string
+            s = "\n".join(s)
+
+            # write python file
+            with open(os.path.join(folder, "python", name + ".py"), "w+") as f:
+                f.write(s)
+            print("Done")
 
 
 class SymbolicKinDyn(_AbstractCodeGeneration):
