@@ -8,7 +8,8 @@ from multiprocessing import Process, Queue
 import numpy
 import sympy
 from sympy import (Identity, Matrix, cancel, cos, cse, factor,
-                   lambdify, powsimp, sin, symbols, zeros, pi, nsimplify)
+                   lambdify, powsimp, sin, symbols, zeros, pi, nsimplify, 
+                   octave_code, ccode)
 from sympy.printing.numpy import NumPyPrinter
 from sympy.simplify.cse_main import numbered_symbols
 from sympy.simplify.fu import fu
@@ -283,9 +284,9 @@ class _AbstractCodeGeneration():
                 # find function definition
                 if any(n+"(" in c_lines[i] for n in names):
                     # which expression is defined
-                    [name] = [n for n in names if n+"(" in c_lines[i]]
+                    [fname] = [n for n in names if n+"(" in c_lines[i]]
                     # find shape of expression
-                    cols = all_expressions[name].shape[1]
+                    cols = all_expressions[fname].shape[1]
                     i += 1
                     # replace all 1D arrays with 2D arrays for matrices
                     while "}" not in c_lines[i]:
@@ -319,14 +320,14 @@ class _AbstractCodeGeneration():
                 c_definitions.append("*/ \n")
             
             for var in sorted([str(i) for i in self.assignment_dict]):
-                val = str(self.assignment_dict[symbols(var)])
+                val = ccode(self.assignment_dict[symbols(var)])
                 header_insert.append(f"extern const float {var};\n")
                 c_definitions.append(f"const float {var} = {val};\n")
 
 
             # append cse expressions
             for var in sorted([str(j) for j in self.subex_dict], key=lambda x: int(regex.findall("(?<=sub)\d*",x)[0])):
-                val = str(self.subex_dict[symbols(var)])
+                val = ccode(self.subex_dict[symbols(var)])
                 header_insert.append(f"extern const float {var};\n")
                 c_definitions.append(f"const float {var} = {val};\n")
 
@@ -353,50 +354,36 @@ class _AbstractCodeGeneration():
             print("Done")
 
         if Matlab:
-            print("Generate Matlab code")
-            # create folders
-            if not os.path.exists(os.path.join(folder, "matlab")):
-                os.mkdir(os.path.join(folder, "matlab"))
-
-            # generate m code
-            for i in range(len(expressions)):
-                if use_global_vars:
-                    [(m_name, m_code)] = codegen(
-                        (names[i], expressions[i]), "Octave", project=project, 
-                        header=False, empty=True, global_vars=constant_syms, 
-                        argument_sequence=self._sort_variables(self.all_symbols)
-                        )
-                else:
-                    [(m_name, m_code)] = codegen(
-                        (names[i], expressions[i]), "Octave", project=project, 
-                        header=False, empty=True, 
-                        argument_sequence=self._sort_variables(self.all_symbols)
-                        )
-
-                # write code files
-                with open(os.path.join(folder, "matlab", m_name), "w+") as f:
-                    f.write(m_code)
-            print("Done")
-            
-        if 0:
             m_class = []
             m_class.append(f"classdef {name}\n")
-            
+            m_properties = not_assigned_syms[:]
+            m_properties.extend([i for i in self.assignment_dict])
             # properties
             m_class.append(f"\tproperties\n")
-            for var in const_syms:
-                m_class.append(f"\t\t{var}\n")
+            for var in m_properties:
+                m_class.append(f"\t\t{str(var)}\n")
+            # add cse subexpressions as private properties
+            if self.subex_dict:
+                m_class.append("\tend\n\n")
+                m_class.append(f"\tproperties (Access = private)\n")
+                for var in [i for i in sorted([str(j) for j in self.subex_dict], key=lambda x: int(regex.findall("(?<=sub)\d*",x)[0]))]:
+                    m_class.append(f"\t\t{str(var)}\n")
+                # add subex to m_properties list
+                m_properties.extend([i for i in sorted([str(j) for j in self.subex_dict], key=lambda x: int(regex.findall("(?<=sub)\d*",x)[0]))])
             m_class.append("\tend\n\n")
             
             # methods
             m_class.append(f"\tmethods\n")
             
             # init function
+            # function argumens
             var_substr = ", ".join(
                     [str(not_assigned_syms[i]) 
                      for i in range(len(not_assigned_syms))] 
-                    + [str(i) for i in self.assignment_dict])
+                    + [str(j) for j in self.assignment_dict])
             m_class.append(f"\t\tfunction obj = {name}({var_substr})\n")
+            
+            # default values for not assigned variables
             if not_assigned_syms:
                 m_class.append(f"\t\t\t% TODO: Assign missing variables here:\n")
                 for var in not_assigned_syms:
@@ -404,122 +391,51 @@ class _AbstractCodeGeneration():
                         m_class.append(f"\t\t\t% if ~exist('{str(var)}','var'); {str(var)} = 9.81; end\n")
                     else:
                         m_class.append(f"\t\t\t% if ~exist('{str(var)}','var'); {str(var)} = 0; end\n")
+            # default values for assigned variables
             for var in self.assignment_dict:
-                m_class.append(f"\t\t\tif ~exist('{str(var)}','var'); {str(var)} = {self.assignment_dict[var]}; end\n")
+                val = octave_code(self.assignment_dict[var])
+                m_class.append(f"\t\t\tif ~exist('{str(var)}','var'); {str(var)} = {val}; end\n")
             m_class.append("")
+            # save variables to parameters
             for var in not_assigned_syms:
                 m_class.append(f"\t\t\tobj.{str(var)} = {str(var)};\n")
             for var in self.assignment_dict:
                 m_class.append(f"\t\t\tobj.{str(var)} = {str(var)};\n")
+            # calculate subexpressions
             for var in sorted([str(j) for j in self.subex_dict], key=lambda x: int(regex.findall("(?<=sub)\d*",x)[0])):
-                val = str(self.subex_dict[symbols(var)])
+                val = regex.sub("(?<=\W|^)sub","obj.sub",octave_code(self.subex_dict[symbols(var)]))
                 m_class.append(f"\t\t\tobj.{str(var)} = {val};\n")       
             m_class.append("\t\tend\n\n")
             
             # Add generated functions
             for i in range(len(expressions)):
+                # generate function
                 [(m_name, m_code)] = codegen(
                     (names[i], expressions[i]), "Octave", project=project, 
                     header=False, empty=True, 
                     argument_sequence=self._sort_variables(self.all_symbols)
                     )
+                # remove already set variables
                 m_func = m_code.splitlines(True)
-                for var in regex.findall(
-                    "(" + '|'.join([f' {v},|\({v}, |, {v}\)' for v in const_syms])+")",
-                    m_func[0]
-                    ):
-                    m_func[0] = m_func[0].replace(var,"")
+                m_func = [f"\t\t{line}" for line in m_func]
+                m_func[0] = m_func[0].replace("(","(obj, ")
+                m_func[0] = regex.sub(
+                    "(" + '|'.join([f', {str(v)}(?=\W)' for v in m_properties])+")",
+                    "", m_func[0])
+                # remove unused variable symbols
+                m_func[0] = regex.sub(
+                    "(" + '|'.join([f', {str(v)}(?=\W)' for v in self.var_syms.difference(expressions[i].free_symbols)])+")",
+                    "", m_func[0])
+                # use obj.variables defined in class parameters
                 for i in range(1, len(m_func)):
-                    m_func[i] = regex.sub(f"(?<=\W)(?=({'|'.join([str(s) for s in const_syms])})\W)","obj.",m_func[i])        
+                    m_func[i] = regex.sub(f"(?<=\W|^)(?=({'|'.join([str(s) for s in m_properties])})\W)","obj.",m_func[i])        
                 m_func.append("\n")
                 m_class.extend(m_func)
             
             m_class.append("\tend\n")
             m_class.append("end\n")
-            print("".join(m_class))
-
-            return
-            s.append("class "+name.capitalize()+"():")
-            # define __init__ function
-            s.append("    def __init__(self, %s):" % (
-                ", ".join(
-                    [str(not_assigned_syms[i]) 
-                     for i in range(len(not_assigned_syms))] 
-                    + [str(i)+" = " + str(self.assignment_dict[i]) 
-                       for i in self.assignment_dict])))
-            if len(not_assigned_syms) > 0:
-                s.append("        "
-                         + ", ".join(["self."+str(not_assigned_syms[i]) 
-                                      for i in range(len(not_assigned_syms))])
-                         + " = " 
-                         + ", ".join([str(not_assigned_syms[i]) 
-                                      for i in range(len(not_assigned_syms))])
-                         )
-
-            # append preassigned values to __init__ function
-            if len(self.assignment_dict) > 0:
-                s.append("        "
-                         + ", ".join(sorted(["self."+str(i) 
-                                             for i in self.assignment_dict]))
-                         + " = " 
-                         + ", ".join(sorted([str(i) 
-                                             for i in self.assignment_dict]))
-                         )
-
-            # append cse expressions to __init__ function
-            if len(self.subex_dict) > 0:
-                for i in sorted([str(j) for j in self.subex_dict], key=lambda x: int(regex.findall("(?<=sub)\d*",x)[0])):
-                    modstring = str(self.subex_dict[symbols(i)])
-                    for j in sorted([str(h) 
-                                     for h in self.subex_dict[symbols(i)].free_symbols],
-                                    reverse=1):
-                        modstring = regex.sub(
-                            str(j), "self."+str(j), modstring)
-                        # remove double self
-                        modstring = regex.sub("self.self.", "self.", modstring)
-                    s.append("        self."+str(i)+" = " + modstring)
-
-            # define functions
-            for i in range(len(expressions)):
-                var_syms = self._sort_variables(self.var_syms.intersection(
-                    expressions[i].free_symbols))
-                const_syms = self._sort_variables(
-                    set(constant_syms).intersection(
-                        expressions[i].free_symbols))
-                if len(var_syms) > 0:
-                    s.append("\n    def "+names[i]+"(self, %s):" % (
-                        ", ".join([str(var_syms[i]) 
-                                   for i in range(len(var_syms))])))
-
-                else:
-                    s.append("\n    def "+names[i]+"(self):")
-                if len(const_syms) > 0:
-                    s.append("        "
-                             + ", ".join([str(const_syms[i]) 
-                                          for i in range(len(const_syms))])
-                             + " = " 
-                             + ", ".join(["self."+str(const_syms[i]) 
-                                          for i in range(len(const_syms))])
-                             )
-
-                s.append("        "
-                         + names[i] 
-                         + " = " 
-                         + p.doprint(expressions[i]))
-                s.append("        return " + names[i])
-
-            # replace numpy with np for better readability
-            s = list(map(lambda x: x.replace("numpy.", "np."), s))
-            s[0] = "import numpy as np\n\n"
-
-            # join list to string
-            s = "\n".join(s)
-
-            # write python file
-            with open(os.path.join(folder, "python", name + ".py"), "w+") as f:
-                f.write(s)
-            print("Done")
-
+            with open(os.path.join(folder, "matlab", f"{name}.m"), "w+") as f:
+                f.writelines(m_class)
 
 class SymbolicKinDyn(_AbstractCodeGeneration):
     BODY_FIXED = "body_fixed"
