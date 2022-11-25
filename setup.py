@@ -8,11 +8,13 @@ setup(
     long_description_content_type='text/markdown',
     # url="",
     packages=find_packages(exclude="unit_testing"),
+    setup_requires=["numpy"],
     install_requires=[
         "numpy",
         "sympy>=1.8",
         "urdfpy",
-        "regex"
+        "regex",
+        "PyYAML"
     ],
     classifiers=[
         'Development Status :: 4 - Beta',

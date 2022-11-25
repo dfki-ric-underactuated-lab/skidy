@@ -22,10 +22,14 @@ python3 -m pip install urdfpy
 ```
 python3 -m pip install regex
 ```
+- PyYAML
+```
+python3 -m pip install PyYAML
+```
 
 To install all dependencies use:
 ```
-python3 setup.py install --user
+python3 setup.py install
 ```
 ## Usage
 The script kinematics generator contains one class `SymbolicKinDyn` which contains all needed functions.

@@ -41,7 +41,7 @@ Y.append(Matrix([e2,y2.cross(e2)]))
 e3 = Matrix([1,0,0])
 Y.append(Matrix([Matrix([0,0,0]),e3]))
 
-# Reference configurations of body (i.e. of body-fixed reference frames)
+# Reference configurations of body (i.e. w.r.t. inertia frame)
 A = []
 
 A.append(Matrix(Identity(4)))

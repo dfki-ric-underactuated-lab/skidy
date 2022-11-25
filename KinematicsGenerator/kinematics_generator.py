@@ -458,7 +458,7 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
     
     
     def __init__(self, gravity_vector=None, ee=None, body_ref_config = [], 
-                 joint_screw_coord = [], config_representation = "body_fixed", 
+                 joint_screw_coord = [], config_representation = "spacial", 
                  Mb=[], parent = [], support = [], child = [], **kwargs):
         """SymbolicKinDyn
         Symbolic tool to compute equations of motion of serial chain 
@@ -487,7 +487,7 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
                 Use body fixed or spacial representation for reference 
                 configuration of bodies and joint screw coordinates.
                 Has to be "body_fixed" or "spacial". 
-                Defaults to "body_fixed".
+                Defaults to "spacial".
             Mb (list of sympy.Matrix, optional): 
                 List of Mass Inertia matrices for all links. Only 
                 necessary for inverse dynamics. Defaults to [].

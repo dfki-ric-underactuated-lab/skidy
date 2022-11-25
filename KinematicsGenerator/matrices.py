@@ -1,4 +1,4 @@
-from sympy import Matrix, Identity, symbols, sin, cos, zeros
+from sympy import Matrix, Identity, symbols, sin, cos, zeros, parse_expr
 
 def generalized_vectors(DOF, startindex=0):
     """Generate symbolic generalized vectors q, qd and q2d.
@@ -18,6 +18,31 @@ def generalized_vectors(DOF, startindex=0):
     qd = Matrix(symbols(" ".join(f"dq{i}" for i in range(startindex,startindex+DOF))))
     q2d = Matrix(symbols(" ".join(f"ddq{i}" for i in range(startindex,startindex+DOF))))
     return q, qd, q2d
+
+def joint_screw(axis, vec=[0,0,0], revolute=True):
+    """Get joint screw coordinates from joint axis and vector to joint.
+
+    Args:
+        axis (list): 
+            Joint axis w.r.t. inertial frame.
+        vec (list, optional): 
+            Vector to joint axis from inertial frame for revolute joint. 
+            Defaults to [0,0,0].
+        revolute (bool, optional): 
+            Revolute (True) or prismatic (False) joint. 
+            Defaults to True.
+
+    Returns:
+        sympy.Matrix: joint screw coordinates.
+    """
+    e = Matrix(axis)
+        
+    if revolute:
+        y = Matrix(vec)
+        return Matrix([e, y.cross(e)])
+    else:
+        return Matrix([0,0,0,e])
+        
 
 def SymbolicInertiaMatrix(index="", pointmass=False):
     """Create 3 x 3 symbolic inertia matrix with auto generated variable names.
@@ -201,6 +226,8 @@ def TransformationMatrix(r=Matrix(Identity(3)), t=zeros(3, 1)):
     Returns:
         sympy.Matrix: Transformation matrix (4,4)
     """
+    if type(t) is list:
+        t = Matrix(t)
     T = r.row_join(t).col_join(Matrix([[0, 0, 0, 1]]))
     return T
 
