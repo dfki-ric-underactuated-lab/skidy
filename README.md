@@ -647,7 +647,7 @@ The body reference configuration is a list of SE(3) transformation matrices. To 
         TransformationMatrix(
             r=sympy.Matrix([[1,0,0],
                             [0,1,0],
-                            [0,0,1]])
+                            [0,0,1]]),
             t=sympy.Matrix([0,0,L1])
         )
     )
