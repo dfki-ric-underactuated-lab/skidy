@@ -28,8 +28,8 @@ parser.add_argument("--project", type=str, default="Project", help="project name
 # parser.add_argument("--urdf",action="store_true", help="enforce urdf file")
 
 # options for template generation
-generate_template = parser.add_argument_group("generate robot template to edit. Supported formats: YAML, JSON, python")
-generate_template.add_argument("--template", "--please", action="store_true", help="store template yaml or json file to edit instead of analyzing existing robot.")
+generate_template = parser.add_argument_group("Options for template Generation (available formats: yaml, json, python)")
+generate_template.add_argument("--template", "--please", action="store_true", help="store template yaml or json file to edit instead of analyzing existing robot. Format is chosen by extension of filename")
 generate_template.add_argument("-S", "--structure", type=str, help="structure of robot template: String containing only 'r' and 'p' of joint order. E.g.: Use 'prr' for a robot which has 1 prismatic joint followed by 2 revolute joints.")
 generate_template.add_argument("-d", "--dof", type=int, default=0, help="degrees of freedom. Is usually calculated by length of 'structure'.")
 generate_template.add_argument("--yaml",action="store_true", help="enforce yaml file generation")
