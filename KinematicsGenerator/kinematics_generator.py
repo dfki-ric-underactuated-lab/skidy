@@ -4,12 +4,13 @@ import queue
 import random
 import regex
 from multiprocessing import Process, Queue
+from typing import Union, List, Any, Tuple, Generator, Dict, Callable
 
 import numpy
 import sympy
 from sympy import (Identity, Matrix, cancel, cos, cse, factor,
                    lambdify, powsimp, sin, symbols, zeros, pi, nsimplify, 
-                   octave_code, ccode)
+                   octave_code, ccode, MutableDenseMatrix)
 from sympy.printing.numpy import NumPyPrinter
 from sympy.simplify.cse_main import numbered_symbols
 from sympy.simplify.fu import fu
@@ -19,10 +20,10 @@ from urdfpy import URDF, matrix_to_xyz_rpy
 from KinematicsGenerator.matrices import (
     SE3AdjInvMatrix, SE3AdjMatrix, SE3adMatrix, SE3Exp, SE3Inv, SO3Exp, 
     InertiaMatrix, TransformationMatrix, MassMatrixMixedData, rpy_to_matrix, 
-    xyz_rpy_to_matrix)
+    xyz_rpy_to_matrix, generalized_vectors)
 
 class _AbstractCodeGeneration():
-    def __init__(self):
+    def __init__(self) -> None:
         # variables for Code Generation:
         self.fkin = None  # forward_kinematics
         self.J = None  # system_jacobian_matrix
@@ -60,7 +61,7 @@ class _AbstractCodeGeneration():
         self.all_symbols = set()  # set with all used symbols
 
 
-    def get_expressions_dict(self, filterNone=True):
+    def get_expressions_dict(self, filterNone: bool=True) -> Dict[str,Union[sympy.Expr, None]]:
         """Get dictionary with expression names (key) and generated 
         expressions (value).
 
@@ -104,9 +105,9 @@ class _AbstractCodeGeneration():
             return filtered
         return all_expressions
 
-    def generateCode(self, python=True, C=True, Matlab=False, 
-                     folder="./generated_code", use_global_vars=True, 
-                     name="plant", project="Project"):
+    def generateCode(self, python: bool=True, C: bool=True, Matlab: bool=False, 
+                     folder: str="./generated_code", use_global_vars: bool=True, 
+                     name: str="plant", project: str="Project") -> None:
         """Generate code of generated Expressions. 
         It can generate Python, C (C99) and Matlab/Octave code.  
         Needs 'closed_form_inv_dyn_body_fixed' and/or 
@@ -127,7 +128,7 @@ class _AbstractCodeGeneration():
                 Constant vars like mass etc are no arguments of the 
                 generated expressions. Defaults to True.
             name (str, optional): 
-                Name of Class and file (for Python and C). 
+                Name of class and file. 
                 Defaults to "plant".
             project (str, optional): 
                 Project name in C header. Defaults to "Project".
@@ -457,9 +458,14 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
     
     
     
-    def __init__(self, gravity_vector=None, ee=None, body_ref_config = [], 
-                 joint_screw_coord = [], config_representation = "spacial", 
-                 Mb=[], parent = [], support = [], child = [], **kwargs):
+    def __init__(self, gravity_vector: MutableDenseMatrix=None, 
+                 ee: MutableDenseMatrix=None, 
+                 body_ref_config: List[MutableDenseMatrix]=[], 
+                 joint_screw_coord: List[MutableDenseMatrix]=[], 
+                 config_representation: str="spacial", 
+                 Mb: List[MutableDenseMatrix]=[], 
+                 parent: List[int]=[], support: List[List[int]]=[], 
+                 child: List[List[int]]=[], **kwargs) -> None:
         """SymbolicKinDyn
         Symbolic tool to compute equations of motion of serial chain 
         robots and autogenerate code from the calculated equations. 
@@ -599,12 +605,19 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
         # support of old syntax
         if "A" in kwargs:
             self.A = kwargs["A"]
+            n = len(self.A)
+            if n:
+                self.n = n
         if "B" in kwargs:
             self.B = kwargs["B"]
+            n = len(self.B)
+            if n:
+                self.n = n
         if "X" in kwargs:
             self.X = kwargs["X"]
         if "Y" in kwargs:
             self.Y = kwargs["Y"]
+
             
         self.Mb = Mb
         self.parent = parent
@@ -626,45 +639,50 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
 
         
     @property
-    def config_representation(self):
+    def config_representation(self) -> str:
         return self._config_representation
     
     @config_representation.setter
-    def config_representation(self, value):
+    def config_representation(self, value: str) -> None:
         if value not in {self.BODY_FIXED, self.SPACIAL}:
             raise ValueError("config_representation has to be 'body_fixed' or 'spacial'")
         self._config_representation = value
     
     @property
-    def body_ref_config(self):
+    def body_ref_config(self) -> list:
         if self.config_representation == self.BODY_FIXED:
             return self.B
         elif self.config_representation == self.SPACIAL:
             return self.A
     
     @body_ref_config.setter
-    def body_ref_config(self, value):
+    def body_ref_config(self, value: List[MutableDenseMatrix]) -> None:
+        n = len(value)
+        if n:
+            self.n = n
         if self.config_representation == self.BODY_FIXED:
             self.B = value
         elif self.config_representation == self.SPACIAL:
             self.A = value
     
     @property
-    def joint_screw_coord(self):
+    def joint_screw_coord(self) -> list:
         if self.config_representation == self.BODY_FIXED:
             return self.X
         elif self.config_representation == self.SPACIAL:
             return self.Y
     
     @joint_screw_coord.setter
-    def joint_screw_coord(self, value):
+    def joint_screw_coord(self, value: List[MutableDenseMatrix]) -> None:
         if self.config_representation == self.BODY_FIXED:
             self.X = value
         elif self.config_representation == self.SPACIAL:
             self.Y = value
     
     def closed_form_kinematics_body_fixed(
-        self, q, qd, q2d, simplify_expressions=True, cse_ex=False, parallel=True):
+        self, q:sympy.MutableDenseMatrix=None, qd: MutableDenseMatrix=None, 
+        q2d: MutableDenseMatrix=None, simplify_expressions: bool=True, 
+        cse_ex: bool=False, parallel: bool=True) -> MutableDenseMatrix:
         """Position, Velocity and Acceleration Kinematics using Body 
         fixed representation of the twists in closed form.
 
@@ -690,11 +708,11 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
 
         Args:
             q (sympy.Matrix): 
-                (n,1) Generalized position vector.
+                (n,1) Generalized position vector. Defaults to None.
             qd (sympy.Matrix): 
-                (n,1) Generalized velocity vector.
+                (n,1) Generalized velocity vector. Defaults to None.
             q2d (sympy.Matrix): 
-                (n,1) Generalized acceleration vector.
+                (n,1) Generalized acceleration vector. Defaults to None.
             simplify_expressions (bool, optional): 
                 Use simplify command on saved expressions. 
                 Defaults to True.
@@ -711,6 +729,11 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
         Returns:
             sympy.Matrix: Forward kinematics.
         """
+        if not q or not qd or not q2d:
+            if not self.n:
+                self.n = len(self.body_ref_config)
+            q, qd, q2d = generalized_vectors(self.n,self._find_start_index())
+            
         if parallel:
             self._closed_form_kinematics_body_fixed_parallel(
                 q, qd, q2d, simplify_expressions, cse_ex)
@@ -720,8 +743,10 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
         return self.fkin
 
     def closed_form_inv_dyn_body_fixed(
-        self, q, qd, q2d, WEE=zeros(6, 1), simplify_expressions=True, 
-        cse_ex=False, parallel=True):
+        self, q:sympy.MutableDenseMatrix=None, qd: MutableDenseMatrix=None, 
+        q2d: MutableDenseMatrix=None, WEE: MutableDenseMatrix=zeros(6, 1), 
+        simplify_expressions: bool=True, cse_ex: bool=False, 
+        parallel: bool=True) -> MutableDenseMatrix:
         """Inverse dynamics using body fixed representation of the 
         twists in closed form. 
 
@@ -734,11 +759,11 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
 
         Args:
             q (sympy.Matrix): 
-                (n,1) Generalized position vector.
+                (n,1) Generalized position vector. Defaults to None.
             qd (sympy.Matrix): 
-                (n,1 )Generalized velocity vector.
+                (n,1) Generalized velocity vector. Defaults to None.
             q2d (sympy.Matrix): 
-                (n,1) Generalized acceleration vector.
+                (n,1) Generalized acceleration vector. Defaults to None.
             WEE (sympy.Matrix, optional): 
                 (6,1) WEE (t) is the time varying wrench on the EE link. 
                 Defaults to zeros(6, 1).
@@ -759,6 +784,11 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
         Returns:
             sympy.Matrix: Generalized forces
         """
+        if not q or not qd or not q2d:
+            if not self.n:
+                self.n = len(self.body_ref_config)
+            q, qd, q2d = generalized_vectors(self.n,self._find_start_index())
+        
         if parallel:
             self._closed_form_inv_dyn_body_fixed_parallel(
                 q, qd, q2d, WEE, simplify_expressions, cse_ex)
@@ -768,7 +798,9 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
         return self.Q
 
     def _closed_form_kinematics_body_fixed(
-        self, q, qd, q2d, simplify_expressions=True, cse_ex=False):
+        self, q: MutableDenseMatrix, qd: MutableDenseMatrix, 
+        q2d: MutableDenseMatrix, simplify_expressions: bool=True, 
+        cse_ex: bool=False) -> MutableDenseMatrix:
         """Position, velocity and acceleration kinematics using 
         body fixed representation of the twists in closed form.
 
@@ -1031,9 +1063,12 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
         print("Done")
         return fkin
 
-    def _closed_form_inv_dyn_body_fixed(self, q, qd, q2d, WEE=zeros(6, 1), 
-                                        simplify_expressions=True, 
-                                        cse_ex=False):
+    def _closed_form_inv_dyn_body_fixed(self, q: MutableDenseMatrix, 
+                                        qd: MutableDenseMatrix, 
+                                        q2d: MutableDenseMatrix, 
+                                        WEE: MutableDenseMatrix=zeros(6, 1), 
+                                        simplify_expressions: bool=True, 
+                                        cse_ex: bool=False) -> MutableDenseMatrix:
         """Inverse dynamics using body fixed representation of the 
         twists in closed form. 
 
@@ -1179,7 +1214,9 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
         return Q
 
     def _closed_form_kinematics_body_fixed_parallel(
-        self, q, qd, q2d, simplify_expressions=True, cse_ex=False):
+        self, q: MutableDenseMatrix, qd: MutableDenseMatrix, 
+        q2d: MutableDenseMatrix, simplify_expressions: bool=True, 
+        cse_ex: bool=False) -> MutableDenseMatrix:
         """Position, velocity and acceleration kinematics using 
         body fixed representation of the twists in closed form.
 
@@ -1513,8 +1550,9 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
         return self.fkin
 
     def _closed_form_inv_dyn_body_fixed_parallel(
-        self, q, qd, q2d, WEE=zeros(6, 1), simplify_expressions=True, 
-        cse_ex=False):
+        self, q: MutableDenseMatrix, qd: MutableDenseMatrix, 
+        q2d: MutableDenseMatrix, WEE: MutableDenseMatrix=zeros(6, 1), 
+        simplify_expressions: bool=True, cse_ex: bool=False) -> MutableDenseMatrix:
         """Inverse dynamics using body fixed representation of the 
         twists in closed form. 
 
@@ -1709,7 +1747,7 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
         print("Done")
         return self.Q
 
-    def simplify(self, exp, cse_ex=False):
+    def simplify(self, exp: sympy.Expr, cse_ex: bool=False) -> sympy.Expr:
         """Faster simplify implementation for sympy expressions.
         Expressions can be different simplified as with sympy.simplify.
 
@@ -1756,7 +1794,7 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
         exp = exp.doit()
         return exp
 
-    def _create_topology_lists(self,robot):
+    def _create_topology_lists(self,robot: URDF) -> None:
         # names of all links in urdf
         link_names = [link.name for link in robot.links] 
         parent_names = [] # names of parent links corresponding link_names
@@ -1824,7 +1862,9 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
         self.child = child
         self.parent = parent
             
-    def _nsimplify(self,num, *args, max_denominator = 0, **kwargs):
+    def _nsimplify(
+        self,num: float, *args, max_denominator: int=0, **kwargs
+        ) -> Union[sympy.Expr, float]:
         ex = nsimplify(num,*args,**kwargs)
         if not max_denominator:
             return ex
@@ -1842,8 +1882,9 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
                 return num
         return ex
         
-    def load_from_urdf(self, path, symbolic=True, simplify_numbers=True, 
-                       cse_ex=False, tolerance=0.0001, max_denominator = 9):
+    def load_from_urdf(self, path: str, symbolic: bool=True, 
+                       simplify_numbers: bool=True, cse_ex: bool=False, 
+                       tolerance: float=0.0001, max_denominator: int=9) -> None:
         robot = URDF.load(path)
         self.B = []
         self.X = []
@@ -2000,7 +2041,7 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
         #     self.Mb.append(MassMatrixMixedData())
         return
 
-    def dhToScrewCoord(self, DH_param_table):
+    def dhToScrewCoord(self, DH_param_table: MutableDenseMatrix) -> None:
         """Build screw coordinate paramters (joint axis frames and 
         body reference frames) from a given modified Denavit-Hartenberg 
         (DH) parameter table.
@@ -2039,7 +2080,7 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
             else:
                 self.X.append(Matrix([0, 0, 0, 0, 0, 1]))
 
-    def _set_value_as_process(self, name, target):
+    def _set_value_as_process(self, name: str, target: Callable) -> None:
         """Set return value of target as value to queue in 
         self.queue_dict with identifier name.
 
@@ -2055,7 +2096,7 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
             target=lambda: self._set_value(name, target()), args=(), name=name)
         self.process_dict[name].start()
 
-    def _set_value(self, name, var):
+    def _set_value(self, name: str, var: Any) -> None:
         """Set value to queue in self.queue_dict.
 
         Args:
@@ -2066,7 +2107,8 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
             self.queue_dict[name] = Queue()
         self.queue_dict[name].put(var)
 
-    def _start_simplification_process(self, name, cse_ex=False):
+    def _start_simplification_process(
+        self, name: str, cse_ex: bool=False) -> None:
         """Start Process, which simplifies and overwrites value in 
         queue from self.queue_dict.
 
@@ -2083,7 +2125,7 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
             name=name+"_simplify")
         self.process_dict[name+"_simplify"].start()
 
-    def _start_cse_process(self, name):
+    def _start_cse_process(self, name: str) -> None:
         """Start Process, which generates cse expression and overwrites value in 
         queue from self.queue_dict.
 
@@ -2098,7 +2140,7 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
             name=name+"_cse")
         self.process_dict[name+"_cse"].start()
 
-    def _get_value(self, name):
+    def _get_value(self, name: str) -> Any:
         """Get value from queue in self.queue_dict and put it in again.
 
         Args:
@@ -2111,7 +2153,7 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
         self.queue_dict[name].put(value)
         return value
 
-    def _simplify_parallel(self, name, cse_ex=False):
+    def _simplify_parallel(self, name: str, cse_ex: bool=False) -> None:
         """Take value from self.queue_dict, simplify it and put it in 
         again.
 
@@ -2123,7 +2165,7 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
         value = self.simplify(self.queue_dict[name].get(), cse_ex)
         self.queue_dict[name].put(value)
         
-    def _cse_parallel(self, name):
+    def _cse_parallel(self, name: str) -> None:
         """Take value from self.queue_dict, generate cse_expressions and 
         put it in again.
 
@@ -2133,7 +2175,7 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
         value = self._cse_expression(self.queue_dict[name].get())
         self.queue_dict[name].put(value)
 
-    def _flush_queue(self, q):
+    def _flush_queue(self, q: Queue) -> None:
         """Flush all items in queue
 
         Args:
@@ -2145,7 +2187,8 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
         except queue.Empty:
             pass
 
-    def _individual_numbered_symbols(self, exclude=[], i=[0]):
+    def _individual_numbered_symbols(
+        self, exclude: list=[], i: List[int]=[0]) -> Generator[sympy.Symbol, None, None]:
         """create individual symbol names for subexpressions using 
         multiprocessing.
 
@@ -2169,7 +2212,7 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
             prefix=prefix, 
             exclude=exclude)
 
-    def _sort_variables(self, vars):
+    def _sort_variables(self, vars:List[sympy.Symbol]) -> List[sympy.Symbol]:
         """Sort variables for code generation starting with q, qd, qdd, 
         continuing with variable symbols and ending with constant 
         symbols.
@@ -2200,7 +2243,7 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
             else:
                 var_rest.append(i)
 
-        def symsort(data):
+        def symsort(data: List[sympy.Symbol]) -> List[sympy.Symbol]:
             """Sort symbols
 
             Args:
@@ -2214,7 +2257,7 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
         return symsort(q) + symsort(dq) + symsort(ddq) + symsort(var_rest) \
             + symsort(rest)
 
-    def _cse_expression(self, exp):
+    def _cse_expression(self, exp: sympy.Expr) -> sympy.Expr:
         """Use common subexpression elimination to shorten expression.
         The used subexpressions are saved to the class internal 
         subex_dict.
@@ -2240,7 +2283,7 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
             self.all_symbols.update({sym})
         return e[0]
 
-    def _get_expressions(self):
+    def _get_expressions(self) -> List[sympy.Expr]:
         """Get list of all generated expressions.
 
         Returns:
@@ -2250,7 +2293,9 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
         expressions = [expression_dict[i] for i in expression_dict]
         return expressions
 
-    def _calc_A_matrix(self,q):
+    def _calc_A_matrix(
+        self, q: MutableDenseMatrix
+        ) -> Tuple[List[MutableDenseMatrix], MutableDenseMatrix]:
         # calc Forward kinematics
         if self._FK_C is not None:
             FK_C = self._FK_C
@@ -2293,7 +2338,7 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
             self._A = A
         return FK_C, A
 
-    def _calc_A_matrix_tree(self,q):
+    def _calc_A_matrix_tree(self, q: MutableDenseMatrix):
         if self._FK_C is not None:
             FK_C = self._FK_C
         elif self.A:
@@ -2345,3 +2390,24 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
                         A[r:r+6, c:c+6] = AdCrel
             self._A = A
         return FK_C, A
+    
+    def _find_start_index(self) -> int:
+        # search all symbols
+        syms = set()
+        for i in self.Mb:
+            syms.update(i.free_symbols)
+        for i in self.body_ref_config:
+            syms.update(i.free_symbols)
+        for i in self.joint_screw_coord:
+            syms.update(i.free_symbols)
+        # search all indices in symbols
+        indices = []
+        for i in syms:
+            indices.extend(regex.findall("\d+",str(i)))
+        #find smalles used index
+        if indices:
+            if min([int(i) for i in indices]) == 0:
+                return 0
+            if max([int(i) for i in indices]) == self.n -1:
+                return 0
+        return 1

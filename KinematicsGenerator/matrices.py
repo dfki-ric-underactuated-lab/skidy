@@ -1,6 +1,9 @@
-from sympy import Matrix, Identity, symbols, sin, cos, zeros, parse_expr
+from sympy import Matrix, Identity, symbols, sin, cos, zeros, MutableDenseMatrix, Expr
+from typing import Union, List, Tuple
 
-def generalized_vectors(DOF, startindex=0):
+def generalized_vectors(
+    DOF: int, startindex: int=0
+    ) -> Tuple[MutableDenseMatrix, MutableDenseMatrix, MutableDenseMatrix]:
     """Generate symbolic generalized vectors q, qd and q2d.
     The symbols are named as follows:
         q0, q1, ....., qi for joint positions.
@@ -19,7 +22,7 @@ def generalized_vectors(DOF, startindex=0):
     q2d = Matrix(symbols(" ".join(f"ddq{i}" for i in range(startindex,startindex+DOF))))
     return q, qd, q2d
 
-def joint_screw(axis, vec=[0,0,0], revolute=True):
+def joint_screw(axis: list, vec: list=[0,0,0], revolute: bool=True) -> MutableDenseMatrix:
     """Get joint screw coordinates from joint axis and vector to joint.
 
     Args:
@@ -44,11 +47,11 @@ def joint_screw(axis, vec=[0,0,0], revolute=True):
         return Matrix([0,0,0,e])
         
 
-def SymbolicInertiaMatrix(index="", pointmass=False):
+def SymbolicInertiaMatrix(index: Union[int, str]="", pointmass: bool=False) -> MutableDenseMatrix:
     """Create 3 x 3 symbolic inertia matrix with auto generated variable names.
 
     Args:
-        index (int or str):
+        index (int|str):
             postfix for variable name. Defaults to "".
         pointmass (bool):
             Inertial matrix = I * Identity. Default to False.
@@ -66,7 +69,7 @@ def SymbolicInertiaMatrix(index="", pointmass=False):
                 [Ixz, Iyz, Izz]])
     return I
 
-def SE3AdjInvMatrix(C):
+def SE3AdjInvMatrix(C: MutableDenseMatrix) -> MutableDenseMatrix:
     """Compute Inverse of (6x6) Adjoint matrix for SE(3)
 
     Args:
@@ -92,7 +95,7 @@ def SE3AdjInvMatrix(C):
                         C[0, 2], C[1, 2], C[2, 2]]])
     return AdInv
 
-def SE3AdjMatrix(C):
+def SE3AdjMatrix(C: MutableDenseMatrix) -> MutableDenseMatrix:
     """Compute (6x6) Adjoint matrix for SE(3)
 
     Args:
@@ -118,7 +121,7 @@ def SE3AdjMatrix(C):
                     C[2, 0], C[2, 1], C[2, 2]]])
     return Ad
 
-def SE3adMatrix(X):
+def SE3adMatrix(X: MutableDenseMatrix) -> MutableDenseMatrix:
     """Compute (6x6) adjoint matrix for SE(3) 
         - also known as spatial cross product in the literature.
 
@@ -136,7 +139,7 @@ def SE3adMatrix(X):
                     [-X[4, 0], X[3, 0], 0, -X[1, 0], X[0, 0], 0]])
     return ad
 
-def SE3Exp(XX, t):
+def SE3Exp(XX: MutableDenseMatrix, t: Union[float, Expr]) -> MutableDenseMatrix:
     """compute exponential mapping for SE(3).
 
     Args:
@@ -160,7 +163,7 @@ def SE3Exp(XX, t):
     C = R.row_join(p).col_join(Matrix([0, 0, 0, 1]).T)
     return C
 
-def SE3Inv(C):
+def SE3Inv(C: MutableDenseMatrix) -> MutableDenseMatrix:
     """Compute analytical inverse of exponential mapping for SE(3).
 
     Args:
@@ -178,32 +181,34 @@ def SE3Inv(C):
                     [0, 0, 0, 1]])
     return CInv
 
-def SO3Exp(x, t):
+def SO3Exp(axis: MutableDenseMatrix, angle: Union[float, Expr]) -> MutableDenseMatrix:
     """Compute exponential mapping for SO(3).
 
     Args:
-        x (sympy.Matrix): Rotation axis
-        t (double): Rotation angle
+        axis (sympy.Matrix): Rotation axis
+        angle (double): Rotation angle
 
     Returns:
         sympy.Matrix: Rotation matrix
     """
-    xhat = Matrix([[0, -x[2, 0], x[1, 0]],
-                    [x[2, 0], 0, -x[0, 0]],
-                    [-x[1, 0], x[0, 0], 0]])
-    R = Matrix(Identity(3)) + sin(t) * xhat + (1-cos(t))*(xhat*xhat)
+    xhat = Matrix([[0, -axis[2, 0], axis[1, 0]],
+                    [axis[2, 0], 0, -axis[0, 0]],
+                    [-axis[1, 0], axis[0, 0], 0]])
+    R = Matrix(Identity(3)) + sin(angle) * xhat + (1-cos(angle))*(xhat*xhat)
     return R
 
-def InertiaMatrix(Ixx, Ixy, Ixz, Iyy, Iyz, Izz):
+def InertiaMatrix(Ixx: Union[float, Expr]=0, Ixy: Union[float, Expr]=0, 
+                  Ixz: Union[float, Expr]=0, Iyy: Union[float, Expr]=0, 
+                  Iyz: Union[float, Expr]=0, Izz: Union[float, Expr]=0) -> MutableDenseMatrix:
     """Create 3 x 3 inertia matrix from independent inertia values.
 
     Args:
-        Ixx: Inertia value I11
-        Ixy: Inertia value I12SE3adMatrix
-        Ixz: Inertia value I13
-        Iyy: Inertia value I22
-        Iyz: Inertia value I23
-        Izz: Inertia value I33
+        Ixx (float|sympy.Expr): Inertia value I11. Defaults to 0.
+        Ixy (float|sympy.Expr): Inertia value I12. Defaults to 0.
+        Ixz (float|sympy.Expr): Inertia value I13. Defaults to 0.
+        Iyy (float|sympy.Expr): Inertia value I22. Defaults to 0.
+        Iyz (float|sympy.Expr): Inertia value I23. Defaults to 0.
+        Izz (float|sympy.Expr): Inertia value I33. Defaults to 0.
 
     Returns:
         sympy.Matrix: Inertia matrix (3,3)
@@ -213,7 +218,8 @@ def InertiaMatrix(Ixx, Ixy, Ixz, Iyy, Iyz, Izz):
                 [Ixz, Iyz, Izz]])
     return I
 
-def TransformationMatrix(r=Matrix(Identity(3)), t=zeros(3, 1)):
+def TransformationMatrix(r: MutableDenseMatrix=Matrix(Identity(3)), 
+                         t: MutableDenseMatrix=zeros(3, 1)) -> MutableDenseMatrix:
     """Build transformation matrix from rotation and translation.
 
     Args:
@@ -231,7 +237,8 @@ def TransformationMatrix(r=Matrix(Identity(3)), t=zeros(3, 1)):
     T = r.row_join(t).col_join(Matrix([[0, 0, 0, 1]]))
     return T
 
-def MassMatrixMixedData(m, Theta, COM):
+def MassMatrixMixedData(m: Union[float, Expr], Theta: MutableDenseMatrix, 
+                        COM: MutableDenseMatrix) -> MutableDenseMatrix:
     """Build mass-inertia matrix in SE(3) from mass, inertia and 
     center of mass information.
 
@@ -254,7 +261,7 @@ def MassMatrixMixedData(m, Theta, COM):
                 [COM[1]*m, (-COM[0])*m, 0, 0, 0, m]])
     return M
 
-def rpy_to_matrix(coords):
+def rpy_to_matrix(coords: Union[list,MutableDenseMatrix]) -> MutableDenseMatrix:
     """Convert roll-pitch-yaw coordinates to a 3x3 homogenous rotation matrix.
 
     Adapted from urdfpy 
@@ -289,7 +296,7 @@ def rpy_to_matrix(coords):
         [-s2, c2 * s3, c2 * c3]
     ])
 
-def xyz_rpy_to_matrix(xyz_rpy):
+def xyz_rpy_to_matrix(xyz_rpy: Union[list,MutableDenseMatrix]) -> MutableDenseMatrix:
     """Convert xyz_rpy coordinates to a 4x4 homogenous matrix.
 
     Adapted from urdfpy

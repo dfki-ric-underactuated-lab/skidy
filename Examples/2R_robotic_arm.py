@@ -60,8 +60,8 @@ ee = Matrix(Identity(3)).row_join(re).col_join(Matrix([0, 0, 0, 1]).T)
 # joint_screw_coord.append(Matrix([0,0,1,0,0,0]).T)
 
 # Mass-Inertia parameters
-cg1 = Matrix([L1, 0, 0]).T
-cg2 = Matrix([L2, 0, 0]).T
+cg1 = Matrix([L1, 0, 0])
+cg2 = Matrix([L2, 0, 0])
 I1 = m1*L1*L1
 I2 = m2*L2*L2
 

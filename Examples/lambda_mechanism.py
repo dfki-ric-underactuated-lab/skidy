@@ -15,14 +15,14 @@ gravity_vector = Matrix([0,g,0])
 
 # Graph description
 parent = [0,
-            0,
-            2]
+          0,
+          2]
 child = [[],
-            [3],
-            []]
+         [3],
+         []]
 support = [[1],
-            [2],
-            [2,3]]
+           [2],
+           [2,3]]
 
 # joint screw coordinates
 Y = []
