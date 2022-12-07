@@ -523,7 +523,7 @@ from KinematicsGenerator import (SymbolicKinDyn,
 ```
 
 The class `SymbolicKinDyn` is the main object for calculating the kinematic and dynamic equations of your robot and generate the code.
-Additionally, we import several helper functions for defining the matrices which are needed for the robot definition:
+Additionally, we import several helper functions for defining the matrices which are useful for the robot definition:
 
 - `TransformationMatrix`: Create SE(3) transformation matrix from SO(3) rotation and translation vector.
 - `MassMatrixMixedData`: Create 6x6 mass-inertia matrix from mass, 3x3 inertia matrix and 3x1 center of mass vector.
@@ -715,7 +715,7 @@ Mass-inertia matrices of all links. For the definition you have the following sy
     Mb.append(
         MassMatrixMixedData(
             m1,
-            InertiaMatrix(Ixx1,Ixy1,Ixz1,Iyy1,Iyz1,Izz1)
+            InertiaMatrix(Ixx1,Ixy1,Ixz1,Iyy1,Iyz1,Izz1),
             sympy.Matrix([cx1,cy1,cz1])
         )
     )
@@ -727,7 +727,7 @@ Mass-inertia matrices of all links. For the definition you have the following sy
     Mb.append(
         MassMatrixMixedData(
             m1,
-            SymbolicInertiaMatrix(index=1, pointmass=False)
+            SymbolicInertiaMatrix(index=1, pointmass=False),
             sympy.Matrix([cx1,cy1,cz1])
         )
     )
