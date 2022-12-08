@@ -17,9 +17,14 @@ def generalized_vectors(
     Returns:
         _type_: _description_
     """
-    q = Matrix(symbols(" ".join(f"q{i}" for i in range(startindex,startindex+DOF))))
-    qd = Matrix(symbols(" ".join(f"dq{i}" for i in range(startindex,startindex+DOF))))
-    q2d = Matrix(symbols(" ".join(f"ddq{i}" for i in range(startindex,startindex+DOF))))
+    if DOF > 1:
+        q = Matrix(symbols(" ".join(f"q{i}" for i in range(startindex,startindex+DOF))))
+        qd = Matrix(symbols(" ".join(f"dq{i}" for i in range(startindex,startindex+DOF))))
+        q2d = Matrix(symbols(" ".join(f"ddq{i}" for i in range(startindex,startindex+DOF))))
+    else:
+        q = Matrix([symbols(" ".join(f"q{i}" for i in range(startindex,startindex+DOF)))])
+        qd = Matrix([symbols(" ".join(f"dq{i}" for i in range(startindex,startindex+DOF)))])
+        q2d = Matrix([symbols(" ".join(f"ddq{i}" for i in range(startindex,startindex+DOF)))])
     return q, qd, q2d
 
 def joint_screw(axis: list, vec: list=[0,0,0], revolute: bool=True) -> MutableDenseMatrix:
@@ -191,6 +196,7 @@ def SO3Exp(axis: MutableDenseMatrix, angle: Union[float, Expr]) -> MutableDenseM
     Returns:
         sympy.Matrix: Rotation matrix
     """
+    axis = Matrix(axis)
     xhat = Matrix([[0, -axis[2, 0], axis[1, 0]],
                     [axis[2, 0], 0, -axis[0, 0]],
                     [-axis[1, 0], axis[0, 0], 0]])

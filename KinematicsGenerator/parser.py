@@ -33,7 +33,7 @@ def robot_from_json(path: str) -> SymbolicKinDyn:
         y = json.load(stream)
     return dict_parser(y)
 
-def parse_hirarchical_expr(x:Union[list,dict,str], 
+def parse_hierarchical_expr(x:Union[list,dict,str], 
                             include_keys:Iterable={}, 
                             exclude_keys:Iterable={}) -> Union[list,dict,Expr]:
     """Convert strings in datastructure (list or dict) to sympy 
@@ -53,7 +53,7 @@ def parse_hirarchical_expr(x:Union[list,dict,str],
     if type(x) in {dict, list}:
         for i in x if type(x) is dict else range(len(x)):
             if type(x[i]) in {list,dict}:
-                x[i] = parse_hirarchical_expr(x[i])
+                x[i] = parse_hierarchical_expr(x[i],include_keys,exclude_keys)
             elif type(x[i]) is str:
                 if (type(x) is list 
                     or (include_keys and i in include_keys) 
@@ -67,7 +67,7 @@ def dict_parser(d: dict) -> SymbolicKinDyn:
     """Parse dict to SymbolicKinDyn object.
 
     Args:
-        d (dict): Dictionary conatianing robot description.
+        d (dict): Dictionary containing robot description.
 
     Raises:
         KeyError: Entry not found.
@@ -76,7 +76,7 @@ def dict_parser(d: dict) -> SymbolicKinDyn:
     Returns:
         KinematicsGenerator.SymbolicKinDyn object.
     """
-    d = parse_hirarchical_expr(d, include_keys={"mass", "index"})
+    d = parse_hierarchical_expr(d, include_keys={"mass", "index", "Ixx", "Ixy", "Ixz", "Iyy", "Ixz", "Izz"})
     
     config_representation = d["representation"] if "representation" in d else "spacial"
     
@@ -121,7 +121,7 @@ def dict_parser(d: dict) -> SymbolicKinDyn:
                 if type(br["rotation"]) is dict:
                     axis = br["rotation"]["axis"] if "axis" in br["rotation"] else [0,0,1]
                     angle = br["rotation"]["angle"] if "angle" in br["rotation"] else 0
-                    r = SO3Exp(axis,angle)
+                    r = SO3Exp(Matrix(axis),angle)
                 else:
                     r = Matrix(br["rotation"])
             else:
@@ -139,7 +139,7 @@ def dict_parser(d: dict) -> SymbolicKinDyn:
             if type(d["ee"]["rotation"]) is dict:
                 axis = d["ee"]["rotation"]["axis"] if "axis" in d["ee"]["rotation"] else [0,0,1]
                 angle = d["ee"]["rotation"]["angle"] if "angle" in d["ee"]["rotation"] else 0
-                r = SO3Exp(axis,angle)
+                r = SO3Exp(Matrix(axis),angle)
             else:
                 r = Matrix(d["ee"]["rotation"])
         else:
