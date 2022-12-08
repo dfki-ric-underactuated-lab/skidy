@@ -105,7 +105,7 @@ class _AbstractCodeGeneration():
             return filtered
         return all_expressions
 
-    def generateCode(self, python: bool=True, C: bool=True, Matlab: bool=False, 
+    def generateCode(self, python: bool=True, C: bool=True, Matlab: bool=False, cython: bool=False,
                      folder: str="./generated_code", use_global_vars: bool=True, 
                      name: str="plant", project: str="Project") -> None:
         """Generate code of generated Expressions. 
@@ -121,6 +121,8 @@ class _AbstractCodeGeneration():
                 Generate C99 code. Defaults to True.
             Matlab (bool, optional): 
                 Generate Matlab/Octave code. Defaults to False.
+            cython (bool, optional):
+                Generate cython code. Defaults to False.
             folder (str, optional): 
                 Folder where to save code. 
                 Defaults to "./generated_code".
@@ -206,7 +208,7 @@ class _AbstractCodeGeneration():
             # append cse expressions to __init__ function
             if len(self.subex_dict) > 0:
                 for i in sorted([str(j) for j in self.subex_dict], key=lambda x: int(regex.findall("(?<=sub)\d*",x)[0])):
-                    modstring = str(self.subex_dict[symbols(i)])
+                    modstring = p.doprint(self.subex_dict[symbols(i)])
                     for j in sorted([str(h) 
                                      for h in self.subex_dict[symbols(i)].free_symbols],
                                     reverse=1):
@@ -230,19 +232,20 @@ class _AbstractCodeGeneration():
 
                 else:
                     s.append("\n    def "+names[i]+"(self):")
-                if len(const_syms) > 0:
-                    s.append("        "
-                             + ", ".join([str(const_syms[i]) 
-                                          for i in range(len(const_syms))])
-                             + " = " 
-                             + ", ".join(["self."+str(const_syms[i]) 
-                                          for i in range(len(const_syms))])
-                             )
+                # if len(const_syms) > 0:
+                #     s.append("        "
+                #              + ", ".join([str(const_syms[i]) 
+                #                           for i in range(len(const_syms))])
+                #              + " = " 
+                #              + ", ".join(["self."+str(const_syms[i]) 
+                #                           for i in range(len(const_syms))])
+                #              )
 
                 s.append("        "
                          + names[i] 
                          + " = " 
-                         + p.doprint(expressions[i]))
+                         + regex.sub(f"(?<=\W|^)(?={'|'.join([str(i) for i in const_syms])}(\W|\Z))","self.",p.doprint(expressions[i])))
+                        #  + p.doprint(expressions[i]))
                 s.append("        return " + names[i])
 
             # replace numpy with np for better readability
@@ -254,6 +257,122 @@ class _AbstractCodeGeneration():
 
             # write python file
             with open(os.path.join(folder, "python", name + ".py"), "w+") as f:
+                f.write(s)
+            print("Done")
+
+        if cython:
+            print("Generate Cython code")
+            # create folder
+            if not os.path.exists(os.path.join(folder, "cython")):
+                os.mkdir(os.path.join(folder, "cython"))
+
+            p = NumPyPrinter()
+
+            # start python file with import
+            s = ["import numpy"]
+            s.append("cimport numpy\n\n")
+            
+            s.append("numpy.import_array()")
+            s.append("DTYPE = numpy.float64")
+            s.append("ctypedef numpy.float64_t DTYPE_t")
+            
+            s.append("\n")
+            # class name
+            s.append("cdef class "+name.capitalize()+"():")
+            s.append("    cdef public double %s\n"%(
+                ", ".join(
+                    [str(not_assigned_syms[i]) 
+                        for i in range(len(not_assigned_syms))] 
+                    + [str(i) 
+                      for i in self.assignment_dict])))
+            if self.subex_dict:
+                s.append("    cdef double %s\n"%(
+                    ", ".join(
+                        [str(i) 
+                        for i in self.subex_dict])))
+                    
+            
+            # define __init__ function
+            s.append("    def __cinit__(self, %s):" % (
+                ", ".join(
+                    ["double "+str(not_assigned_syms[i]) 
+                     for i in range(len(not_assigned_syms))] 
+                    + ["double "+str(i)+" = " + str(self.assignment_dict[i]) 
+                       for i in self.assignment_dict])))
+            if len(not_assigned_syms) > 0:
+                s.append("        "
+                         + ", ".join(["self."+str(not_assigned_syms[i]) 
+                                      for i in range(len(not_assigned_syms))])
+                         + " = " 
+                         + ", ".join([str(not_assigned_syms[i]) 
+                                      for i in range(len(not_assigned_syms))])
+                         )
+
+            # append preassigned values to __init__ function
+            if len(self.assignment_dict) > 0:
+                s.append("        "
+                         + ", ".join(sorted(["self."+str(i) 
+                                             for i in self.assignment_dict]))
+                         + " = " 
+                         + ", ".join(sorted([str(i) 
+                                             for i in self.assignment_dict]))
+                         )
+
+            # append cse expressions to __init__ function
+            if len(self.subex_dict) > 0:
+                for i in sorted([str(j) for j in self.subex_dict], key=lambda x: int(regex.findall("(?<=sub)\d*",x)[0])):
+                    modstring = p.doprint(self.subex_dict[symbols(i)])
+                    for j in sorted([str(h) 
+                                     for h in self.subex_dict[symbols(i)].free_symbols],
+                                    reverse=1):
+                        modstring = regex.sub(
+                            str(j), "self."+str(j), modstring)
+                        # remove double self
+                        modstring = regex.sub("self.self.", "self.", modstring)
+                    s.append("        self."+str(i)+" = " + modstring)
+
+            # define functions
+            for i in range(len(expressions)):
+                var_syms = self._sort_variables(self.var_syms.intersection(
+                    expressions[i].free_symbols))
+                const_syms = self._sort_variables(
+                    set(constant_syms).intersection(
+                        expressions[i].free_symbols))
+                if len(var_syms) > 0:
+                    s.append(f"\n    cpdef "+names[i]+"(self, %s):" % (
+                    # s.append(f"\n    cpdef np.ndarray[DTYPE_t,ndim={len(expressions[i].shape)}] "+names[i]+"(self, %s):" % (
+                        ", ".join(["double "+str(var_syms[i]) 
+                                   for i in range(len(var_syms))])))
+
+                else:
+                    s.append("\n    cpdef "+names[i]+"(self):")
+                # if len(const_syms) > 0:
+                #     s.append("        "
+                #              + ", ".join(["double "+str(const_syms[i]) 
+                #                           for i in range(len(const_syms))])
+                #              + " = " 
+                #              + ", ".join(["self."+str(const_syms[i]) 
+                #                           for i in range(len(const_syms))])
+                #              )
+                s.append(f"        cdef numpy.ndarray[DTYPE_t,ndim={len(expressions[i].shape)}] "
+                         + names[i])
+                s.append("        "
+                         + names[i] 
+                         + " = " 
+                         + regex.sub(f"(?<=\W|^)(?={'|'.join([str(i) for i in const_syms])}(\W|\Z))","self.",p.doprint(expressions[i])))
+                        #  + regex.sub("(?<=((?<=[^\.])\W)\d+)(?=\W)(?!\.)",".0",regex.sub(f"(?<=\W|^)(?={'|'.join([str(i) for i in const_syms])}(\W|\Z))","self.",p.doprint(expressions[i]))))
+                s.append("        return " + names[i])
+
+            # replace numpy with np for better readability
+            s = list(map(lambda x: x.replace("numpy.", "np."), s))
+            s[0] = "import numpy as np"
+            s[1] = "cimport numpy as np\n\n"
+
+            # join list to string
+            s = "\n".join(s)
+
+            # write python file
+            with open(os.path.join(folder, "cython", name + ".pyx"), "w+") as f:
                 f.write(s)
             print("Done")
 
