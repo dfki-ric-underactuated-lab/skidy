@@ -105,7 +105,7 @@ class _AbstractCodeGeneration():
             return filtered
         return all_expressions
 
-    def generateCode(self, python: bool=True, C: bool=True, Matlab: bool=False, cython: bool=False,
+    def generateCode(self, python: bool=False, C: bool=False, Matlab: bool=False, cython: bool=False,
                      folder: str="./generated_code", use_global_vars: bool=True, 
                      name: str="plant", project: str="Project") -> None:
         """Generate code of generated Expressions. 
@@ -116,9 +116,9 @@ class _AbstractCodeGeneration():
 
         Args:
             python (bool, optional): 
-                Generate Python code. Defaults to True.
+                Generate Python code. Defaults to False.
             C (bool, optional): 
-                Generate C99 code. Defaults to True.
+                Generate C99 code. Defaults to False.
             Matlab (bool, optional): 
                 Generate Matlab/Octave code. Defaults to False.
             cython (bool, optional):

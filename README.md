@@ -1,14 +1,15 @@
 # python symbolic kinematics and dynamics
 
-- [1. Install](#1-install)
-- [2. Usage](#2-usage)
-  - [2.1. YAML and JSON](#21-yaml-and-json)
-    - [2.1.1. Create robot model as YAML file](#211-create-robot-model-as-yaml-file)
-    - [2.1.2. Code generation using YAML](#212-code-generation-using-yaml)
-  - [2.2. Python](#22-python)
-- [3. Unit testing](#3-unit-testing)
-- [4. Benchmarking](#4-benchmarking)
-- [5. Shortcomings](#5-shortcomings)
+- [python symbolic kinematics and dynamics](#python-symbolic-kinematics-and-dynamics)
+  - [1. Install](#1-install)
+  - [2. Usage](#2-usage)
+    - [2.1. YAML and JSON](#21-yaml-and-json)
+      - [2.1.1. Create robot model as YAML file](#211-create-robot-model-as-yaml-file)
+      - [2.1.2. Code generation using YAML](#212-code-generation-using-yaml)
+    - [2.2. Python](#22-python)
+  - [3. Unit testing](#3-unit-testing)
+  - [4. Benchmarking](#4-benchmarking)
+  - [5. Shortcomings](#5-shortcomings)
 
 Symbolic kinematics and dynamics model generation using Equations of Motion in closed form.
 This python file is almost a copy of the Matlab symbolic kinematics and dynamics generation tool.
@@ -842,6 +843,19 @@ python3 ./unit_testing/unit_testing.py
 ```
 
 ## 4. Benchmarking
+
+For benchmarking the project the script `Benchmarking/benchmarking.py` was used. This script loads 4 robots with increasing complexity (1 to 4 revolute joint in a chain with planar task space) and takes the execution time of the functions `closed_form_kinematics_body_fixed()`, `closed_form_inv_dyn_body_fixed()` and `generateCode()`. Additionally, the arguments `parallel`, `simplify_expressions` and `cse_ex` have been altered.
+The results are shown in the following table:
+
+arguments | Parallel | Serial
+:---------:|:----------:|:-----------:
+simplify|![](/Benchmarking/parallel_with_simplification_without_cse.png) | ![](/Benchmarking/serial_with_simplification_without_cse.png)
+simplify + cse|![](/Benchmarking/parallel_with_simplification_with_cse.png) |![](/Benchmarking/serial_with_simplification_with_cse.png)
+no simplify|![](/Benchmarking/parallel_without_simplification_without_cse.png) | ![](/Benchmarking/serial_without_simplification_without_cse.png)
+no simplify + cse|![](/Benchmarking/parallel_without_simplification_with_cse.png) |![](/Benchmarking/serial_without_simplification_with_cse.png)
+
+
+
 
 ## 5. Shortcomings
 
