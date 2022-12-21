@@ -1,0 +1,85 @@
+---
+parent:
+  - 0
+  - 1
+  - 2
+
+child:
+  - [1]
+  - [2]
+  - []
+
+support:
+  - [1]
+  - [1,2]
+  - [1,2,3]
+
+gravity: [0,0,g]
+
+representation: spacial
+
+joint_screw_coord:
+  - type: revolute
+    axis: [0,1,0]
+    vec: [0,0,0]
+
+  - type: revolute
+    axis: [0,1,0]
+    vec: [0,0,L1]
+
+  - type: revolute
+    axis: [0,1,0]
+    vec: [0,0,L1+L2]
+
+body_ref_config:
+  - rotation:
+      axis: [0,0,1]
+      angle: 0
+    translation: [0,0,0]
+
+  - rotation:
+      axis: [0,0,1]
+      angle: 0
+    translation: [0,0,L1]
+
+  - rotation:
+      axis: [0,0,1]
+      angle: 0
+    translation: [0,0,L1+L2]
+
+ee:
+  rotation:
+    axis: [0,0,1]
+    angle: 0
+  translation: [0,0,L3]
+
+mass_inertia:
+  - mass: m1
+    inertia:
+      Ixx: Ixx1
+      Ixy: Ixy1
+      Ixz: Ixz1
+      Iyy: Iyy1
+      Iyz: Iyz1
+      Izz: Izz1
+    com: [0,0,c1]
+
+  - mass: m2
+    inertia:
+      Ixx: Ixx2
+      Ixy: Ixy2
+      Ixz: Ixz2
+      Iyy: Iyy2
+      Iyz: Iyz2
+      Izz: Izz2
+    com: [0,0,c1]
+
+  - mass: m3
+    inertia:
+      Ixx: Ixx3
+      Ixy: Ixy3
+      Ixz: Ixz3
+      Iyy: Iyy3
+      Iyz: Iyz3
+      Izz: Izz3
+    com: [0,0,c3]

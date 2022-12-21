@@ -1,0 +1,41 @@
+---
+parent:
+  - 0
+
+child:
+  - []
+
+support:
+  - [1]
+
+gravity: [0,0,g]
+
+representation: spacial
+
+joint_screw_coord:
+  - type: revolute
+    axis: [0,1,0]
+    vec: [0,0,0]
+
+body_ref_config:
+  - rotation:
+      axis: [0,0,1]
+      angle: 0
+    translation: [0,0,0]
+
+ee:
+  rotation:
+    axis: [0,0,1]
+    angle: 0
+  translation: [0,0,L1]
+
+mass_inertia:
+  - mass: m1
+    inertia:
+      Ixx: Ixx1
+      Ixy: Ixy1
+      Ixz: Ixz1
+      Iyy: Iyy1
+      Iyz: Iyz1
+      Izz: Izz1
+    com: [0,0,c1]
