@@ -33,6 +33,7 @@ generate_template = parser.add_argument_group("Options for template Generation (
 generate_template.add_argument("--template", "--please", action="store_true", help="store template yaml or json file to edit instead of analyzing existing robot. Format is chosen by extension of filename")
 generate_template.add_argument("-S", "--structure", type=str, help="structure of robot template: String containing only 'r' and 'p' of joint order. E.g.: Use 'prr' for a robot which has 1 prismatic joint followed by 2 revolute joints.")
 generate_template.add_argument("-d", "--dof", type=int, default=0, help="degrees of freedom. Is usually calculated by length of 'structure'.")
+generate_template.add_argument("--urdf",action="store_true", help="use urdf in generated python file")
 generate_template.add_argument("--yaml",action="store_true", help="enforce yaml file generation")
 generate_template.add_argument("--json",action="store_true", help="enforce json file generation")
 # generate_template.add_argument("--python", action="store_true", help="enforce python file generation")
@@ -53,7 +54,7 @@ if __name__ == "__main__":
             if not ext in {".yaml",".YAML","yml"}:
                 path = name+".yaml"
             if (os.path.exists(path) 
-                and not input(f"{path} already exists.\nOverwrite exitsting file? [Y/n] ") in {"","y","Y"}):
+                and not input(f"{path} already exists.\nOverwrite existing file? [Y/n] ") in {"","y","Y"}):
                 print("Abort execution.")
                 exit()
             generate_template_yaml(path,structure,dof)    
@@ -62,7 +63,7 @@ if __name__ == "__main__":
             if ext not in {".json",".JSON"}:
                 path = name+".json"
             if (os.path.exists(path) 
-                and not input(f"{path} already exists.\nOverwrite exitsting file? [Y/n] ") in {"","y","Y"}):
+                and not input(f"{path} already exists.\nOverwrite existing file? [Y/n] ") in {"","y","Y"}):
                 print("Abort execution.")
                 exit()
             generate_template_json(path,structure,dof)
@@ -71,10 +72,10 @@ if __name__ == "__main__":
             if ext not in {".py"}:
                 path = name+".py"
             if (os.path.exists(path) 
-                and not input(f"{path} already exists.\nOverwrite exitsting file? [Y/n] ") in {"","y","Y"}):
+                and not input(f"{path} already exists.\nOverwrite existing file? [Y/n] ") in {"","y","Y"}):
                 print("Abort execution.")
                 exit()
-            generate_template_python(path,structure,dof)
+            generate_template_python(path,structure,dof,urdf=args.urdf)
     else:
         if not os.path.exists(path) or not os.path.isfile(path):
             raise ValueError(f"{path} is no existing file.")

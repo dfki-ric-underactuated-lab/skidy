@@ -1,15 +1,13 @@
 # python symbolic kinematics and dynamics
 
-- [python symbolic kinematics and dynamics](#python-symbolic-kinematics-and-dynamics)
-  - [1. Install](#1-install)
-  - [2. Usage](#2-usage)
-    - [2.1. YAML and JSON](#21-yaml-and-json)
-      - [2.1.1. Create robot model as YAML file](#211-create-robot-model-as-yaml-file)
-      - [2.1.2. Code generation using YAML](#212-code-generation-using-yaml)
-    - [2.2. Python](#22-python)
-  - [3. Unit testing](#3-unit-testing)
-  - [4. Benchmarking](#4-benchmarking)
-  - [5. Shortcomings](#5-shortcomings)
+- [1. Install](#1-install)
+- [2. Usage](#2-usage)
+  - [2.1. YAML and JSON](#21-yaml-and-json)
+    - [2.1.1. Create robot model as YAML file](#211-create-robot-model-as-yaml-file)
+    - [2.1.2. Code generation using YAML](#212-code-generation-using-yaml)
+  - [2.2. Python](#22-python)
+- [3. Unit testing](#3-unit-testing)
+- [4. Benchmarking](#4-benchmarking)
 
 Symbolic kinematics and dynamics model generation using Equations of Motion in closed form.
 This python file is almost a copy of the Matlab symbolic kinematics and dynamics generation tool.
@@ -291,6 +289,31 @@ The body reference configuration is a list of SE(3) transformation matrices. To 
       - translation: [0,0,L1]
     ```
 
+5. Use xyz_rpy coordinates to define Pose:
+    
+    ```yaml
+    body_ref_config:
+      - xyzrpy: [0, 0, L1, 0, pi/2, 0]
+    ```
+
+6. Use roll pitch yaw (rpy) euler angles to define rotation:
+
+    ```yaml
+    body_ref_config:
+      - rotation:
+          rpy: [0, pi/2, 0]
+        translation: [0,0,L1]
+    ```
+
+7. Use quaternion [w,x,y,z] to define rotation:
+
+    ```yaml
+    body_ref_config:
+      - rotation:
+          Q: [1, 0, 0, 0]
+        translation: [0,0,L1]
+    ```
+
 ---
 
 ```yaml
@@ -508,7 +531,7 @@ skd.closed_form_inv_dyn_body_fixed(q, qd, q2d, simplify_expressions=True)
 # Generate Code
 skd.generateCode(python=True, C=True, Matlab=True,
                  folder="./generated_code", use_global_vars=True,
-                 name="R2_plant", project="Project")
+                 name="plant", project="Project")
 ```
 
 The code explained:
@@ -662,6 +685,40 @@ The body reference configuration is a list of SE(3) transformation matrices. To 
     ```python
     body_ref_config.append(TransformationMatrix(t=[0,0,0]))
     ```
+
+5. Use xyz_rpy coordinates to define Pose:
+    
+    ```python
+    body_ref_config.append(xyz_rpy_to_matrix([0, 0, L1, 0, pi/2, 0]))
+    ```
+
+    Note that you have to import the function using `from KinematicsGenerator import xyz_rpy_to_matrix`.
+
+6. Use roll pitch yaw (rpy) euler angles to define rotation:
+
+    ```python
+    body_ref_config.append(
+        TransformationMatrix(
+            r=rpy_to_matrix([0, pi/2, 0]),
+            t=sympy.Matrix([0,0,L1])
+        )
+    )
+    ```
+    
+    Note that you have to import the function using `from KinematicsGenerator import rpy_to_matrix`.
+
+7. Use quaternion [w,x,y,z] to define rotation:
+
+    ```python
+    body_ref_config.append(
+        TransformationMatrix(
+            r=quaternion_to_matrix([1,0,0,0]),
+            t=sympy.Matrix([0,0,L1])
+        )
+    )
+    ```
+
+    Note that you have to import the function using `from KinematicsGenerator import quaternion_to_matrix`.
 
 ---
 
@@ -828,7 +885,7 @@ and `skd.closed_form_inv_dyn_body_fixed` generates the following equations and s
 # Generate Code
 skd.generateCode(python=True, C=True, Matlab=True,
                  folder="./generated_code", use_global_vars=True,
-                 name="R2_plant", project="Project")
+                 name="plant", project="Project")
 ```
 
 Generate Python, Matlab and/or C (C99) code from the generated equations.
@@ -847,8 +904,8 @@ python3 ./unit_testing/unit_testing.py
 For benchmarking the project the script `Benchmarking/benchmarking.py` was used. This script loads 4 robots with increasing complexity (1 to 4 revolute joint in a chain with planar task space) and takes the execution time of the functions `closed_form_kinematics_body_fixed()`, `closed_form_inv_dyn_body_fixed()` and `generateCode()`. Additionally, the arguments `parallel`, `simplify_expressions` and `cse_ex` have been altered.
 The results are shown in the following table:
 
-arguments | Parallel | Serial
-:---------:|:----------:|:-----------:
+arguments | parallel | serial
+:---------|:----------:|:-----------:
 simplify|![](/Benchmarking/parallel_with_simplification_without_cse.png) | ![](/Benchmarking/serial_with_simplification_without_cse.png)
 simplify + cse|![](/Benchmarking/parallel_with_simplification_with_cse.png) |![](/Benchmarking/serial_with_simplification_with_cse.png)
 no simplify|![](/Benchmarking/parallel_without_simplification_without_cse.png) | ![](/Benchmarking/serial_without_simplification_without_cse.png)
@@ -857,6 +914,6 @@ no simplify + cse|![](/Benchmarking/parallel_without_simplification_with_cse.png
 
 
 
-## 5. Shortcomings
+<!-- ## 5. Shortcomings
 
-Currently, the expression simplification takes ages for higher dimension system with 3 or 4 rotational degrees of freedom.
+Currently, the expression simplification takes ages for higher dimension system with 3 or 4 rotational degrees of freedom. -->

@@ -3,7 +3,9 @@ import json
 from typing import Union, Iterable
 from KinematicsGenerator import (SymbolicKinDyn, joint_screw, 
                                  SymbolicInertiaMatrix, MassMatrixMixedData, 
-                                 SO3Exp, TransformationMatrix, InertiaMatrix)
+                                 SO3Exp, TransformationMatrix, InertiaMatrix,
+                                 quaternion_to_matrix, xyz_rpy_to_matrix,
+                                 rpy_to_matrix)
 from sympy import Matrix, Identity, parse_expr, Expr
 import regex
 
@@ -116,17 +118,25 @@ def dict_parser(d: dict) -> SymbolicKinDyn:
         if type(br) is list:
             body_ref_config.append(Matrix(br))
         elif type(br) is dict:
-            t = br["translation"] if "translation" in br else [0,0,0]
-            if "rotation" in br:
-                if type(br["rotation"]) is dict:
-                    axis = br["rotation"]["axis"] if "axis" in br["rotation"] else [0,0,1]
-                    angle = br["rotation"]["angle"] if "angle" in br["rotation"] else 0
-                    r = SO3Exp(Matrix(axis),angle)
-                else:
-                    r = Matrix(br["rotation"])
+            if "xyzrpy" in br:
+                body_ref_config.append(xyz_rpy_to_matrix(br["xyzrpy"]))                
             else:
-                r = Matrix(Identity(3))
-            body_ref_config.append(TransformationMatrix(r,t))
+                t = br["translation"] if "translation" in br else [0,0,0]
+                if "rotation" in br:
+                    if type(br["rotation"]) is dict:
+                        if "Q" in br["rotation"]:
+                            r = quaternion_to_matrix(br["rotation"]["Q"])
+                        elif "rpy" in br["rotation"]:
+                            r = rpy_to_matrix(br["rotation"]["rpy"])
+                        elif "axis" in br["rotation"]:
+                            axis = br["rotation"]["axis"] if "axis" in br["rotation"] else [0,0,1]
+                            angle = br["rotation"]["angle"] if "angle" in br["rotation"] else 0
+                            r = SO3Exp(Matrix(axis),angle)
+                    else:
+                        r = Matrix(br["rotation"])
+                else:
+                    r = Matrix(Identity(3))
+                body_ref_config.append(TransformationMatrix(r,t))
     
     if "ee" not in d:
         raise KeyError("ee not found")
@@ -134,17 +144,25 @@ def dict_parser(d: dict) -> SymbolicKinDyn:
     if type(d["ee"]) is list:
         ee = Matrix(d["ee"])
     elif type(d["ee"]) is dict:
-        t = d["ee"]["translation"] if "translation" in d["ee"] else [0,0,0]
-        if "rotation" in d["ee"]:
-            if type(d["ee"]["rotation"]) is dict:
-                axis = d["ee"]["rotation"]["axis"] if "axis" in d["ee"]["rotation"] else [0,0,1]
-                angle = d["ee"]["rotation"]["angle"] if "angle" in d["ee"]["rotation"] else 0
-                r = SO3Exp(Matrix(axis),angle)
-            else:
-                r = Matrix(d["ee"]["rotation"])
+        if "xyzrpy" in br:
+            ee = xyz_rpy_to_matrix(br["xyzrpy"])
         else:
-            r = Matrix(Identity(3))
-        ee = TransformationMatrix(r,t)
+            t = d["ee"]["translation"] if "translation" in d["ee"] else [0,0,0]
+            if "rotation" in d["ee"]:
+                if type(d["ee"]["rotation"]) is dict:
+                    if "Q" in br["rotation"]:
+                        r = quaternion_to_matrix(br["rotation"]["Q"])
+                    elif "rpy" in br["rotation"]:
+                        r = rpy_to_matrix(br["rotation"]["rpy"])
+                    elif "axis" in br["rotation"]:
+                        axis = d["ee"]["rotation"]["axis"] if "axis" in d["ee"]["rotation"] else [0,0,1]
+                        angle = d["ee"]["rotation"]["angle"] if "angle" in d["ee"]["rotation"] else 0
+                        r = SO3Exp(Matrix(axis),angle)
+                else:
+                    r = Matrix(d["ee"]["rotation"])
+            else:
+                r = Matrix(Identity(3))
+            ee = TransformationMatrix(r,t)
     else:
         raise ValueError(f"ee {d['ee']} cannot be processed.")
     
@@ -336,7 +354,7 @@ def generate_template_json(path: str="edit_me.json", structure: str = None,
         f.write(s)
 
 
-def generate_template_python(path:str="edit_me.py", structure:str=None, dof:int=0, tree:bool=True):
+def generate_template_python(path:str="edit_me.py", structure:str=None, dof:int=0, tree:bool=True, urdf=False):
     """Generate template python file to modify for own robot.
 
     Args:
@@ -365,24 +383,28 @@ def generate_template_python(path:str="edit_me.py", structure:str=None, dof:int=
     
     p = ["from KinematicsGenerator import (SymbolicKinDyn,"]
     p.append("                                 TransformationMatrix,")
-    p.append("                                 MassMatrixMixedData,")
-    p.append("                                 joint_screw,")
+    if not urdf:
+        p.append("                                 MassMatrixMixedData,")
+        p.append("                                 joint_screw,")
+        p.append("                                 InertiaMatrix,")
     p.append("                                 SO3Exp,")
-    p.append("                                 InertiaMatrix,")
     p.append("                                 generalized_vectors)")
     p.append("from KinematicsGenerator.symbols import g, pi")
     p.append("import sympy")
     p.append("")
     p.append("# Define symbols: (Hint: you can import the most common use symbols from KinematicsGenerator.symbols instead)")
-    p.append(f"{'m'+ ', m'.join(str(i) for i in range(1, dof+1))} = sympy.symbols('{'m'+ ' m'.join(str(i) for i in range(1, dof+1))}', real=True, const=True)")
-    p.append(f"{'Ixx'+ ', Ixx'.join(str(i) for i in range(1, dof+1))} = sympy.symbols('{'Ixx'+ ' Ixx'.join(str(i) for i in range(1, dof+1))}', real=True, const=True)")
-    p.append(f"{'Ixy'+ ', Ixy'.join(str(i) for i in range(1, dof+1))} = sympy.symbols('{'Ixy'+ ' Ixy'.join(str(i) for i in range(1, dof+1))}', real=True, const=True)")
-    p.append(f"{'Ixz'+ ', Ixz'.join(str(i) for i in range(1, dof+1))} = sympy.symbols('{'Ixz'+ ' Ixz'.join(str(i) for i in range(1, dof+1))}', real=True, const=True)")
-    p.append(f"{'Iyy'+ ', Iyy'.join(str(i) for i in range(1, dof+1))} = sympy.symbols('{'Iyy'+ ' Iyy'.join(str(i) for i in range(1, dof+1))}', real=True, const=True)")
-    p.append(f"{'Iyz'+ ', Iyz'.join(str(i) for i in range(1, dof+1))} = sympy.symbols('{'Iyz'+ ' Iyz'.join(str(i) for i in range(1, dof+1))}', real=True, const=True)")
-    p.append(f"{'Izz'+ ', Izz'.join(str(i) for i in range(1, dof+1))} = sympy.symbols('{'Izz'+ ' Izz'.join(str(i) for i in range(1, dof+1))}', real=True, const=True)")
+    if not urdf:
+        p.append(f"{'m'+ ', m'.join(str(i) for i in range(1, dof+1))} = sympy.symbols('{'m'+ ' m'.join(str(i) for i in range(1, dof+1))}', real=True, const=True)")
+        p.append(f"{'Ixx'+ ', Ixx'.join(str(i) for i in range(1, dof+1))} = sympy.symbols('{'Ixx'+ ' Ixx'.join(str(i) for i in range(1, dof+1))}', real=True, const=True)")
+        p.append(f"{'Ixy'+ ', Ixy'.join(str(i) for i in range(1, dof+1))} = sympy.symbols('{'Ixy'+ ' Ixy'.join(str(i) for i in range(1, dof+1))}', real=True, const=True)")
+        p.append(f"{'Ixz'+ ', Ixz'.join(str(i) for i in range(1, dof+1))} = sympy.symbols('{'Ixz'+ ' Ixz'.join(str(i) for i in range(1, dof+1))}', real=True, const=True)")
+        p.append(f"{'Iyy'+ ', Iyy'.join(str(i) for i in range(1, dof+1))} = sympy.symbols('{'Iyy'+ ' Iyy'.join(str(i) for i in range(1, dof+1))}', real=True, const=True)")
+        p.append(f"{'Iyz'+ ', Iyz'.join(str(i) for i in range(1, dof+1))} = sympy.symbols('{'Iyz'+ ' Iyz'.join(str(i) for i in range(1, dof+1))}', real=True, const=True)")
+        p.append(f"{'Izz'+ ', Izz'.join(str(i) for i in range(1, dof+1))} = sympy.symbols('{'Izz'+ ' Izz'.join(str(i) for i in range(1, dof+1))}', real=True, const=True)")
+    else:
+        p.append("lee = sympy.symbols('lee', real=True, const=True)")
     p.append("") # m1, m2,
-    if tree:
+    if tree and not urdf:
         p.append("# Define connectivity graph")
         p.append(f"parent = [0{',' if dof > 1 else ']'}")
         for i in range(1, dof):
@@ -399,61 +421,79 @@ def generate_template_python(path:str="edit_me.py", structure:str=None, dof:int=
             p.append(f"           [{','.join([str(j) for j in range(1,i+2)])}]{',' if dof > i+1 else ']'}")
         p.append("")
         
+    if urdf:
+        p.append("urdfpath = '/path/to/urdf' # TODO: change me!")
+        p.append("")
+    
     p.append("# gravity vector")
     p.append("gravity = sympy.Matrix([0,0,g])")
     p.append("")
     
-    p.append("# representation of joint screw coordinates and body reference configurations")
-    p.append("representation = 'spacial' # alternative: 'body_fixed'")
-    p.append("")
-    
-    p.append("# joint screw coordinates (6x1 sympy.Matrix per joint)")
-    p.append("joint_screw_coord = []")
-    for i in range(dof):
-        if structure:
-            if structure[i] in "rR":
-                p.append('joint_screw_coord.append(joint_screw(axis=[0,0,1], vec=[0,0,0], revolute=True))')
-            elif structure[i] in "pP":
-                p.append('joint_screw_coord.append(joint_screw(axis=[0,0,1], revolute=False))')
+    if not urdf:
+        p.append("# representation of joint screw coordinates and body reference configurations")
+        p.append("representation = 'spacial' # alternative: 'body_fixed'")
+        p.append("")
+        
+        p.append("# joint screw coordinates (6x1 sympy.Matrix per joint)")
+        p.append("joint_screw_coord = []")
+        for i in range(dof):
+            if structure:
+                if structure[i] in "rR":
+                    p.append('joint_screw_coord.append(joint_screw(axis=[0,0,1], vec=[0,0,0], revolute=True))')
+                elif structure[i] in "pP":
+                    p.append('joint_screw_coord.append(joint_screw(axis=[0,0,1], revolute=False))')
+                else:
+                    raise ValueError(f"structure {structure[i]} not supported.")
             else:
-                raise ValueError(f"structure {structure[i]} not supported.")
-        else:
-            p.append("  - []")
-            p.append("")
-    p.append("")
-    
-    p.append("# body reference configurations (4x4 SE3 Pose (sympy.Matrix) per link)")
-    p.append("body_ref_config = []")
-    for i in range(dof):
-        p.append("body_ref_config.append(TransformationMatrix(r=SO3Exp(axis=[0,0,1],angle=0),t=[0,0,0]))")
-    p.append("")
+                p.append("  - []")
+                p.append("")
+        p.append("")
+        
+        p.append("# body reference configurations (4x4 SE3 Pose (sympy.Matrix) per link)")
+        p.append("body_ref_config = []")
+        for i in range(dof):
+            p.append("body_ref_config.append(TransformationMatrix(r=SO3Exp(axis=[0,0,1],angle=0),t=[0,0,0]))")
+        p.append("")
     
     p.append("# end-effector configuration w.r.t. last link body fixed frame in the chain (4x4 SE3 Pose (sympy.Matrix))")
     p.append("ee = TransformationMatrix(r=SO3Exp(axis=[0,0,1],angle=0),t=[0,0,0])")
     p.append("")
     
-    p.append("# mass_inertia parameters (6x6 sympy.Matrix per link)")
-    p.append("Mb = []")
-    for i in range(dof):
-        p.append(f"Mb.append(MassMatrixMixedData(m{i+1}, InertiaMatrix(Ixx{i+1},Ixy{i+1},Ixz{i+1},Iyy{i+1},Iyz{i+1},Izz{i+1}), sympy.Matrix([0,0,0])))")
-    p.append("")
-    
-    p.append(f"q, qd, q2d = generalized_vectors(len(body_ref_config), startindex=1)")
-    p.append("")
+    if not urdf:
+        p.append("# mass_inertia parameters (6x6 sympy.Matrix per link)")
+        p.append("Mb = []")
+        for i in range(dof):
+            p.append(f"Mb.append(MassMatrixMixedData(m{i+1}, InertiaMatrix(Ixx{i+1},Ixy{i+1},Ixz{i+1},Iyy{i+1},Iyz{i+1},Izz{i+1}), sympy.Matrix([0,0,0])))")
+        p.append("")
+        
+        p.append(f"q, qd, q2d = generalized_vectors(len(body_ref_config), startindex=1)")
+        p.append("")
     
     p.append("skd = SymbolicKinDyn(gravity_vector=gravity,")
     p.append("                     ee=ee,")
-    p.append("                     body_ref_config=body_ref_config,")
-    p.append("                     joint_screw_coord=joint_screw_coord,")
-    p.append("                     config_representation=representation,")
-    p.append("                     Mb=Mb,")
-    if tree:
-        p.append("                     parent=parent,")
-        p.append("                     child=child,")
-        p.append("                     support=support,")
+    if not urdf: 
+        p.append("                     body_ref_config=body_ref_config,")
+        p.append("                     joint_screw_coord=joint_screw_coord,")
+        p.append("                     config_representation=representation,")
+        p.append("                     Mb=Mb,")
+        if tree:
+            p.append("                     parent=parent,")
+            p.append("                     child=child,")
+            p.append("                     support=support,")
     p.append("                     )")
     p.append("")
+    if urdf:
+        p.append("skd.load_from_urdf(path = urdfpath,")
+        p.append("                   symbolic=True, # symbolify equations? (eg. use Ixx instead of numeric value)")
+        p.append("                   cse_ex=False, # use common subexpression elimination? ")
+        p.append("                   simplify_numbers=True, # round numbers if close to common fractions like 1/2 etc and replace eg 3.1416 by pi?")
+        p.append("                   tolerance=0.0001, # tolerance for simplify numbers")
+        p.append("                   max_denominator=8, # define max denominator for simplify numbers to avoid simplification to something like 13/153")
+        p.append("                   )")
+        p.append("")
     
+        p.append(f"q, qd, q2d = generalized_vectors(len(skd.body_ref_config), startindex=1)")
+        p.append("")
     
     p.append("# run Calculations")
     p.append("skd.closed_form_kinematics_body_fixed(q, qd, q2d, simplify_expressions=True)")
@@ -461,9 +501,9 @@ def generate_template_python(path:str="edit_me.py", structure:str=None, dof:int=
     p.append("")
     
     p.append("# Generate Code")
-    p.append('skd.generateCode(python=True, C=True, Matlab=True,')
+    p.append('skd.generateCode(python=True, C=False, Matlab=False,')
     p.append('                 folder="./generated_code", use_global_vars=True,')
-    p.append('                 name="R2_plant", project="Project")')
+    p.append('                 name="plant", project="Project")')
     p.append("")
     
     
