@@ -49,6 +49,12 @@ The project requires the following packages:
     python3 -m pip install PyYAML
     ```
 
+- pylatex
+
+    ```bash
+    python3 -m pip install pylatex
+    ```
+
 To install all dependencies use:
 
 ```bash

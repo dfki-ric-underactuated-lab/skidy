@@ -17,6 +17,7 @@ parser.add_argument("-c", "--cse", action="store_true", help="use common subexpr
 parser.add_argument("-p", "--python", action="store_true", help="generate python code")
 parser.add_argument("-C","--C", action="store_true", help="generate C code")
 parser.add_argument("-m","--matlab", action="store_true", help="generate Matlab/Octave code")
+parser.add_argument("-l, --latex", action="store_true", help="generate LaTeX code and pdf")
 parser.add_argument("--cython", action="store_true", help="generate Cython code")
 parser.add_argument("--no-kinematics", action="store_true", help="skip generation of kinematics equations.")
 parser.add_argument("--no-dynamics", action="store_true", help="skip generation of dynamics equations.")
@@ -107,4 +108,4 @@ if __name__ == "__main__":
         if not args.no_dynamics:
             skd.closed_form_inv_dyn_body_fixed(simplify_expressions=args.simplify, cse_ex=args.cse, parallel=args.serial)
     
-        skd.generateCode(python=args.python, C=args.C, matlab=args.matlab, cython=args.cython,folder=args.folder, use_global_vars=True, name=args.name, project=args.project)
+        skd.generateCode(python=args.python, C=args.C, matlab=args.matlab, cython=args.cython, latex=args.latex, folder=args.folder, use_global_vars=True, name=args.name, project=args.project)

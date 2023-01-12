@@ -375,7 +375,7 @@ def generate_template_python(path:str="edit_me.py", structure:str=None, dof:int=
         if not dof:
            dof = len(structure)
         else:
-            # fill structure with r until length mathes dof
+            # fill structure with r until length matches dof
             while len(structure) < dof:
                 structure += "r"
     elif dof:

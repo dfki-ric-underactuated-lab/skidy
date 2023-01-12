@@ -80,108 +80,132 @@ def prepare(cls):
 class abstractFKinTest():
     def testfkin(self):
         self.assertEqual(
-            self.s.fkin,
-            Matrix([[cos(self.q1+self.q2), 
-                     -sin(self.q1+self.q2),
-                     0,
-                     self.L2*cos(self.q1+self.q2)+self.L1*cos(self.q1)],
-                    [sin(self.q1+self.q2), 
-                     cos(self.q1+self.q2),
-                     0, 
-                     self.L2*sin(self.q1+self.q2)+self.L1*sin(self.q1)],
-                    [0,0,1,0],
-                    [0,0,0,1]])
+            simplify(
+                self.s.fkin
+                - Matrix([[cos(self.q1+self.q2), 
+                        -sin(self.q1+self.q2),
+                        0,
+                        self.L2*cos(self.q1+self.q2)+self.L1*cos(self.q1)],
+                        [sin(self.q1+self.q2), 
+                        cos(self.q1+self.q2),
+                        0, 
+                        self.L2*sin(self.q1+self.q2)+self.L1*sin(self.q1)],
+                        [0,0,1,0],
+                        [0,0,0,1]])
+                ),
+            zeros(4,4)
         )
         
     def testJ(self):
         self.assertEqual(
-            self.s.J,
-            Matrix([[0,0],
-                    [0,0],
-                    [1,0],
-                    [0,0],
-                    [0,0],
-                    [0,0],
-                    [0,0],
-                    [0,0],
-                    [1,1],
-                    [self.L1*sin(self.q2),0],
-                    [self.L1*cos(self.q2),0],
-                    [0,0]])
+            simplify(
+                self.s.J
+                - Matrix([[0,0],
+                        [0,0],
+                        [1,0],
+                        [0,0],
+                        [0,0],
+                        [0,0],
+                        [0,0],
+                        [0,0],
+                        [1,1],
+                        [self.L1*sin(self.q2),0],
+                        [self.L1*cos(self.q2),0],
+                        [0,0]])
+            ),
+            zeros(12,2)
         )
         
     def testJb_ee(self):
         self.assertEqual(
-            self.s.Jb_ee,
-            Matrix([[0,0],
-                    [0,0],
-                    [1,1],
-                    [self.L1*sin(self.q2),0],
-                    [self.L2+self.L1*cos(self.q2),self.L2],
-                    [0,0]])
+            simplify(
+                self.s.Jb_ee
+                -Matrix([[0,0],
+                        [0,0],
+                        [1,1],
+                        [self.L1*sin(self.q2),0],
+                        [self.L2+self.L1*cos(self.q2),self.L2],
+                        [0,0]])
+            ),
+            zeros(6,2)
         )
         
     def testJh_ee(self):
         self.assertEqual(
-            self.s.Jh_ee,
-            Matrix([[0,0],
-                    [0,0],
-                    [1,1],
-                    [-self.L2*sin(self.q1+self.q2)-self.L1*sin(self.q1),
-                     -self.L2*sin(self.q1+self.q2)],
-                    [self.L2*cos(self.q1+self.q2)+self.L1*cos(self.q1),
-                     self.L2*cos(self.q1+self.q2)],
-                    [0,0]])
+            simplify(
+                self.s.Jh_ee
+                - Matrix([[0,0],
+                        [0,0],
+                        [1,1],
+                        [-self.L2*sin(self.q1+self.q2)-self.L1*sin(self.q1),
+                        -self.L2*sin(self.q1+self.q2)],
+                        [self.L2*cos(self.q1+self.q2)+self.L1*cos(self.q1),
+                        self.L2*cos(self.q1+self.q2)],
+                        [0,0]])
+            ),
+            zeros(6,2)
         )
         
     def testJb(self):
         self.assertEqual(
-            self.s.Jb,
-            Matrix([[0,0],
-                    [0,0],
-                    [1,1],
-                    [self.L1*sin(self.q2),0],
-                    [self.L1*cos(self.q2),0],
-                    [0,0]])
+            simplify(
+                self.s.Jb
+                -Matrix([[0,0],
+                        [0,0],
+                        [1,1],
+                        [self.L1*sin(self.q2),0],
+                        [self.L1*cos(self.q2),0],
+                        [0,0]])
+            ),
+            zeros(6,2)
         )
         
     def testJh(self):
         self.assertEqual(
-            self.s.Jh,
-            Matrix([[0,0],
-                    [0,0],
-                    [1,1],
-                    [-self.L1*sin(self.q1),0],
-                    [self.L1*cos(self.q1),0],
-                    [0,0]])
+            simplify(
+                self.s.Jh
+                - Matrix([[0,0],
+                        [0,0],
+                        [1,1],
+                        [-self.L1*sin(self.q1),0],
+                        [self.L1*cos(self.q1),0],
+                        [0,0]])
+            ),
+            zeros(6,2)
         )
     
     def testJdot(self):
         self.assertEqual(
-            self.s.Jdot,
-            Matrix([[0,0],
-                    [0,0],
-                    [0,0],
-                    [0,0],
-                    [0,0],
-                    [0,0],
-                    [0,0],
-                    [0,0],
-                    [0,0],
-                    [self.L1*self.dq2*cos(self.q2),0],
-                    [-self.L1*self.dq2*sin(self.q2),0],
-                    [0,0]])
+            simplify(
+                self.s.Jdot
+                - Matrix([[0,0],
+                        [0,0],
+                        [0,0],
+                        [0,0],
+                        [0,0],
+                        [0,0],
+                        [0,0],
+                        [0,0],
+                        [0,0],
+                        [self.L1*self.dq2*cos(self.q2),0],
+                        [-self.L1*self.dq2*sin(self.q2),0],
+                        [0,0]])
+            ),
+            zeros(12,2)
         )
     
     def testVbd_BFn(self):
         self.assertEqual(
-            simplify(self.s.Vbd_BFn),
-            Matrix([[0],
-                    [0],
-                    [self.ddq1+self.ddq2],
-                    [self.L1*(self.ddq1*sin(self.q2) + self.dq1*self.dq2*cos(self.q2))],
-                    [self.L1*(self.ddq1*cos(self.q2) - self.dq1*self.dq2*sin(self.q2))],
-                    [0]])
+            simplify(
+                self.s.Vbd_BFn 
+                -Matrix([[0],
+                        [0],
+                        [self.ddq1+self.ddq2],
+                        [self.L1*(self.ddq1*sin(self.q2) + self.dq1*self.dq2*cos(self.q2))],
+                        [self.L1*(self.ddq1*cos(self.q2) - self.dq1*self.dq2*sin(self.q2))],
+                        [0]])
+            ), 
+            zeros(6,1)
         )
     
     
@@ -269,12 +293,15 @@ class abstractFKinTest():
     
     def testJb_ee_dot(self):
         self.assertEqual(
-            self.s.Jb_ee_dot,
-            Matrix([[0,0],
-                    [0,0],
-                    [0,0],
-                    [self.L1*self.dq2*cos(self.q2),0],
-                    [-self.L1*self.dq2*sin(self.q2),0],[0,0]])
+            simplify(
+                self.s.Jb_ee_dot
+                -Matrix([[0,0],
+                        [0,0],
+                        [0,0],
+                        [self.L1*self.dq2*cos(self.q2),0],
+                        [-self.L1*self.dq2*sin(self.q2),0],[0,0]])
+            ),
+            zeros(6,2)
         )
         
     def testJh_ee_dot(self):
@@ -310,13 +337,16 @@ class abstractFKinTest():
     
     def testJb_dot(self):
         self.assertEqual(
-            self.s.Jb_dot,
-            Matrix([[0,0],
-                    [0,0],
-                    [0,0],
-                    [self.L1*self.dq2*cos(self.q2),0],
-                    [-self.L1*self.dq2*sin(self.q2),0],
-                    [0,0]])
+            simplify(
+                self.s.Jb_dot
+                -Matrix([[0,0],
+                        [0,0],
+                        [0,0],
+                        [self.L1*self.dq2*cos(self.q2),0],
+                        [-self.L1*self.dq2*sin(self.q2),0],
+                        [0,0]])
+            ),
+            zeros(6,2)
         )
     
 class TestFKin(abstractFKinTest, unittest.TestCase):
@@ -350,19 +380,22 @@ class AbstractInvDyn():
         
     def testJ(self):
         self.assertEqual(
-            self.s.J,
-            Matrix([[0,0],
-                    [0,0],
-                    [1,0],
-                    [0,0],
-                    [0,0],
-                    [0,0],
-                    [0,0],
-                    [0,0],
-                    [1,1],
-                    [self.L1*sin(self.q2),0],
-                    [self.L1*cos(self.q2),0],
-                    [0,0]])
+            simplify(
+                self.s.J
+                - Matrix([[0,0],
+                         [0,0],
+                         [1,0],
+                         [0,0],
+                         [0,0],
+                         [0,0],
+                         [0,0],
+                         [0,0],
+                         [1,1],
+                         [self.L1*sin(self.q2),0],
+                         [self.L1*cos(self.q2),0],
+                         [0,0]])
+            ),
+            zeros(12,2)
         )
     
     def testC(self):

@@ -5,6 +5,8 @@ import random
 import regex
 from multiprocessing import Process, Queue
 from typing import Union, List, Any, Tuple, Generator, Dict, Callable
+from collections import defaultdict
+from itertools import combinations
 
 import numpy
 import sympy
@@ -12,10 +14,12 @@ from sympy import (Identity, Matrix, cancel, cos, cse, factor,
                    lambdify, powsimp, sin, symbols, zeros, pi, nsimplify, 
                    octave_code, ccode, MutableDenseMatrix)
 from sympy.printing.numpy import NumPyPrinter
+from sympy.printing.latex import LatexPrinter
 from sympy.simplify.cse_main import numbered_symbols
 from sympy.simplify.fu import fu
 from sympy.utilities.codegen import codegen
 from urdfpy import URDF, matrix_to_xyz_rpy
+from pylatex import (Document, Section, Command, NoEscape)
 
 from KinematicsGenerator.matrices import (
     SE3AdjInvMatrix, SE3AdjMatrix, SE3adMatrix, SE3Exp, SE3Inv, SO3Exp, 
@@ -105,7 +109,8 @@ class _AbstractCodeGeneration():
             return filtered
         return all_expressions
 
-    def generateCode(self, python: bool=False, C: bool=False, Matlab: bool=False, cython: bool=False,
+    def generateCode(self, python: bool=False, C: bool=False, Matlab: bool=False, 
+                     cython: bool=False, latex: bool=False,
                      folder: str="./generated_code", use_global_vars: bool=True, 
                      name: str="plant", project: str="Project") -> None:
         """Generate code of generated Expressions. 
@@ -123,6 +128,9 @@ class _AbstractCodeGeneration():
                 Generate Matlab/Octave code. Defaults to False.
             cython (bool, optional):
                 Generate cython code. Defaults to False.
+            latex (bool, optional):
+                Generate latex code with all equations and generate pdf from it. 
+                Defaults to False.
             folder (str, optional): 
                 Folder where to save code. 
                 Defaults to "./generated_code".
@@ -371,9 +379,25 @@ class _AbstractCodeGeneration():
             # join list to string
             s = "\n".join(s)
 
-            # write python file
+            su = ("from setuptools import setup\n"
+                  + "from Cython.Build import cythonize\n"
+                  + "\n"
+                  + "setup(\n"
+                  + f"    name='{name}',\n"
+                  + f"    ext_modules=cythonize('{name + '.pyx'}', "
+                  + "compiler_directives={'language_level' : '3'}),\n"
+                  + "    zip_safe=False,\n"
+                  + ")\n"
+            )
+
+
+            # write cython file
             with open(os.path.join(folder, "cython", name + ".pyx"), "w+") as f:
                 f.write(s)
+            
+            with open(os.path.join(folder, "cython", "setup_" + name + ".py"), "w+") as f:
+                f.write(su)
+            
             print("Done")
 
         if C:
@@ -474,6 +498,9 @@ class _AbstractCodeGeneration():
             print("Done")
 
         if Matlab:
+            # create folder
+            if not os.path.exists(os.path.join(folder, "matlab")):
+                os.mkdir(os.path.join(folder, "matlab"))
             m_class = []
             m_class.append(f"classdef {name}\n")
             m_properties = not_assigned_syms[:]
@@ -556,7 +583,58 @@ class _AbstractCodeGeneration():
             m_class.append("end\n")
             with open(os.path.join(folder, "matlab", f"{name}.m"), "w+") as f:
                 f.writelines(m_class)
+        
+        if latex:
+            # create folder
+            if not os.path.exists(os.path.join(folder, "latex")):
+                os.mkdir(os.path.join(folder, "latex"))
 
+            # Document with `\maketitle` command activated
+            doc = Document(documentclass="article", inputenc="utf8")
+            doc.packages.append(NoEscape(r"\usepackage[a4paper,top=2cm,bottom=2cm,left=2.5cm,right=2.5cm,marginparwidth=1.75cm]{geometry}"))
+            doc.packages.append(NoEscape(r"\usepackage{amsmath}"))
+            doc.packages.append(NoEscape(r"\usepackage{graphicx}"))
+            
+            #doc.packages.append(Command(r"\\usepackage{float}"))
+            doc.preamble.append(Command("title", "Equations of Motion"))
+            doc.preamble.append(Command("author", "Author: SymbolicKinDyn"))
+            doc.preamble.append(Command("date", NoEscape(r"\today")))
+            doc.append(NoEscape(r"\maketitle"))
+            doc.append(NoEscape(r"\tableofcontents"))
+            doc.append(NoEscape(r"\newpage"))
+            for i in range(len(expressions)):
+                letter = ""
+                if "jacobian" in names[i]: letter = "J"
+                elif "twist" in names[i]: letter = r"V"
+                elif "kinematics" in names[i]: letter = r"^0T_E"
+                elif "inertia" in names[i]: letter = "M"
+                elif "coriolis" in names[i]: letter = "C"
+                elif "gravity" in names[i]: letter = "g"
+                elif "dynamics" in names[i]: letter = r"\tau"
+                elif "acceleration" in names[i]: letter = r"\dot V"
+                if "dot" in names[i]: letter = r"\dot "+letter
+                if "_ee" in names[i]: letter = r"^E" + letter
+                elif ("twist" in names[i] 
+                      or "jacobian" in names[i] 
+                      or "acceleration" in names[i]): letter = r"^0" + letter
+                if "hybrid" in names[i]: letter += r"_h"
+                elif "body" in names[i]: letter += r"_b"
+                
+                replacements = [("ddq", r"\\ddot q"), ("dq", r"\\dot q")]
+                with doc.create(Section(regex.sub("_"," ",names[i]))):
+                    eq = LatexPrinter().doprint(expressions[i])
+                    for pat, repl in replacements:
+                        eq = regex.sub(pat, repl, eq)
+                    # doc.append(NoEscape(r"\begin{footnotesize}"))
+                    doc.append(NoEscape(r"\[ \resizebox{\ifdim\width>\columnwidth\columnwidth\else\width\fi}{!}{$%"))
+                    doc.append(NoEscape(r"\boldsymbol{"f"{letter}""} = "f"{eq}"))
+                    doc.append(NoEscape(r"$} \]"))
+                    # doc.append(NoEscape(r"\end{footnotesize}"))
+                    doc.append("\n")
+            
+            doc.generate_pdf(os.path.join(folder, "latex",name), clean_tex=False)
+                
+            
 class SymbolicKinDyn(_AbstractCodeGeneration):
     BODY_FIXED = "body_fixed"
     SPACIAL = "spacial"
@@ -1866,6 +1944,58 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
         print("Done")
         return self.Q
 
+    def partial_factor(self, exp: sympy.Expr) -> sympy.Expr:
+        """Partial factor simplification for sympy expression.
+
+        Args:
+            exp (sympy.Expr): sympy expression.
+
+        Returns:
+            sympy.Expr: modified sympy expression.
+        """
+        # split up matrices
+        if (type(exp) == sympy.matrices.immutable.ImmutableDenseMatrix
+            or type(exp) == sympy.matrices.dense.MutableDenseMatrix):
+            new_expr = zeros(*exp.shape)
+            for i in range(exp.shape[0]):
+                for j in range(exp.shape[1]):
+                    new_expr[i,j] = self.partial_factor(exp[i,j])
+            return new_expr
+            
+        # seach for factors
+        factor_map = defaultdict(set)
+        const, additive_terms = exp.as_coeff_add()
+        for term1, term2 in combinations(additive_terms, 2):
+            common_terms = (
+                set(term1.as_coeff_mul()[-1])
+                & set(term2.as_coeff_mul()[-1])
+            )
+            if common_terms:
+                common_factor = sympy.Mul(*common_terms)
+                factor_map[common_factor] |= {term1, term2}
+        
+        # sort by number of operations represented by the terms
+        factor_list = sorted(
+            factor_map.items(),
+            key = lambda i: (i[0].count_ops() + 1) * len(i[1])
+        )[::-1]
+
+        # rebuild expression
+        used = set()
+        new_expr = nsimplify(0)
+        for item in factor_list:
+            factor = item[0]
+            appearances = item[-1]
+            terms = 0
+            for instance in appearances:
+                if instance not in used:
+                    terms += instance.as_coefficient(factor)
+                    used.add(instance)
+            new_expr += factor * terms
+        for term in set(additive_terms) - used:
+            new_expr += term
+        return new_expr + const
+
     def simplify(self, exp: sympy.Expr, cse_ex: bool=False) -> sympy.Expr:
         """Faster simplify implementation for sympy expressions.
         Expressions can be different simplified as with sympy.simplify.
@@ -1910,6 +2040,7 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
         exp = cancel(exp)
         exp = factor(exp)
         exp = powsimp(exp)
+        exp = self.partial_factor(exp)
         exp = exp.doit()
         return exp
 

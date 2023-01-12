@@ -19,7 +19,8 @@ setup(
         "sympy>=1.8",
         "urdfpy",
         "regex",
-        "PyYAML"
+        "PyYAML",
+        "pylatex"
     ],
     classifiers=[
         'Development Status :: 4 - Beta',
