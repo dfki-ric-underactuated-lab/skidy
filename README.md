@@ -6,11 +6,12 @@
     - [2.1.1. Create robot model as YAML file](#211-create-robot-model-as-yaml-file)
     - [2.1.2. Code generation using YAML](#212-code-generation-using-yaml)
   - [2.2. Python](#22-python)
+  - [2.3. URDF](#23-urdf)
 - [3. Unit testing](#3-unit-testing)
 - [4. Benchmarking](#4-benchmarking)
+- [5. Troubleshooting](#5-troubleshooting)
 
 Symbolic kinematics and dynamics model generation using Equations of Motion in closed form.
-This python file is almost a copy of the Matlab symbolic kinematics and dynamics generation tool.
 
 ## 1. Install
 
@@ -33,6 +34,8 @@ The project requires the following packages:
     ```bash
     python3 -m pip install urdfpy
     ```
+
+    *Note:* If you have installed numpy>=1.24.0 you might need to upgrade the package networkx after installing urdfpy using `python -m pip install --upgrade networkx`. See chapter [Troubleshooting](#5-troubleshooting) for more information.
 
 - regex
 
@@ -290,7 +293,7 @@ The body reference configuration is a list of SE(3) transformation matrices. To 
     ```
 
 5. Use xyz_rpy coordinates to define Pose:
-    
+
     ```yaml
     body_ref_config:
       - xyzrpy: [0, 0, L1, 0, pi/2, 0]
@@ -451,7 +454,7 @@ To generate your robot template use
 python3 analyze_my_robot.py --please [options] new_filename.py
 ```
 
-or the python function `KinematicsGenerator.generate_template_yaml(path, structure)`.
+or the python function `KinematicsGenerator.generate_template_python(path, structure)`.
 
 For [options] the option `--structure` is highly recommended. There you can define which joint types to use in the template. E.g. use `--structure 'rrp'` for a robot which has two revolute joints followed by one prismatic joint.
 
@@ -554,7 +557,7 @@ Additionally, we import several helper functions for defining the matrices which
 - `joint_screw`: create 6x1 joint screw vector from joint axis and vector from origin to joint axis.
 - `SO3Exp`: Exponential mapping of SO(3) to generate rotation matrix from rotation angle and rotation axis.
 - `InertiaMatrix`: generate 3x3 inertia matrix from 6 independent parameters (Ixx, Ixy, ...).
-- `generalized_vectors`: generate symbolic generalized vectors q, qd and q2d of predefined length n. 
+- `generalized_vectors`: generate symbolic generalized vectors q, qd and q2d of predefined length n.
 
 ```python
 from KinematicsGenerator.symbols import g, pi
@@ -569,7 +572,6 @@ import sympy
 The whole library used sympy objects for all symbolic equations etc. Hence, we need `sympy` to create additional symbolic variables and matrices later.
 
 ---
-
 
 ```python
 # Define symbols:
@@ -687,7 +689,7 @@ The body reference configuration is a list of SE(3) transformation matrices. To 
     ```
 
 5. Use xyz_rpy coordinates to define Pose:
-    
+
     ```python
     body_ref_config.append(xyz_rpy_to_matrix([0, 0, L1, 0, pi/2, 0]))
     ```
@@ -704,7 +706,7 @@ The body reference configuration is a list of SE(3) transformation matrices. To 
         )
     )
     ```
-    
+
     Note that you have to import the function using `from KinematicsGenerator import rpy_to_matrix`.
 
 7. Use quaternion [w,x,y,z] to define rotation:
@@ -891,6 +893,190 @@ skd.generateCode(python=True, C=True, Matlab=True,
 Generate Python, Matlab and/or C (C99) code from the generated equations.
 Note that this can take time, especially for non-simplified equations and complex robots.
 
+### 2.3. URDF
+
+URDF files are currently only supported in combination with a python script. But there is a function to generate a template python file, which loads your URDF. In the python file it is necessary to define:
+
+1. the URDF path
+2. the gravity vector
+3. end-effector configruation w.r.t. last link body fixed frame in the chain
+
+To generate the python template file use:
+
+```bash
+python analyze_my_robot.py --please --urdf my_urdf_template.py
+```
+
+or the python function `KinematicsGenerator.generate_template_python(path, urdf=True)`.
+
+This generates the following output:
+
+```python
+from KinematicsGenerator import (SymbolicKinDyn,
+                                 TransformationMatrix,
+                                 SO3Exp,
+                                 generalized_vectors)
+from KinematicsGenerator.symbols import g, pi
+import sympy
+
+# Define symbols:
+lee = sympy.symbols('lee', real=True, const=True)
+
+urdfpath = '/path/to/urdf' # TODO: change me!
+
+# gravity vector
+gravity = sympy.Matrix([0,0,g])
+
+# end-effector configuration w.r.t. last link body fixed frame in the chain
+ee = TransformationMatrix(r=SO3Exp(axis=[0,0,1],angle=0),t=[0,0,0])
+
+skd = SymbolicKinDyn(gravity_vector=gravity,
+                     ee=ee,
+                     )
+
+skd.load_from_urdf(path = urdfpath,
+                   symbolic=True, 
+                   cse_ex=False, 
+                   simplify_numbers=True,  
+                   tolerance=0.0001, 
+                   max_denominator=8, 
+                   )
+
+q, qd, q2d = generalized_vectors(len(skd.body_ref_config), startindex=1)
+
+# run Calculations
+skd.closed_form_kinematics_body_fixed(q, qd, q2d, simplify_expressions=True)
+skd.closed_form_inv_dyn_body_fixed(q, qd, q2d, simplify_expressions=True)
+
+# Generate Code
+skd.generateCode(python=True, C=False, Matlab=False,
+                 folder="./generated_code", use_global_vars=True,
+                 name="plant", project="Project")
+```
+
+The code explained:
+
+```python
+from KinematicsGenerator import (SymbolicKinDyn,
+                                 TransformationMatrix,
+                                 SO3Exp,
+                                 generalized_vectors)
+```
+
+The class `SymbolicKinDyn` is the main object for calculating the kinematic and dynamic equations of your robot and generate the code.
+Additionally, we import several helper functions for defining the matrices which are useful for the robot definition:
+
+- `TransformationMatrix`: Create SE(3) transformation matrix from SO(3) rotation and translation vector.
+- `SO3Exp`: Exponential mapping of SO(3) to generate rotation matrix from rotation angle and rotation axis.
+- `generalized_vectors`: generate symbolic generalized vectors q, qd and q2d of predefined length n.
+
+```python
+from KinematicsGenerator.symbols import g, pi
+```
+
+The package `KinematicsGenerator.symbols` includes the most common used symbolic variables, which can be used for defining your robot.
+
+```python
+import sympy
+```
+
+The whole library used sympy objects for all symbolic equations etc. Hence, we need `sympy` to create additional symbolic variables and matrices later.
+
+---
+
+```python
+# Define symbols:
+lee = sympy.symbols('lee', real=True, const=True)
+```
+
+Create symbolic variables which can be used in the equations for the robot definition later. The most common symbols are also already present in the `KinematicsGenerator.symbols` package and may be imported from there instead.
+
+---
+
+```python
+urdfpath = '/path/to/urdf' # TODO: change me!
+```
+
+Enter the path to your URDF file here.
+
+---
+
+```python
+# gravity vector
+gravity = sympy.Matrix([0,0,g])
+```
+
+Gravity vector as `sympy.Matrix`. Note that we can use symbolic variables here.
+
+---
+
+```python
+# end-effector configuration w.r.t. last link body fixed frame in the chain
+ee = TransformationMatrix(r=SO3Exp(axis=[0,0,1],angle=0),t=[0,0,0])
+```
+
+End-effector representation w.r.t. last link body frame in the chain as SE(3) transformation matrix. Look up the chapter [Python](#22-python) for all available syntax options.
+
+---
+
+```python
+skd = SymbolicKinDyn(gravity_vector=gravity,
+                     ee=ee,
+                     )
+```
+
+Initialize class with the two defined parameters.
+
+---
+
+```python
+skd.load_from_urdf(path = urdfpath,
+                   symbolic=True, 
+                   cse_ex=False, 
+                   simplify_numbers=True,  
+                   tolerance=0.0001, 
+                   max_denominator=8, 
+                   )
+```
+
+Load the URDF file. Here you can specify the following options:
+
+1. `symbolic`: symbolify values in urdf file (bool).
+2. `cse_ex`: use common subexpression elimination to shorten equations (bool).
+3. `simplify_numbers`: round numbers if close to common fractions like 1/2 etc and replace eg 3.1416 by pi (bool).
+4. `tolerance`: tolerance for simplify numbers.
+5. `max_denominator`: define max denominator for simplify numbers to avoid simplification to something like 13/153. Use 0 to deactivate.
+
+---
+
+```python
+q, qd, q2d = generalized_vectors(len(skd.body_ref_config), startindex=1)
+```
+
+Generate the generalized vectors (joint positions `q`, joint velocities `qd` and joint accelerations `q2d`). The symbols are auto generated starting at index `startindex`. The degrees of freedom in this case are taken from the length of the parameter `skd.body_ref_config`, which was generated by the function `load_from_urdf`.
+
+---
+
+```python
+# run Calculations
+skd.closed_form_kinematics_body_fixed(q, qd, q2d, simplify_expressions=True)
+skd.closed_form_inv_dyn_body_fixed(q, qd, q2d, simplify_expressions=True)
+```
+
+Generate forward kinematics and inverse dynamics equations. See chapter [Python](#22-python) for more information.
+
+---
+
+```python
+# Generate Code
+skd.generateCode(python=True, C=False, Matlab=False,
+                 folder="./generated_code", use_global_vars=True,
+                 name="plant", project="Project")
+```
+
+Generate Python, Matlab and/or C (C99) code from the generated equations.
+Note that this can take time, especially for non-simplified equations and complex robots.
+
 ## 3. Unit testing
 
 To run the unit tests use:
@@ -906,14 +1092,24 @@ The results are shown in the following table:
 
 arguments | parallel | serial
 :---------|:----------:|:-----------:
-simplify|![](/Benchmarking/parallel_with_simplification_without_cse.png) | ![](/Benchmarking/serial_with_simplification_without_cse.png)
-simplify + cse|![](/Benchmarking/parallel_with_simplification_with_cse.png) |![](/Benchmarking/serial_with_simplification_with_cse.png)
-no simplify|![](/Benchmarking/parallel_without_simplification_without_cse.png) | ![](/Benchmarking/serial_without_simplification_without_cse.png)
-no simplify + cse|![](/Benchmarking/parallel_without_simplification_with_cse.png) |![](/Benchmarking/serial_without_simplification_with_cse.png)
+simplify|![1 dof: 0.65 s; 2 dof: 2.14 s; 3 dof: 8.77 s; 4 dof: 44.04 s](/Benchmarking/parallel_with_simplification_without_cse.png) | ![1 dof: 0.16 s; 2 dof: 2.38 s; 3 dof: 13.06 s; 4 dof: 60.68 s](/Benchmarking/serial_with_simplification_without_cse.png)
+simplify + cse|![1 dof: 0.56 s; 2 dof: 2.22 s; 3 dof: 12.86 s; 4 dof: 84.28 s](/Benchmarking/parallel_with_simplification_with_cse.png) |![1 dof: 0.22 s; 2 dof: 2.78 s; 3 dof: 18.49 s; 4 dof: 113.30 s](/Benchmarking/serial_with_simplification_with_cse.png)
+no simplify|![1 dof: 0.74 s; 2 dof: 2.65 s; 3 dof: 11.29 s; 4 dof: 47.14 s](/Benchmarking/parallel_without_simplification_without_cse.png) | ![1 dof: 0.08 s; 2 dof: 1.57 s; 3 dof: 9.51 s; 4 dof: 44.57 s](/Benchmarking/serial_without_simplification_without_cse.png)
+no simplify + cse|![1 dof: 0.80 s; 2 dof: 4.50 s; 3 dof: 29.13 s; 4 dof: 161.01 s](/Benchmarking/parallel_without_simplification_with_cse.png) |![1 dof: 0.08 s; 2 dof: 4.49 s; 3 dof: 37.74 s; 4 dof: 201.11 s](/Benchmarking/serial_without_simplification_with_cse.png)
 
+## 5. Troubleshooting
 
+- **`AttributeError: module 'numpy' has no attribute 'int'`**
+  
+  This error occurs, if you have installed numpy>=1.24.0. To solve it use
 
+  ```bash
+  pip -m install --upgrade networkx
+  ```
+  
+  you might see a warning like this
 
-<!-- ## 5. Shortcomings
-
-Currently, the expression simplification takes ages for higher dimension system with 3 or 4 rotational degrees of freedom. -->
+  >  ERROR: pip's dependency resolver does not currently take into account all the packages that are installed. This behaviour is the source of the following dependency conflicts.
+  urdfpy 0.0.22 requires networkx==2.2, but you have networkx 3.0 which is incompatible.
+  
+  afterwards. This warning can be ignored.

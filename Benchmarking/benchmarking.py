@@ -4,7 +4,7 @@ import os
 import matplotlib.pyplot as plt
 import numpy as np
 
-def benchmark(parallel=True,simplify=True, cse=False, all = False):
+def benchmark(parallel: bool=True,simplify: bool=True, cse: bool=False, all: bool=False, save: bool=True) -> None:
     # run through all options
     if all:
         for parallel in [True, False]:
@@ -29,11 +29,6 @@ def benchmark(parallel=True,simplify=True, cse=False, all = False):
     r1.generateCode(python=True,name="r1")
     genr1 = time.time()
 
-    print("r:")
-    print("kin:", kinr1-startr1)
-    print("dyn:", dynr1-kinr1)
-    print("sum:", dynr1-startr1)
-
     startr2 = time.time()
     r2.closed_form_kinematics_body_fixed(simplify_expressions=simplify, cse_ex=cse, parallel=parallel)
     kinr2 = time.time()
@@ -41,12 +36,6 @@ def benchmark(parallel=True,simplify=True, cse=False, all = False):
     dynr2 =  time.time()
     r2.generateCode(python=True,name="r2")
     genr2 = time.time()
-
-    print("rr:")
-    print("kin:", kinr2-startr2)
-    print("dyn:", dynr2-kinr2)
-    print("sum:", dynr2-startr2)
-
 
     startr3 = time.time()
     r3.closed_form_kinematics_body_fixed(simplify_expressions=simplify, cse_ex=cse, parallel=parallel)
@@ -56,11 +45,6 @@ def benchmark(parallel=True,simplify=True, cse=False, all = False):
     r3.generateCode(python=True,name="r3")
     genr3 = time.time()
 
-    print("rrr:")
-    print("kin:", kinr3-startr3)
-    print("dyn:", dynr3-kinr3)
-    print("sum:", dynr3-startr3)
-
     startr4 = time.time()
     r4.closed_form_kinematics_body_fixed(simplify_expressions=simplify, cse_ex=cse, parallel=parallel)
     kinr4 = time.time()
@@ -69,20 +53,22 @@ def benchmark(parallel=True,simplify=True, cse=False, all = False):
     r4.generateCode(python=True,name="r4")
     genr4 = time.time()
 
-    print("rrrr:")
-    print("kin:", kinr4-startr4)
-    print("dyn:", dynr4-kinr4)
-    print("sum:", dynr4-startr4)
-
     barkin = [kinr1-startr1, kinr2-startr2, kinr3-startr3,kinr4-startr4]
     bardyn = [dynr1-kinr1, dynr2-kinr2, dynr3-kinr3, dynr4-kinr4]
     bargen = [genr1-dynr1, genr2-dynr2, genr3-dynr3, genr4-dynr4]
-
+    cumtime = [genr1-startr1,genr2-startr2,genr3-startr3,genr4-startr4]
+    
     r = [1,2,3,4]
+    
+    plt.figure()
+    
     plt.bar(r, barkin, color='#7f6d5f', edgecolor='white', width=.8, label="forward kinematics")
     plt.bar(r, bardyn, bottom=barkin, color='#557f2d', edgecolor='white', width=.8, label="inverse dynamics")
     plt.bar(r, bargen, bottom=np.add(barkin,bardyn).tolist(), color='#2d7f5e', edgecolor='white', width=.8, label="code generation")
 
+    for i in range(len(r)):
+        plt.text(r[i]-0.2, cumtime[i]+0.2, "%.02f s"%cumtime[i])
+    
     plt.xticks(r, r)
     plt.xlabel("degrees of freedom")
     plt.ylabel("time in s")
@@ -105,8 +91,10 @@ def benchmark(parallel=True,simplify=True, cse=False, all = False):
 
     plt.title(title)
     name = title.replace(";","").replace(" ","_") + ".png"
-    plt.savefig(name)
-    # plt.show()
+    if save:
+        plt.savefig(name)
+    else:
+        plt.show()
 
 
 if __name__ == "__main__":
