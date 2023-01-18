@@ -2,8 +2,8 @@ import yaml
 import json
 from typing import Union, Iterable
 from KinematicsGenerator import (SymbolicKinDyn, joint_screw, 
-                                 SymbolicInertiaMatrix, MassMatrixMixedData, 
-                                 SO3Exp, TransformationMatrix, InertiaMatrix,
+                                 symbolic_inertia_matrix, mass_matrix_mixed_data, 
+                                 SO3Exp, transformation_matrix, inertia_matrix,
                                  quaternion_to_matrix, xyz_rpy_to_matrix,
                                  rpy_to_matrix)
 from sympy import Matrix, Identity, parse_expr, Expr
@@ -136,7 +136,7 @@ def dict_parser(d: dict) -> SymbolicKinDyn:
                         r = Matrix(br["rotation"])
                 else:
                     r = Matrix(Identity(3))
-                body_ref_config.append(TransformationMatrix(r,t))
+                body_ref_config.append(transformation_matrix(r,t))
     
     if "ee" not in d:
         raise KeyError("ee not found")
@@ -162,7 +162,7 @@ def dict_parser(d: dict) -> SymbolicKinDyn:
                     r = Matrix(d["ee"]["rotation"])
             else:
                 r = Matrix(Identity(3))
-            ee = TransformationMatrix(r,t)
+            ee = transformation_matrix(r,t)
     else:
         raise ValueError(f"ee {d['ee']} cannot be processed.")
     
@@ -177,15 +177,15 @@ def dict_parser(d: dict) -> SymbolicKinDyn:
                     if type(mb["inertia"]) is list:
                         if len(mb["inertia"]) == 6:
                             Mb.append(
-                                MassMatrixMixedData(
+                                mass_matrix_mixed_data(
                                     mb["mass"],
-                                    InertiaMatrix(*mb["inertia"]),
+                                    inertia_matrix(*mb["inertia"]),
                                     Matrix(mb["com"])
                                 )
                             )
                         else:    
                             Mb.append(
-                                MassMatrixMixedData(
+                                mass_matrix_mixed_data(
                                     mb["mass"],
                                     Matrix(mb["inertia"]),
                                     Matrix(mb["com"])
@@ -193,18 +193,18 @@ def dict_parser(d: dict) -> SymbolicKinDyn:
                             )
                     elif type(mb["inertia"]) is dict and "index" in mb["inertia"]:
                         Mb.append(
-                            MassMatrixMixedData(
+                            mass_matrix_mixed_data(
                                 mb["mass"], 
-                                SymbolicInertiaMatrix(mb["inertia"]["index"],
+                                symbolic_inertia_matrix(mb["inertia"]["index"],
                                                     mb["inertia"]["pointmass"]),
                                 Matrix(mb["com"])
                                 )
                             )
                     elif type(mb["inertia"]) is dict:
                         Mb.append(
-                            MassMatrixMixedData(
+                            mass_matrix_mixed_data(
                                 mb["mass"], 
-                                InertiaMatrix(**mb["inertia"]),
+                                inertia_matrix(**mb["inertia"]),
                                 Matrix(mb["com"])
                                 )
                             )

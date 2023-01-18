@@ -52,7 +52,7 @@ def joint_screw(axis: list, vec: list=[0,0,0], revolute: bool=True) -> MutableDe
         return Matrix([0,0,0,e])
         
 
-def SymbolicInertiaMatrix(index: Union[int, str]="", pointmass: bool=False) -> MutableDenseMatrix:
+def symbolic_inertia_matrix(index: Union[int, str]="", pointmass: bool=False) -> MutableDenseMatrix:
     """Create 3 x 3 symbolic inertia matrix with auto generated variable names.
 
     Args:
@@ -203,9 +203,9 @@ def SO3Exp(axis: MutableDenseMatrix, angle: Union[float, Expr]) -> MutableDenseM
     R = Matrix(Identity(3)) + sin(angle) * xhat + (1-cos(angle))*(xhat*xhat)
     return R
 
-def InertiaMatrix(Ixx: Union[float, Expr]=0, Ixy: Union[float, Expr]=0, 
-                  Ixz: Union[float, Expr]=0, Iyy: Union[float, Expr]=0, 
-                  Iyz: Union[float, Expr]=0, Izz: Union[float, Expr]=0) -> MutableDenseMatrix:
+def inertia_matrix(Ixx: Union[float, Expr]=0, Ixy: Union[float, Expr]=0, 
+                   Ixz: Union[float, Expr]=0, Iyy: Union[float, Expr]=0, 
+                   Iyz: Union[float, Expr]=0, Izz: Union[float, Expr]=0) -> MutableDenseMatrix:
     """Create 3 x 3 inertia matrix from independent inertia values.
 
     Args:
@@ -224,7 +224,7 @@ def InertiaMatrix(Ixx: Union[float, Expr]=0, Ixy: Union[float, Expr]=0,
                 [Ixz, Iyz, Izz]])
     return I
 
-def TransformationMatrix(r: MutableDenseMatrix=Matrix(Identity(3)), 
+def transformation_matrix(r: MutableDenseMatrix=Matrix(Identity(3)), 
                          t: MutableDenseMatrix=zeros(3, 1)) -> MutableDenseMatrix:
     """Build transformation matrix from rotation and translation.
 
@@ -243,7 +243,7 @@ def TransformationMatrix(r: MutableDenseMatrix=Matrix(Identity(3)),
     T = r.row_join(t).col_join(Matrix([[0, 0, 0, 1]]))
     return T
 
-def MassMatrixMixedData(m: Union[float, Expr], Theta: MutableDenseMatrix, 
+def mass_matrix_mixed_data(m: Union[float, Expr], Theta: MutableDenseMatrix, 
                         COM: MutableDenseMatrix) -> MutableDenseMatrix:
     """Build mass-inertia matrix in SE(3) from mass, inertia and 
     center of mass information.

@@ -1,5 +1,5 @@
 from sympy import symbols, Matrix, Identity, init_printing
-from KinematicsGenerator.kinematics_generator import SymbolicKinDyn, MassMatrixMixedData, TransformationMatrix
+from KinematicsGenerator.kinematics_generator import SymbolicKinDyn, mass_matrix_mixed_data, transformation_matrix
 
 
 init_printing()
@@ -38,9 +38,9 @@ r1 = Matrix([0, 0, 0])
 r2 = Matrix([L1, 0, 0])
 
 s.body_ref_config = []
-s.body_ref_config.append(TransformationMatrix(t=r0))
-s.body_ref_config.append(TransformationMatrix(t=r1))
-s.body_ref_config.append(TransformationMatrix(t=r2))
+s.body_ref_config.append(transformation_matrix(t=r0))
+s.body_ref_config.append(transformation_matrix(t=r1))
+s.body_ref_config.append(transformation_matrix(t=r2))
 
 # Reference configurations of bodies (i.e. of body-fixed reference frames)
 # define config_representation to be body fixed
@@ -58,7 +58,7 @@ s.body_ref_config.append(TransformationMatrix(t=r2))
 
 # End-effector configuration wrt last link body fixed frame in the chain
 re = Matrix([L2, 0, 0])
-s.ee = TransformationMatrix(t=re)
+s.ee = transformation_matrix(t=re)
 
 # Joint screw coordinates in body-fixed representation computed from screw coordinates in IFR
 # s.joint_screw_coord = []
@@ -77,11 +77,11 @@ s.ee = TransformationMatrix(t=re)
 # Mass-Inertia parameters
 
 s.Mb = []
-s.Mb.append(MassMatrixMixedData(
+s.Mb.append(mass_matrix_mixed_data(
     m0, Matrix(Identity(3)), Matrix([0, 0, 0])))
-s.Mb.append(MassMatrixMixedData(m1, s.InertiaMatrix(
+s.Mb.append(mass_matrix_mixed_data(m1, s.InertiaMatrix(
     Ixx1, Ixy1, Ixz1, Iyy1, Ixz1, Izz1), Matrix([cx1, cy1, cz1])))
-s.Mb.append(MassMatrixMixedData(m2, s.InertiaMatrix(
+s.Mb.append(mass_matrix_mixed_data(m2, s.InertiaMatrix(
     Ixx2, Ixy2, Ixz2, Iyy2, Ixz2, Izz2), Matrix([cx2, cy2, cz2])))
 
 # Declaring generalized vectors

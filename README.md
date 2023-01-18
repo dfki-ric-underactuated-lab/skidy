@@ -468,11 +468,11 @@ The command `python3 analyze_my_robot.py --please --structure 'rp' my_robot_temp
 
 ```python
 from KinematicsGenerator import (SymbolicKinDyn,
-                                 TransformationMatrix,
-                                 MassMatrixMixedData,
+                                 transformation_matrix,
+                                 mass_matrix_mixed_data,
                                  joint_screw,
                                  SO3Exp,
-                                 InertiaMatrix,
+                                 inertia_matrix,
                                  generalized_vectors)
 from KinematicsGenerator.symbols import g, pi
 import sympy
@@ -509,16 +509,16 @@ joint_screw_coord.append(joint_screw(axis=[0,0,1], revolute=False))
 
 # body reference configurations (4x4 SE3 Pose (sympy.Matrix) per link)
 body_ref_config = []
-body_ref_config.append(TransformationMatrix(r=SO3Exp(axis=[0,0,1],angle=0),t=[0,0,0]))
-body_ref_config.append(TransformationMatrix(r=SO3Exp(axis=[0,0,1],angle=0),t=[0,0,0]))
+body_ref_config.append(transformation_matrix(r=SO3Exp(axis=[0,0,1],angle=0),t=[0,0,0]))
+body_ref_config.append(transformation_matrix(r=SO3Exp(axis=[0,0,1],angle=0),t=[0,0,0]))
 
 # end-effector configuration w.r.t. last link body fixed frame in the chain (4x4 SE3 Pose (sympy.Matrix))
-ee = TransformationMatrix(r=SO3Exp(axis=[0,0,1],angle=0),t=[0,0,0])
+ee = transformation_matrix(r=SO3Exp(axis=[0,0,1],angle=0),t=[0,0,0])
 
 # mass_inertia parameters (6x6 sympy.Matrix per link)
 Mb = []
-Mb.append(MassMatrixMixedData(m1, InertiaMatrix(Ixx1,Ixy1,Ixz1,Iyy1,Iyz1,Izz1), sympy.Matrix([0,0,0])))
-Mb.append(MassMatrixMixedData(m2, InertiaMatrix(Ixx2,Ixy2,Ixz2,Iyy2,Iyz2,Izz2), sympy.Matrix([0,0,0])))
+Mb.append(mass_matrix_mixed_data(m1, inertia_matrix(Ixx1,Ixy1,Ixz1,Iyy1,Iyz1,Izz1), sympy.Matrix([0,0,0])))
+Mb.append(mass_matrix_mixed_data(m2, inertia_matrix(Ixx2,Ixy2,Ixz2,Iyy2,Iyz2,Izz2), sympy.Matrix([0,0,0])))
 
 q, qd, q2d = generalized_vectors(len(body_ref_config), startindex=1)
 
@@ -547,22 +547,22 @@ The code explained:
 
 ```python
 from KinematicsGenerator import (SymbolicKinDyn,
-                                 TransformationMatrix,
-                                 MassMatrixMixedData,
+                                 transformation_matrix,
+                                 mass_matrix_mixed_data,
                                  joint_screw,
                                  SO3Exp,
-                                 InertiaMatrix,
+                                 inertia_matrix,
                                  generalized_vectors)
 ```
 
 The class `SymbolicKinDyn` is the main object for calculating the kinematic and dynamic equations of your robot and generate the code.
 Additionally, we import several helper functions for defining the matrices which are useful for the robot definition:
 
-- `TransformationMatrix`: Create SE(3) transformation matrix from SO(3) rotation and translation vector.
-- `MassMatrixMixedData`: Create 6x6 mass-inertia matrix from mass, 3x3 inertia matrix and 3x1 center of mass vector.
+- `transformation_matrix`: Create SE(3) transformation matrix from SO(3) rotation and translation vector.
+- `mass_matrix_mixed_data`: Create 6x6 mass-inertia matrix from mass, 3x3 inertia matrix and 3x1 center of mass vector.
 - `joint_screw`: create 6x1 joint screw vector from joint axis and vector from origin to joint axis.
 - `SO3Exp`: Exponential mapping of SO(3) to generate rotation matrix from rotation angle and rotation axis.
-- `InertiaMatrix`: generate 3x3 inertia matrix from 6 independent parameters (Ixx, Ixy, ...).
+- `inertia_matrix`: generate 3x3 inertia matrix from 6 independent parameters (Ixx, Ixy, ...).
 - `generalized_vectors`: generate symbolic generalized vectors q, qd and q2d of predefined length n.
 
 ```python
@@ -653,8 +653,8 @@ joint_screw_coord.append(sympy.Matrix([0,0,0,0,0,1]))
 ```python
 # body reference configurations (4x4 SE3 Pose (sympy.Matrix) per link)
 body_ref_config = []
-body_ref_config.append(TransformationMatrix(r=SO3Exp(axis=[0,0,1],angle=0),t=[0,0,0]))
-body_ref_config.append(TransformationMatrix(r=SO3Exp(axis=[0,0,1],angle=0),t=[0,0,0]))
+body_ref_config.append(transformation_matrix(r=SO3Exp(axis=[0,0,1],angle=0),t=[0,0,0]))
+body_ref_config.append(transformation_matrix(r=SO3Exp(axis=[0,0,1],angle=0),t=[0,0,0]))
 ```
 
 The body reference configuration is a list of SE(3) transformation matrices. To define them you have several options:
@@ -676,7 +676,7 @@ The body reference configuration is a list of SE(3) transformation matrices. To 
 
     ```python
     body_ref_config.append(
-        TransformationMatrix(
+        transformation_matrix(
             r=sympy.Matrix([[1,0,0],
                             [0,1,0],
                             [0,0,1]]),
@@ -691,7 +691,7 @@ The body reference configuration is a list of SE(3) transformation matrices. To 
 4. For zero rotations or translations it is possible to omit the option:
 
     ```python
-    body_ref_config.append(TransformationMatrix(t=[0,0,0]))
+    body_ref_config.append(transformation_matrix(t=[0,0,0]))
     ```
 
 5. Use xyz_rpy coordinates to define Pose:
@@ -706,7 +706,7 @@ The body reference configuration is a list of SE(3) transformation matrices. To 
 
     ```python
     body_ref_config.append(
-        TransformationMatrix(
+        transformation_matrix(
             r=rpy_to_matrix([0, pi/2, 0]),
             t=sympy.Matrix([0,0,L1])
         )
@@ -719,7 +719,7 @@ The body reference configuration is a list of SE(3) transformation matrices. To 
 
     ```python
     body_ref_config.append(
-        TransformationMatrix(
+        transformation_matrix(
             r=quaternion_to_matrix([1,0,0,0]),
             t=sympy.Matrix([0,0,L1])
         )
@@ -732,7 +732,7 @@ The body reference configuration is a list of SE(3) transformation matrices. To 
 
 ```python
 # end-effector configuration w.r.t. last link body fixed frame in the chain (4x4 SE3 Pose (sympy.Matrix))
-ee = TransformationMatrix(r=SO3Exp(axis=[0,0,1],angle=0),t=[0,0,0])
+ee = transformation_matrix(r=SO3Exp(axis=[0,0,1],angle=0),t=[0,0,0])
 ```
 
 End-effector representation w.r.t. last link body frame in the chain as SE(3) transformation matrix. Here you have the same syntax options as for the body reference configuration.
@@ -742,8 +742,8 @@ End-effector representation w.r.t. last link body frame in the chain as SE(3) tr
 ```python
 # mass_inertia parameters (6x6 sympy.Matrix per link)
 Mb = []
-Mb.append(MassMatrixMixedData(m1, InertiaMatrix(Ixx1,Ixy1,Ixz1,Iyy1,Iyz1,Izz1), sympy.Matrix([0,0,0])))
-Mb.append(MassMatrixMixedData(m2, InertiaMatrix(Ixx2,Ixy2,Ixz2,Iyy2,Iyz2,Izz2), sympy.Matrix([0,0,0])))
+Mb.append(mass_matrix_mixed_data(m1, inertia_matrix(Ixx1,Ixy1,Ixz1,Iyy1,Iyz1,Izz1), sympy.Matrix([0,0,0])))
+Mb.append(mass_matrix_mixed_data(m2, inertia_matrix(Ixx2,Ixy2,Ixz2,Iyy2,Iyz2,Izz2), sympy.Matrix([0,0,0])))
 ```
 
 Mass-inertia matrices of all links. For the definition you have the following syntax options:
@@ -765,7 +765,7 @@ Mass-inertia matrices of all links. For the definition you have the following sy
 
     ```python
     Mb.append(
-        MassMatrixMixedData(
+        mass_matrix_mixed_data(
             m1,
             sympy.Matrix([[Ixx1,Ixy1,Ixz1],
                           [Ixy1,Iyy1,Iyz1],
@@ -779,9 +779,9 @@ Mass-inertia matrices of all links. For the definition you have the following sy
 
     ```python
     Mb.append(
-        MassMatrixMixedData(
+        mass_matrix_mixed_data(
             m1,
-            InertiaMatrix(Ixx1,Ixy1,Ixz1,Iyy1,Iyz1,Izz1),
+            inertia_matrix(Ixx1,Ixy1,Ixz1,Iyy1,Iyz1,Izz1),
             sympy.Matrix([cx1,cy1,cz1])
         )
     )
@@ -791,15 +791,15 @@ Mass-inertia matrices of all links. For the definition you have the following sy
 
     ```python
     Mb.append(
-        MassMatrixMixedData(
+        mass_matrix_mixed_data(
             m1,
-            SymbolicInertiaMatrix(index=1, pointmass=False),
+            symbolic_inertia_matrix(index=1, pointmass=False),
             sympy.Matrix([cx1,cy1,cz1])
         )
     )
     ```
 
-    where `SymbolicInertiaMatrix(index=1, pointmass=False)` auto generates the variables `Ixx1`, `Ixy1`, etc. and creates a `sympy.Matrix` from it.
+    where `symbolic_inertia_matrix(index=1, pointmass=False)` auto generates the variables `Ixx1`, `Ixy1`, etc. and creates a `sympy.Matrix` from it.
     With the parameter `pointmass=True` the resulting inertia matrix looks like this instead:
 
     ```python
@@ -808,7 +808,7 @@ Mass-inertia matrices of all links. For the definition you have the following sy
                   [ 0, 0,I1]])
     ```
 
-    Note that you have to import the function using `from KinematicsGenerator import SymbolicInertiaMatrix`.
+    Note that you have to import the function using `from KinematicsGenerator import symbolic_inertia_matrix`.
 
 ---
 
@@ -919,7 +919,7 @@ This generates the following output:
 
 ```python
 from KinematicsGenerator import (SymbolicKinDyn,
-                                 TransformationMatrix,
+                                 transformation_matrix,
                                  SO3Exp,
                                  generalized_vectors)
 from KinematicsGenerator.symbols import g, pi
@@ -934,7 +934,7 @@ urdfpath = '/path/to/urdf' # TODO: change me!
 gravity = sympy.Matrix([0,0,g])
 
 # end-effector configuration w.r.t. last link body fixed frame in the chain
-ee = TransformationMatrix(r=SO3Exp(axis=[0,0,1],angle=0),t=[0,0,0])
+ee = transformation_matrix(r=SO3Exp(axis=[0,0,1],angle=0),t=[0,0,0])
 
 skd = SymbolicKinDyn(gravity_vector=gravity,
                      ee=ee,
@@ -964,7 +964,7 @@ The code explained:
 
 ```python
 from KinematicsGenerator import (SymbolicKinDyn,
-                                 TransformationMatrix,
+                                 transformation_matrix,
                                  SO3Exp,
                                  generalized_vectors)
 ```
@@ -972,7 +972,7 @@ from KinematicsGenerator import (SymbolicKinDyn,
 The class `SymbolicKinDyn` is the main object for calculating the kinematic and dynamic equations of your robot and generate the code.
 Additionally, we import several helper functions for defining the matrices which are useful for the robot definition:
 
-- `TransformationMatrix`: Create SE(3) transformation matrix from SO(3) rotation and translation vector.
+- `transformation_matrix`: Create SE(3) transformation matrix from SO(3) rotation and translation vector.
 - `SO3Exp`: Exponential mapping of SO(3) to generate rotation matrix from rotation angle and rotation axis.
 - `generalized_vectors`: generate symbolic generalized vectors q, qd and q2d of predefined length n.
 
@@ -1018,7 +1018,7 @@ Gravity vector as `sympy.Matrix`. Note that we can use symbolic variables here.
 
 ```python
 # end-effector configuration w.r.t. last link body fixed frame in the chain
-ee = TransformationMatrix(r=SO3Exp(axis=[0,0,1],angle=0),t=[0,0,0])
+ee = transformation_matrix(r=SO3Exp(axis=[0,0,1],angle=0),t=[0,0,0])
 ```
 
 End-effector representation w.r.t. last link body frame in the chain as SE(3) transformation matrix. Look up the chapter [Python](#22-python) for all available syntax options.

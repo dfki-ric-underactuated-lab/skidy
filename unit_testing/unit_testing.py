@@ -5,8 +5,8 @@ sys.path.append(dirname(dirname(__file__)))
 import KinematicsGenerator.kinematics_generator as kinematics_generator
 from KinematicsGenerator.kinematics_generator import (SE3AdjInvMatrix, SE3AdjMatrix, 
                                   SE3adMatrix, SE3Exp, SE3Inv, SO3Exp, 
-                                  InertiaMatrix, TransformationMatrix, 
-                                  MassMatrixMixedData, rpy_to_matrix, 
+                                  inertia_matrix, transformation_matrix, 
+                                  mass_matrix_mixed_data, rpy_to_matrix, 
                                   xyz_rpy_to_matrix)
 from sympy import Matrix, cos, sin, symbols, Identity, simplify, zeros
 import random
@@ -68,8 +68,8 @@ def prepare(cls):
     I2 = cls.m2*cls.L2**2
 
     cls.s.Mb = []
-    cls.s.Mb.append(MassMatrixMixedData(cls.m1, I1*Identity(3), cg1))
-    cls.s.Mb.append(MassMatrixMixedData(cls.m2, I2*Identity(3), cg2))
+    cls.s.Mb.append(mass_matrix_mixed_data(cls.m1, I1*Identity(3), cg1))
+    cls.s.Mb.append(mass_matrix_mixed_data(cls.m2, I2*Identity(3), cg2))
 
     # Declaring generalised vectors
     cls.q = Matrix([cls.q1, cls.q2])
@@ -461,13 +461,13 @@ class TestKinGen(unittest.TestCase):
     
     def testInertiaMatrix(self):
         self.assertEqual(
-            InertiaMatrix(1,2,3,4,5,6), 
+            inertia_matrix(1,2,3,4,5,6), 
             Matrix([[1,2,3],[2,4,5],[3,5,6]])
         )
         
     def testTransformationMatrix(self):
         self.assertEqual(
-            TransformationMatrix(Matrix([[1,2,3],[4,5,6],[7,8,9]]),
+            transformation_matrix(Matrix([[1,2,3],[4,5,6],[7,8,9]]),
                                         Matrix([10,11,12])),
             Matrix([[1,2,3,10],[4,5,6,11],[7,8,9,12],[0,0,0,1]])
         )
@@ -516,7 +516,7 @@ class TestKinGen(unittest.TestCase):
         c3=random.randint(0,100)
         com = [c1,c2,c3]
         self.assertEqual(
-            MassMatrixMixedData(m,I,com),
+            mass_matrix_mixed_data(m,I,com),
             Matrix([[Ixx,Ixy,Ixz, 0,-m*c3,m*c2],
                     [Ixy,Iyy,Iyz, m*c3,0,-m*c1],
                     [Ixz,Iyz,Izz,-m*c2,m*c1,0],

@@ -23,7 +23,7 @@ from pylatex import (Document, Section, Command, NoEscape)
 
 from KinematicsGenerator.matrices import (
     SE3AdjInvMatrix, SE3AdjMatrix, SE3adMatrix, SE3Exp, SE3Inv, SO3Exp, 
-    InertiaMatrix, TransformationMatrix, MassMatrixMixedData, rpy_to_matrix, 
+    inertia_matrix, transformation_matrix, mass_matrix_mixed_data, rpy_to_matrix, 
     xyz_rpy_to_matrix, generalized_vectors)
 
 class _AbstractCodeGeneration():
@@ -666,9 +666,9 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
     SE3Exp = staticmethod(SE3Exp)
     SE3Inv = staticmethod(SE3Inv)
     SO3Exp = staticmethod(SO3Exp)
-    InertiaMatrix = staticmethod(InertiaMatrix)
-    TransformationMatrix = staticmethod(TransformationMatrix)
-    MassMatrixMixedData = staticmethod(MassMatrixMixedData)
+    InertiaMatrix = staticmethod(inertia_matrix)
+    TransformationMatrix = staticmethod(transformation_matrix)
+    MassMatrixMixedData = staticmethod(mass_matrix_mixed_data)
     rpy_to_matrix = staticmethod(rpy_to_matrix)
     xyz_rpy_to_matrix = staticmethod(xyz_rpy_to_matrix)
     
@@ -760,22 +760,22 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
                 (i.e. of body-fixed reference frames):
                 >>> body_ref_config = []
                 >>> body_ref_config.append(
-                ...     TransformationMatrix(
+                ...     transformation_matrix(
                 ...     t=sympy.Matrix([0, 0, 0]))
                 >>> body_ref_config.append(
-                ...     TransformationMatrix(
+                ...     transformation_matrix(
                 ...     t=sympy.Matrix([L1, 0, 0]))
             
                 End-effector configuration wrt last link body fixed 
                 frame in the chain:
-                >>> ee = TransformationMatrix(
+                >>> ee = transformation_matrix(
                 ...     t=sympy.Matrix([L2, 0, 0]))
 
                 Mass-Intertia parameters:
                 >>> Mb = []
-                >>> Mb.append(MassMatrixMixedData(
+                >>> Mb.append(mass_matrix_mixed_data(
                 ...     m1, (m1*L1**2) * sympy.Identity(3), cg1))
-                >>> Mb.append(MassMatrixMixedData(
+                >>> Mb.append(mass_matrix_mixed_data(
                 ...     m2, (m2*L2**2) * sympy.Identity(3), cg2))
 
                 Declaring generalized vectors:
@@ -2269,7 +2269,7 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
                 I_syms = symbols("Ixx_%s Ixy_%s Ixz_%s Iyy_%s Iyz_%s Izz_%s" % (
                     name, name, name, name, name, name))
                 c_syms = symbols("cx_%s cy_%s cz_%s" % (name, name, name))
-                I = InertiaMatrix(*I_syms)
+                I = inertia_matrix(*I_syms)
                 m = symbols("m_%s" % name)
                 cg = Matrix([*c_syms])
             else:
@@ -2292,7 +2292,7 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
             # cg =
             # I =
             # m =
-            M = MassMatrixMixedData(m, I, cg)
+            M = mass_matrix_mixed_data(m, I, cg)
             if name in [x[1] for x in fixed_links]:
                 j = i
                 # transform Mass matrix
@@ -2307,10 +2307,10 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
             i += 1
 
         # for link in robot.links:
-        #     self.Mb.append(MassMatrixMixedData())
+        #     self.Mb.append(mass_matrix_mixed_data())
         return
 
-    def dhToScrewCoord(self, DH_param_table: MutableDenseMatrix) -> None:
+    def dh_to_screw_coord(self, DH_param_table: MutableDenseMatrix) -> None:
         """Build screw coordinate paramters (joint axis frames and 
         body reference frames) from a given modified Denavit-Hartenberg 
         (DH) parameter table.

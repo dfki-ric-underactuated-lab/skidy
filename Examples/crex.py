@@ -1,4 +1,4 @@
-from KinematicsGenerator.kinematics_generator import SymbolicKinDyn, MassMatrixMixedData
+from KinematicsGenerator.kinematics_generator import SymbolicKinDyn, mass_matrix_mixed_data
 from sympy import symbols, Matrix, Identity
 
 s = SymbolicKinDyn()
@@ -22,15 +22,15 @@ dh_table = Matrix([[0,0,0,0,base_offset],
                    [0,-pi/2, 0, -pi/2, thigh_h_offset],
                    [0, 0, thigh, pi, 0]])
 
-s.dhToScrewCoord(dh_table)
+s.dh_to_screw_coord(dh_table)
 re = Matrix([shank,0,0])
 s.ee = Matrix(Identity(3)).row_join(re).col_join(Matrix([[0,0,0,1]]))
 
 s.Mb = []
-s.Mb.append(MassMatrixMixedData(m1, s.InertiaMatrix(I1xx, I1xy, I1xz, I1yy, I1yz, I1zz),Matrix([c1x,c1y,c1z])))
-s.Mb.append(MassMatrixMixedData(m2, s.InertiaMatrix(I2xx, I2xy, I2xz, I2yy, I2yz, I2zz),Matrix([c2x,c2y,c2z])))
-s.Mb.append(MassMatrixMixedData(m3, s.InertiaMatrix(I3xx, I3xy, I3xz, I3yy, I3yz, I3zz),Matrix([c3x,c3y,c3z])))
-s.Mb.append(MassMatrixMixedData(m4, s.InertiaMatrix(I4xx, I4xy, I4xz, I4yy, I4yz, I4zz),Matrix([c4x,c4y,c4z])))
+s.Mb.append(mass_matrix_mixed_data(m1, s.InertiaMatrix(I1xx, I1xy, I1xz, I1yy, I1yz, I1zz),Matrix([c1x,c1y,c1z])))
+s.Mb.append(mass_matrix_mixed_data(m2, s.InertiaMatrix(I2xx, I2xy, I2xz, I2yy, I2yz, I2zz),Matrix([c2x,c2y,c2z])))
+s.Mb.append(mass_matrix_mixed_data(m3, s.InertiaMatrix(I3xx, I3xy, I3xz, I3yy, I3yz, I3zz),Matrix([c3x,c3y,c3z])))
+s.Mb.append(mass_matrix_mixed_data(m4, s.InertiaMatrix(I4xx, I4xy, I4xz, I4yy, I4yz, I4zz),Matrix([c4x,c4y,c4z])))
 
 q = Matrix([q1,q2,q3,q4])
 qd = Matrix([dq1,dq2,dq3,dq4])

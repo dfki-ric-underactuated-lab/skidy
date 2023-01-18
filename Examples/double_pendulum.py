@@ -1,4 +1,4 @@
-from KinematicsGenerator.kinematics_generator import SymbolicKinDyn, MassMatrixMixedData, TransformationMatrix
+from KinematicsGenerator.kinematics_generator import SymbolicKinDyn, mass_matrix_mixed_data, transformation_matrix
 from sympy import symbols, Matrix, Identity, init_printing
 import sys
 from os.path import dirname
@@ -43,12 +43,12 @@ r2 = Matrix([0, -L1, 0])
 
 body_ref_config = []
 # no rotation, just translation
-body_ref_config.append(TransformationMatrix(t=r1))
-body_ref_config.append(TransformationMatrix(t=r2))
+body_ref_config.append(transformation_matrix(t=r1))
+body_ref_config.append(transformation_matrix(t=r2))
 
 # End-effector configuration wrt last link body fixed frame in the chain
 re = Matrix([0, -L2, 0])
-ee = TransformationMatrix(t=re)
+ee = transformation_matrix(t=re)
 
 # Mass-Inertia parameters
 cg1 = Matrix([0, -L1, 0]).T
@@ -57,8 +57,8 @@ I1 = m1*L1**2
 I2 = m2*L2**2
 
 Mb = []
-Mb.append(MassMatrixMixedData(m1, I1*Identity(3), cg1))
-Mb.append(MassMatrixMixedData(m2, I2*Identity(3), cg2))
+Mb.append(mass_matrix_mixed_data(m1, I1*Identity(3), cg1))
+Mb.append(mass_matrix_mixed_data(m2, I2*Identity(3), cg2))
 
 # Declaring generalized vectors
 q = Matrix([q1, q2])
@@ -73,4 +73,4 @@ s = SymbolicKinDyn(gravity_vector=gravity_vector,
                     Mb=Mb)
 s.closed_form_kinematics_body_fixed(q,qd,q2d)
 s.closed_form_inv_dyn_body_fixed(q,qd,q2d)
-s.generateCode(python=True, C=True, Matlab=False,name="DoublePendulumPlant",project="DoublePendulum")
+s.generateCode(python=True, C=False, Matlab=False, latex=False,name="DoublePendulumPlant",project="DoublePendulum")

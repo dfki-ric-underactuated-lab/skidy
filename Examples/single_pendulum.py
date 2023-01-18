@@ -1,8 +1,5 @@
 from sympy import symbols, Matrix, Identity
-import sys
-from os.path import dirname
-sys.path.append(dirname(dirname(__file__)))
-from KinematicsGenerator.kinematics_generator import SymbolicKinDyn, MassMatrixMixedData, TransformationMatrix
+from KinematicsGenerator.kinematics_generator import SymbolicKinDyn, mass_matrix_mixed_data, transformation_matrix
 
 
 # Declaration of symbolic variables
@@ -34,11 +31,11 @@ joint_screw_coord.append(Matrix([e1, y1.cross(e1)]))
 r1 = Matrix([0, 0, 0])
 
 body_ref_config = []
-body_ref_config.append(TransformationMatrix(t=r1)) # no rotation, just translation
+body_ref_config.append(transformation_matrix(t=r1)) # no rotation, just translation
 
 # End-effector configuration wrt last link body fixed frame in the chain
 re = Matrix([0, -L1, 0])
-ee = TransformationMatrix(t=re)
+ee = transformation_matrix(t=re)
 
 
 # Mass-Inertia parameters
@@ -46,7 +43,7 @@ cg1 = Matrix([0, -L1, 0]).T
 I1 = m1*L1**2
 
 Mb = []
-Mb.append(MassMatrixMixedData(m1, I1*Identity(3), cg1))
+Mb.append(mass_matrix_mixed_data(m1, I1*Identity(3), cg1))
 
 # Declaring generalized vectors
 q = Matrix([q1])
@@ -61,4 +58,4 @@ s = SymbolicKinDyn(gravity_vector=gravity_vector,
                     Mb=Mb)
 s.closed_form_kinematics_body_fixed(q,qd,q2d)
 s.closed_form_inv_dyn_body_fixed(q,qd,q2d)
-s.generateCode(python=True, C=True, Matlab=False,name="SinglePendulumPlant",project="SinglePendulum")
+s.generateCode(python=True, C=False, Matlab=False, latex=False,name="SinglePendulumPlant",project="SinglePendulum")

@@ -1,4 +1,4 @@
-from KinematicsGenerator.kinematics_generator import SymbolicKinDyn, MassMatrixMixedData
+from KinematicsGenerator.kinematics_generator import SymbolicKinDyn, mass_matrix_mixed_data
 from sympy import symbols, Matrix, Identity, init_printing
 
 
@@ -66,8 +66,8 @@ I1 = m1*L1*L1
 I2 = m2*L2*L2
 
 Mb = []
-Mb.append(MassMatrixMixedData(m1, I1*Identity(3), cg1))
-Mb.append(MassMatrixMixedData(m2, I2*Identity(3), cg2))
+Mb.append(mass_matrix_mixed_data(m1, I1*Identity(3), cg1))
+Mb.append(mass_matrix_mixed_data(m2, I2*Identity(3), cg2))
 
 # Declaring generalized vectors
 q = Matrix([q1, q2])
