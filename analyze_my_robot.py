@@ -1,8 +1,8 @@
 import os
 import sys
 import argparse
-from KinematicsGenerator.kinematics_generator import SymbolicKinDyn
-from KinematicsGenerator.parser import (
+from kinematics_generator.kinematics_generator import SymbolicKinDyn
+from kinematics_generator.parser import (
     robot_from_yaml, generate_template_yaml,
     robot_from_json, generate_template_json,
     robot_from_urdf, generate_template_python 
@@ -108,4 +108,4 @@ if __name__ == "__main__":
         if not args.no_dynamics:
             skd.closed_form_inv_dyn_body_fixed(simplify_expressions=args.simplify, cse_ex=args.cse, parallel=args.serial)
     
-        skd.generateCode(python=args.python, C=args.C, matlab=args.matlab, cython=args.cython, latex=args.latex, folder=args.folder, use_global_vars=True, name=args.name, project=args.project)
+        skd.generate_code(python=args.python, C=args.C, matlab=args.matlab, cython=args.cython, latex=args.latex, folder=args.folder, use_global_vars=True, name=args.name, project=args.project)

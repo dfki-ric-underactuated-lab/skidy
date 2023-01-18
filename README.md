@@ -119,7 +119,7 @@ To generate your robot template use
 python3 analyze_my_robot.py --please [options] new_filename.yaml
 ```
 
-or the python function `KinematicsGenerator.generate_template_yaml(path, structure)`.
+or the python function `kinematics_generator.generate_template_yaml(path, structure)`.
 
 For [options] the option `--structure` is highly recommended. There you can define which joint types to use in the template. E.g. use `--structure 'rrp'` for a robot which has two revolute joints followed by one prismatic joint.
 
@@ -460,21 +460,21 @@ To generate your robot template use
 python3 analyze_my_robot.py --please [options] new_filename.py
 ```
 
-or the python function `KinematicsGenerator.generate_template_python(path, structure)`.
+or the python function `kinematics_generator.generate_template_python(path, structure)`.
 
 For [options] the option `--structure` is highly recommended. There you can define which joint types to use in the template. E.g. use `--structure 'rrp'` for a robot which has two revolute joints followed by one prismatic joint.
 
 The command `python3 analyze_my_robot.py --please --structure 'rp' my_robot_template.py` creates the following output file:
 
 ```python
-from KinematicsGenerator import (SymbolicKinDyn,
+from kinematics_generator import (SymbolicKinDyn,
                                  transformation_matrix,
                                  mass_matrix_mixed_data,
                                  joint_screw,
                                  SO3Exp,
                                  inertia_matrix,
                                  generalized_vectors)
-from KinematicsGenerator.symbols import g, pi
+from kinematics_generator.symbols import g, pi
 import sympy
 
 # Define symbols:
@@ -538,7 +538,7 @@ skd.closed_form_kinematics_body_fixed(q, qd, q2d, simplify_expressions=True)
 skd.closed_form_inv_dyn_body_fixed(q, qd, q2d, simplify_expressions=True)
 
 # Generate Code
-skd.generateCode(python=True, C=False, Matlab=False, latex=False,
+skd.generate_code(python=True, C=False, Matlab=False, latex=False,
                  folder="./generated_code", use_global_vars=True,
                  name="plant", project="Project")
 ```
@@ -546,7 +546,7 @@ skd.generateCode(python=True, C=False, Matlab=False, latex=False,
 The code explained:
 
 ```python
-from KinematicsGenerator import (SymbolicKinDyn,
+from kinematics_generator import (SymbolicKinDyn,
                                  transformation_matrix,
                                  mass_matrix_mixed_data,
                                  joint_screw,
@@ -566,10 +566,10 @@ Additionally, we import several helper functions for defining the matrices which
 - `generalized_vectors`: generate symbolic generalized vectors q, qd and q2d of predefined length n.
 
 ```python
-from KinematicsGenerator.symbols import g, pi
+from kinematics_generator.symbols import g, pi
 ```
 
-The package `KinematicsGenerator.symbols` includes the most common used symbolic variables, which can be used for defining your robot.
+The package `kinematics_generator.symbols` includes the most common used symbolic variables, which can be used for defining your robot.
 
 ```python
 import sympy
@@ -590,7 +590,7 @@ Iyz1, Iyz2 = sympy.symbols('Iyz1 Iyz2', real=True, const=True)
 Izz1, Izz2 = sympy.symbols('Izz1 Izz2', real=True, const=True)
 ```
 
-Create symbolic variables which can be used in the equations for the robot definition later. The most common symbols are also already present in the `KinematicsGenerator.symbols` package and may be imported from there instead.
+Create symbolic variables which can be used in the equations for the robot definition later. The most common symbols are also already present in the `kinematics_generator.symbols` package and may be imported from there instead.
 
 ---
 
@@ -700,7 +700,7 @@ The body reference configuration is a list of SE(3) transformation matrices. To 
     body_ref_config.append(xyz_rpy_to_matrix([0, 0, L1, 0, pi/2, 0]))
     ```
 
-    Note that you have to import the function using `from KinematicsGenerator import xyz_rpy_to_matrix`.
+    Note that you have to import the function using `from kinematics_generator import xyz_rpy_to_matrix`.
 
 6. Use roll pitch yaw (rpy) euler angles to define rotation:
 
@@ -713,7 +713,7 @@ The body reference configuration is a list of SE(3) transformation matrices. To 
     )
     ```
 
-    Note that you have to import the function using `from KinematicsGenerator import rpy_to_matrix`.
+    Note that you have to import the function using `from kinematics_generator import rpy_to_matrix`.
 
 7. Use quaternion [w,x,y,z] to define rotation:
 
@@ -726,7 +726,7 @@ The body reference configuration is a list of SE(3) transformation matrices. To 
     )
     ```
 
-    Note that you have to import the function using `from KinematicsGenerator import quaternion_to_matrix`.
+    Note that you have to import the function using `from kinematics_generator import quaternion_to_matrix`.
 
 ---
 
@@ -808,7 +808,7 @@ Mass-inertia matrices of all links. For the definition you have the following sy
                   [ 0, 0,I1]])
     ```
 
-    Note that you have to import the function using `from KinematicsGenerator import symbolic_inertia_matrix`.
+    Note that you have to import the function using `from kinematics_generator import symbolic_inertia_matrix`.
 
 ---
 
@@ -891,7 +891,7 @@ and `skd.closed_form_inv_dyn_body_fixed` generates the following equations and s
 
 ```python
 # Generate Code
-skd.generateCode(python=True, C=False, Matlab=False, latex=False,
+skd.generate_code(python=True, C=False, Matlab=False, latex=False,
                  folder="./generated_code", use_global_vars=True,
                  name="plant", project="Project")
 ```
@@ -913,16 +913,16 @@ To generate the python template file use:
 python analyze_my_robot.py --please --urdf my_urdf_template.py
 ```
 
-or the python function `KinematicsGenerator.generate_template_python(path, urdf=True)`.
+or the python function `kinematics_generator.generate_template_python(path, urdf=True)`.
 
 This generates the following output:
 
 ```python
-from KinematicsGenerator import (SymbolicKinDyn,
+from kinematics_generator import (SymbolicKinDyn,
                                  transformation_matrix,
                                  SO3Exp,
                                  generalized_vectors)
-from KinematicsGenerator.symbols import g, pi
+from kinematics_generator.symbols import g, pi
 import sympy
 
 # Define symbols:
@@ -955,7 +955,7 @@ skd.closed_form_kinematics_body_fixed(q, qd, q2d, simplify_expressions=True)
 skd.closed_form_inv_dyn_body_fixed(q, qd, q2d, simplify_expressions=True)
 
 # Generate Code
-skd.generateCode(python=True, C=False, Matlab=False, latex=False,
+skd.generate_code(python=True, C=False, Matlab=False, latex=False,
                  folder="./generated_code", use_global_vars=True,
                  name="plant", project="Project")
 ```
@@ -963,7 +963,7 @@ skd.generateCode(python=True, C=False, Matlab=False, latex=False,
 The code explained:
 
 ```python
-from KinematicsGenerator import (SymbolicKinDyn,
+from kinematics_generator import (SymbolicKinDyn,
                                  transformation_matrix,
                                  SO3Exp,
                                  generalized_vectors)
@@ -977,10 +977,10 @@ Additionally, we import several helper functions for defining the matrices which
 - `generalized_vectors`: generate symbolic generalized vectors q, qd and q2d of predefined length n.
 
 ```python
-from KinematicsGenerator.symbols import g, pi
+from kinematics_generator.symbols import g, pi
 ```
 
-The package `KinematicsGenerator.symbols` includes the most common used symbolic variables, which can be used for defining your robot.
+The package `kinematics_generator.symbols` includes the most common used symbolic variables, which can be used for defining your robot.
 
 ```python
 import sympy
@@ -995,7 +995,7 @@ The whole library used sympy objects for all symbolic equations etc. Hence, we n
 lee = sympy.symbols('lee', real=True, const=True)
 ```
 
-Create symbolic variables which can be used in the equations for the robot definition later. The most common symbols are also already present in the `KinematicsGenerator.symbols` package and may be imported from there instead.
+Create symbolic variables which can be used in the equations for the robot definition later. The most common symbols are also already present in the `kinematics_generator.symbols` package and may be imported from there instead.
 
 ---
 
@@ -1075,7 +1075,7 @@ Generate forward kinematics and inverse dynamics equations. See chapter [Python]
 
 ```python
 # Generate Code
-skd.generateCode(python=True, C=False, Matlab=False, latex=False,
+skd.generate_code(python=True, C=False, Matlab=False, latex=False,
                  folder="./generated_code", use_global_vars=True,
                  name="plant", project="Project")
 ```
@@ -1093,15 +1093,15 @@ python3 ./unit_testing/unit_testing.py
 
 ## 4. Benchmarking
 
-For benchmarking the project the script `Benchmarking/benchmarking.py` was used. This script loads 4 robots with increasing complexity (1 to 4 revolute joint in a chain with planar task space) and takes the execution time of the functions `closed_form_kinematics_body_fixed()`, `closed_form_inv_dyn_body_fixed()` and `generateCode()`. Additionally, the arguments `parallel`, `simplify_expressions` and `cse_ex` have been altered.
+For benchmarking the project the script `benchmarking/benchmarking.py` was used. This script loads 4 robots with increasing complexity (1 to 4 revolute joint in a chain with planar task space) and takes the execution time of the functions `closed_form_kinematics_body_fixed()`, `closed_form_inv_dyn_body_fixed()` and `generate_code()`. Additionally, the arguments `parallel`, `simplify_expressions` and `cse_ex` have been altered.
 The results are shown in the following table:
 
 arguments | parallel | serial
 :---------|:----------:|:-----------:
-simplify|![1 dof: 0.65 s; 2 dof: 2.14 s; 3 dof: 8.77 s; 4 dof: 44.04 s](/Benchmarking/parallel_with_simplification_without_cse.png) | ![1 dof: 0.16 s; 2 dof: 2.38 s; 3 dof: 13.06 s; 4 dof: 60.68 s](/Benchmarking/serial_with_simplification_without_cse.png)
-simplify + cse|![1 dof: 0.56 s; 2 dof: 2.22 s; 3 dof: 12.86 s; 4 dof: 84.28 s](/Benchmarking/parallel_with_simplification_with_cse.png) |![1 dof: 0.22 s; 2 dof: 2.78 s; 3 dof: 18.49 s; 4 dof: 113.30 s](/Benchmarking/serial_with_simplification_with_cse.png)
-no simplify|![1 dof: 0.74 s; 2 dof: 2.65 s; 3 dof: 11.29 s; 4 dof: 47.14 s](/Benchmarking/parallel_without_simplification_without_cse.png) | ![1 dof: 0.08 s; 2 dof: 1.57 s; 3 dof: 9.51 s; 4 dof: 44.57 s](/Benchmarking/serial_without_simplification_without_cse.png)
-no simplify + cse|![1 dof: 0.80 s; 2 dof: 4.50 s; 3 dof: 29.13 s; 4 dof: 161.01 s](/Benchmarking/parallel_without_simplification_with_cse.png) |![1 dof: 0.08 s; 2 dof: 4.49 s; 3 dof: 37.74 s; 4 dof: 201.11 s](/Benchmarking/serial_without_simplification_with_cse.png)
+simplify|![1 dof: 0.65 s; 2 dof: 2.14 s; 3 dof: 8.77 s; 4 dof: 44.04 s](/benchmarking/parallel_with_simplification_without_cse.png) | ![1 dof: 0.16 s; 2 dof: 2.38 s; 3 dof: 13.06 s; 4 dof: 60.68 s](/benchmarking/serial_with_simplification_without_cse.png)
+simplify + cse|![1 dof: 0.56 s; 2 dof: 2.22 s; 3 dof: 12.86 s; 4 dof: 84.28 s](/benchmarking/parallel_with_simplification_with_cse.png) |![1 dof: 0.22 s; 2 dof: 2.78 s; 3 dof: 18.49 s; 4 dof: 113.30 s](/benchmarking/serial_with_simplification_with_cse.png)
+no simplify|![1 dof: 0.74 s; 2 dof: 2.65 s; 3 dof: 11.29 s; 4 dof: 47.14 s](/benchmarking/parallel_without_simplification_without_cse.png) | ![1 dof: 0.08 s; 2 dof: 1.57 s; 3 dof: 9.51 s; 4 dof: 44.57 s](/benchmarking/serial_without_simplification_without_cse.png)
+no simplify + cse|![1 dof: 0.80 s; 2 dof: 4.50 s; 3 dof: 29.13 s; 4 dof: 161.01 s](/benchmarking/parallel_without_simplification_with_cse.png) |![1 dof: 0.08 s; 2 dof: 4.49 s; 3 dof: 37.74 s; 4 dof: 201.11 s](/benchmarking/serial_without_simplification_with_cse.png)
 
 ## 5. Troubleshooting
 

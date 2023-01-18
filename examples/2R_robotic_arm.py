@@ -1,4 +1,4 @@
-from KinematicsGenerator.kinematics_generator import SymbolicKinDyn, mass_matrix_mixed_data
+from kinematics_generator.kinematics_generator import SymbolicKinDyn, mass_matrix_mixed_data
 from sympy import symbols, Matrix, Identity, init_printing
 
 
@@ -87,5 +87,5 @@ F = s.closed_form_kinematics_body_fixed(q, qd, q2d, True)
 Q = s.closed_form_inv_dyn_body_fixed(
     q, qd, q2d, simplify_expressions=True)
 
-s.generateCode(python=True, C=True, Matlab=True,
+s.generate_code(python=True, C=True, Matlab=True,
                 use_global_vars=True, name="R2_plant", project="Project")

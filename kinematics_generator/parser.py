@@ -1,7 +1,7 @@
 import yaml
 import json
 from typing import Union, Iterable
-from KinematicsGenerator import (SymbolicKinDyn, joint_screw, 
+from kinematics_generator import (SymbolicKinDyn, joint_screw, 
                                  symbolic_inertia_matrix, mass_matrix_mixed_data, 
                                  SO3Exp, transformation_matrix, inertia_matrix,
                                  quaternion_to_matrix, xyz_rpy_to_matrix,
@@ -16,7 +16,7 @@ def robot_from_yaml(path: str) -> SymbolicKinDyn:
         path (str): Path to yaml file.
 
     Returns:
-        KinematicsGenerator.SymbolicKinDyn object.
+        kinematics_generator.SymbolicKinDyn object.
     """
     with open(path, "r") as stream:
         y = yaml.safe_load(stream)
@@ -29,7 +29,7 @@ def robot_from_json(path: str) -> SymbolicKinDyn:
         path (str): Path to json file.
 
     Returns:
-        KinematicsGenerator.SymbolicKinDyn object.
+        kinematics_generator.SymbolicKinDyn object.
     """
     with open(path, "r") as stream:
         y = json.load(stream)
@@ -76,7 +76,7 @@ def dict_parser(d: dict) -> SymbolicKinDyn:
         ValueError: Unexpected entry.
 
     Returns:
-        KinematicsGenerator.SymbolicKinDyn object.
+        kinematics_generator.SymbolicKinDyn object.
     """
     d = parse_hierarchical_expr(d, include_keys={"mass", "index", "Ixx", "Ixy", "Ixz", "Iyy", "Ixz", "Izz"})
     
@@ -381,18 +381,18 @@ def generate_template_python(path:str="edit_me.py", structure:str=None, dof:int=
     elif dof:
         structure = "r"*dof
     
-    p = ["from KinematicsGenerator import (SymbolicKinDyn,"]
-    p.append("                                 TransformationMatrix,")
+    p = ["from kinematics_generator import (SymbolicKinDyn,"]
+    p.append("                                 transformation_matrix,")
     if not urdf:
-        p.append("                                 MassMatrixMixedData,")
+        p.append("                                 mass_matrix_mixed_data,")
         p.append("                                 joint_screw,")
-        p.append("                                 InertiaMatrix,")
+        p.append("                                 inertia_matrix,")
     p.append("                                 SO3Exp,")
     p.append("                                 generalized_vectors)")
-    p.append("from KinematicsGenerator.symbols import g, pi")
+    p.append("from kinematics_generator.symbols import g, pi")
     p.append("import sympy")
     p.append("")
-    p.append("# Define symbols: (Hint: you can import the most common use symbols from KinematicsGenerator.symbols instead)")
+    p.append("# Define symbols: (Hint: you can import the most common use symbols from kinematics_generator.symbols instead)")
     if not urdf:
         p.append(f"{'m'+ ', m'.join(str(i) for i in range(1, dof+1))} = sympy.symbols('{'m'+ ' m'.join(str(i) for i in range(1, dof+1))}', real=True, const=True)")
         p.append(f"{'Ixx'+ ', Ixx'.join(str(i) for i in range(1, dof+1))} = sympy.symbols('{'Ixx'+ ' Ixx'.join(str(i) for i in range(1, dof+1))}', real=True, const=True)")
@@ -452,18 +452,18 @@ def generate_template_python(path:str="edit_me.py", structure:str=None, dof:int=
         p.append("# body reference configurations (4x4 SE3 Pose (sympy.Matrix) per link)")
         p.append("body_ref_config = []")
         for i in range(dof):
-            p.append("body_ref_config.append(TransformationMatrix(r=SO3Exp(axis=[0,0,1],angle=0),t=[0,0,0]))")
+            p.append("body_ref_config.append(transformation_matrix(r=SO3Exp(axis=[0,0,1],angle=0),t=[0,0,0]))")
         p.append("")
     
     p.append("# end-effector configuration w.r.t. last link body fixed frame in the chain (4x4 SE3 Pose (sympy.Matrix))")
-    p.append("ee = TransformationMatrix(r=SO3Exp(axis=[0,0,1],angle=0),t=[0,0,0])")
+    p.append("ee = transformation_matrix(r=SO3Exp(axis=[0,0,1],angle=0),t=[0,0,0])")
     p.append("")
     
     if not urdf:
         p.append("# mass_inertia parameters (6x6 sympy.Matrix per link)")
         p.append("Mb = []")
         for i in range(dof):
-            p.append(f"Mb.append(MassMatrixMixedData(m{i+1}, InertiaMatrix(Ixx{i+1},Ixy{i+1},Ixz{i+1},Iyy{i+1},Iyz{i+1},Izz{i+1}), sympy.Matrix([0,0,0])))")
+            p.append(f"Mb.append(mass_matrix_mixed_data(m{i+1}, inertia_matrix(Ixx{i+1},Ixy{i+1},Ixz{i+1},Iyy{i+1},Iyz{i+1},Izz{i+1}), sympy.Matrix([0,0,0])))")
         p.append("")
         
         p.append(f"q, qd, q2d = generalized_vectors(len(body_ref_config), startindex=1)")
@@ -501,7 +501,7 @@ def generate_template_python(path:str="edit_me.py", structure:str=None, dof:int=
     p.append("")
     
     p.append("# Generate Code")
-    p.append('skd.generateCode(python=True, C=False, Matlab=False, latex=False,')
+    p.append('skd.generate_code(python=True, C=False, Matlab=False, latex=False,')
     p.append('                 folder="./generated_code", use_global_vars=True,')
     p.append('                 name="plant", project="Project")')
     p.append("")

@@ -1,6 +1,6 @@
 from sympy import symbols, Matrix, Identity
-from KinematicsGenerator.kinematics_generator import SymbolicKinDyn as skd
-from KinematicsGenerator.kinematics_generator import transformation_matrix, mass_matrix_mixed_data
+from kinematics_generator.kinematics_generator import SymbolicKinDyn as skd
+from kinematics_generator.kinematics_generator import transformation_matrix, mass_matrix_mixed_data
 
 # Declaration of symbolic variables
 q1, q2, q3 = symbols("q1 q2 q3")
@@ -70,5 +70,5 @@ q2d = Matrix([ddq1,ddq2,ddq3])
 s = skd(gravity_vector=gravity_vector,ee=ee,Mb=Mb,parent=parent,support=support,child=child,A=A,Y=Y)
 print(s.closed_form_kinematics_body_fixed(q,qd,q2d, simplify_expressions=True))
 print(s.closed_form_inv_dyn_body_fixed(q,qd,q2d,simplify_expressions=True))
-s.generateCode(python=True, C=True, Matlab=True,
+s.generate_code(python=True, C=True, Matlab=True,
                 use_global_vars=True, name="lambdaMechanism", project="LambdaMechanism")

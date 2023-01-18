@@ -1,4 +1,4 @@
-from KinematicsGenerator.parser import robot_from_yaml
+from kinematics_generator.parser import robot_from_yaml
 import time
 import os
 import matplotlib.pyplot as plt
@@ -26,7 +26,7 @@ def benchmark(parallel: bool=True,simplify: bool=True, cse: bool=False, all: boo
     kinr1 = time.time()
     r1.closed_form_inv_dyn_body_fixed(simplify_expressions=simplify, cse_ex=cse, parallel=parallel)
     dynr1 =  time.time()
-    r1.generateCode(python=True,name="r1")
+    r1.generate_code(python=True,name="r1")
     genr1 = time.time()
 
     startr2 = time.time()
@@ -34,7 +34,7 @@ def benchmark(parallel: bool=True,simplify: bool=True, cse: bool=False, all: boo
     kinr2 = time.time()
     r2.closed_form_inv_dyn_body_fixed(simplify_expressions=simplify, cse_ex=cse, parallel=parallel)
     dynr2 =  time.time()
-    r2.generateCode(python=True,name="r2")
+    r2.generate_code(python=True,name="r2")
     genr2 = time.time()
 
     startr3 = time.time()
@@ -42,7 +42,7 @@ def benchmark(parallel: bool=True,simplify: bool=True, cse: bool=False, all: boo
     kinr3 = time.time()
     r3.closed_form_inv_dyn_body_fixed(simplify_expressions=simplify, cse_ex=cse, parallel=parallel)
     dynr3 =  time.time()
-    r3.generateCode(python=True,name="r3")
+    r3.generate_code(python=True,name="r3")
     genr3 = time.time()
 
     startr4 = time.time()
@@ -50,7 +50,7 @@ def benchmark(parallel: bool=True,simplify: bool=True, cse: bool=False, all: boo
     kinr4 = time.time()
     r4.closed_form_inv_dyn_body_fixed(simplify_expressions=simplify, cse_ex=cse, parallel=parallel)
     dynr4 =  time.time()
-    r4.generateCode(python=True,name="r4")
+    r4.generate_code(python=True,name="r4")
     genr4 = time.time()
 
     barkin = [kinr1-startr1, kinr2-startr2, kinr3-startr3,kinr4-startr4]

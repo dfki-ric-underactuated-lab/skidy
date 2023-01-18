@@ -21,7 +21,7 @@ from sympy.utilities.codegen import codegen
 from urdfpy import URDF, matrix_to_xyz_rpy
 from pylatex import (Document, Section, Command, NoEscape)
 
-from KinematicsGenerator.matrices import (
+from kinematics_generator.matrices import (
     SE3AdjInvMatrix, SE3AdjMatrix, SE3adMatrix, SE3Exp, SE3Inv, SO3Exp, 
     inertia_matrix, transformation_matrix, mass_matrix_mixed_data, rpy_to_matrix, 
     xyz_rpy_to_matrix, generalized_vectors)
@@ -109,10 +109,10 @@ class _AbstractCodeGeneration():
             return filtered
         return all_expressions
 
-    def generateCode(self, python: bool=False, C: bool=False, Matlab: bool=False, 
-                     cython: bool=False, latex: bool=False, landscape: bool=False,
-                     folder: str="./generated_code", use_global_vars: bool=True, 
-                     name: str="plant", project: str="Project") -> None:
+    def generate_code(self, python: bool=False, C: bool=False, Matlab: bool=False, 
+                      cython: bool=False, latex: bool=False, landscape: bool=False,
+                      folder: str="./generated_code", use_global_vars: bool=True, 
+                      name: str="plant", project: str="Project") -> None:
         """Generate code of generated Expressions. 
         It can generate Python, C (C99) and Matlab/Octave code.  
         Needs 'closed_form_inv_dyn_body_fixed' and/or 
@@ -799,7 +799,7 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
                 >>> skd.closed_form_inv_dyn_body_fixed(q, qd, q2d)
                 
                 Generate Code:
-                >>> skd.generateCode(python=True, C=True, Matlab=True,  
+                >>> skd.generate_code(python=True, C=True, Matlab=True,  
                 ...                  name="R2_plant_example")
         """
         super().__init__()

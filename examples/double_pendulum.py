@@ -1,4 +1,4 @@
-from KinematicsGenerator.kinematics_generator import SymbolicKinDyn, mass_matrix_mixed_data, transformation_matrix
+from kinematics_generator.kinematics_generator import SymbolicKinDyn, mass_matrix_mixed_data, transformation_matrix
 from sympy import symbols, Matrix, Identity, init_printing
 import sys
 from os.path import dirname
@@ -73,4 +73,4 @@ s = SymbolicKinDyn(gravity_vector=gravity_vector,
                     Mb=Mb)
 s.closed_form_kinematics_body_fixed(q,qd,q2d)
 s.closed_form_inv_dyn_body_fixed(q,qd,q2d)
-s.generateCode(python=True, C=False, Matlab=False, latex=False,name="DoublePendulumPlant",project="DoublePendulum")
+s.generate_code(python=True, C=False, Matlab=False, latex=False,name="DoublePendulumPlant",project="DoublePendulum")
