@@ -15,7 +15,8 @@ def generalized_vectors(
         startindex (int): Index of first joint. Defaults to 0.
 
     Returns:
-        _type_: _description_
+        tuple(sympy.Matrix,sympy.Matrix,sympy.Matrix): 
+            Generalized vectors.
     """
     if DOF > 1:
         q = Matrix(symbols(" ".join(f"q{i}" for i in range(startindex,startindex+DOF))))
@@ -52,7 +53,8 @@ def joint_screw(axis: list, vec: list=[0,0,0], revolute: bool=True) -> MutableDe
         return Matrix([0,0,0,e])
         
 
-def symbolic_inertia_matrix(index: Union[int, str]="", pointmass: bool=False) -> MutableDenseMatrix:
+def symbolic_inertia_matrix(
+    index: Union[int, str]="", pointmass: bool=False) -> MutableDenseMatrix:
     """Create 3 x 3 symbolic inertia matrix with auto generated variable names.
 
     Args:
@@ -78,7 +80,7 @@ def SE3AdjInvMatrix(C: MutableDenseMatrix) -> MutableDenseMatrix:
     """Compute Inverse of (6x6) Adjoint matrix for SE(3)
 
     Args:
-        C ([type]): [description] TODO
+        C (sympy.Matrix): SE(3) Pose.
 
     Returns:
         sympy.Matrix: Inverse of (6x6) Adjoint matrix
@@ -104,7 +106,7 @@ def SE3AdjMatrix(C: MutableDenseMatrix) -> MutableDenseMatrix:
     """Compute (6x6) Adjoint matrix for SE(3)
 
     Args:
-        C ([type]): [description] TODO
+        C ([type]): SE(3) Pose.
 
     Returns:
     sympy.Matrix: (6x6) Adjoint matrix
@@ -131,28 +133,28 @@ def SE3adMatrix(X: MutableDenseMatrix) -> MutableDenseMatrix:
         - also known as spatial cross product in the literature.
 
     Args:
-        X ([type]): [description] TODO
+        X (sympy.Matrix): (6x1) spacial vector.
 
     Returns:
         sympy.Matrix: (6x6) adjoint matrix
     """
     ad = Matrix([[0, -X[2, 0], X[1, 0], 0, 0, 0],
-                    [X[2, 0], 0, -X[0, 0], 0, 0, 0],
-                    [-X[1, 0], X[0, 0], 0, 0, 0, 0],
-                    [0, -X[5, 0], X[4, 0], 0, -X[2, 0], X[1, 0]],
-                    [X[5, 0], 0, -X[3, 0], X[2, 0], 0, -X[0, 0]],
-                    [-X[4, 0], X[3, 0], 0, -X[1, 0], X[0, 0], 0]])
+                 [X[2, 0], 0, -X[0, 0], 0, 0, 0],
+                 [-X[1, 0], X[0, 0], 0, 0, 0, 0],
+                 [0, -X[5, 0], X[4, 0], 0, -X[2, 0], X[1, 0]],
+                 [X[5, 0], 0, -X[3, 0], X[2, 0], 0, -X[0, 0]],
+                 [-X[4, 0], X[3, 0], 0, -X[1, 0], X[0, 0], 0]])
     return ad
 
 def SE3Exp(XX: MutableDenseMatrix, t: Union[float, Expr]) -> MutableDenseMatrix:
     """compute exponential mapping for SE(3).
 
     Args:
-        XX ([type]): [description] TODO
-        t ([type]): [description]
+        XX ([type]): (6,1) spacial vector.
+        t (sympy.Expr): rotation angle.
 
     Returns:
-        [type]: [description]
+        sympy.Matrix: (4,4) SE(3) Pose.
     """
     X = XX.T
     xi = Matrix(X[0:3])
@@ -172,10 +174,10 @@ def SE3Inv(C: MutableDenseMatrix) -> MutableDenseMatrix:
     """Compute analytical inverse of exponential mapping for SE(3).
 
     Args:
-        C ([type]): [description] TODO
+        C (sympy.Matrix): (4,4) SE(3) Pose.
 
     Returns:
-        [type]: [description]
+        sympy.Matrix: (4,4) Inverse of SE(3) Pose.
     """
     CInv = Matrix([[C[0, 0], C[1, 0], C[2, 0], 
                     -C[0, 0]*C[0, 3]-C[1, 0]*C[1, 3]-C[2, 0]*C[2, 3]],

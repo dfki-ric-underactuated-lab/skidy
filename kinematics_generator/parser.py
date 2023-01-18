@@ -38,7 +38,7 @@ def robot_from_json(path: str) -> SymbolicKinDyn:
 def parse_hierarchical_expr(x:Union[list,dict,str], 
                             include_keys:Iterable={}, 
                             exclude_keys:Iterable={}) -> Union[list,dict,Expr]:
-    """Convert strings in datastructure (list or dict) to sympy 
+    """Convert strings in data structure (list or dict) to sympy 
     expressions.
 
     Args:
@@ -49,7 +49,7 @@ def parse_hierarchical_expr(x:Union[list,dict,str],
         exclude_keys (Iterable): Don't convert strings with listed dict_keys. 
             Defaults to {}.    
     Returns:
-        list|dict|sympy.Expr: Same datastructure with strings converted 
+        list|dict|sympy.Expr: Same data structure with strings converted 
             to sympy.Expr 
     """
     if type(x) in {dict, list}:

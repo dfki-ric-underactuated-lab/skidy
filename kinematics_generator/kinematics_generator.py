@@ -2,29 +2,31 @@ import multiprocessing
 import os
 import queue
 import random
-import regex
-from multiprocessing import Process, Queue
-from typing import Union, List, Any, Tuple, Generator, Dict, Callable
 from collections import defaultdict
 from itertools import combinations
+from multiprocessing import Process, Queue
+from typing import Any, Callable, Dict, Generator, List, Tuple, Union
 
 import numpy
+import regex
 import sympy
-from sympy import (Identity, Matrix, cancel, cos, cse, factor,
-                   lambdify, powsimp, sin, symbols, zeros, pi, nsimplify, 
-                   octave_code, ccode, MutableDenseMatrix)
-from sympy.printing.numpy import NumPyPrinter
+from pylatex import Command, Document, NoEscape, Section
+from sympy import (Identity, Matrix, MutableDenseMatrix, cancel, ccode,
+                   cse, factor, lambdify, nsimplify, octave_code, pi, powsimp,
+                   symbols, zeros)
 from sympy.printing.latex import LatexPrinter
+from sympy.printing.numpy import NumPyPrinter
 from sympy.simplify.cse_main import numbered_symbols
 from sympy.simplify.fu import fu
 from sympy.utilities.codegen import codegen
 from urdfpy import URDF, matrix_to_xyz_rpy
-from pylatex import (Document, Section, Command, NoEscape)
 
-from kinematics_generator.matrices import (
-    SE3AdjInvMatrix, SE3AdjMatrix, SE3adMatrix, SE3Exp, SE3Inv, SO3Exp, 
-    inertia_matrix, transformation_matrix, mass_matrix_mixed_data, rpy_to_matrix, 
-    xyz_rpy_to_matrix, generalized_vectors)
+from kinematics_generator.matrices import (SE3AdjInvMatrix, SE3AdjMatrix,
+                                           SE3adMatrix, SE3Exp, SE3Inv, SO3Exp,
+                                           generalized_vectors, inertia_matrix,
+                                           mass_matrix_mixed_data,
+                                           xyz_rpy_to_matrix)
+
 
 class _AbstractCodeGeneration():
     def __init__(self) -> None:
@@ -113,8 +115,8 @@ class _AbstractCodeGeneration():
                       cython: bool=False, latex: bool=False, landscape: bool=False,
                       folder: str="./generated_code", use_global_vars: bool=True, 
                       name: str="plant", project: str="Project") -> None:
-        """Generate code of generated Expressions. 
-        It can generate Python, C (C99) and Matlab/Octave code.  
+        """Generate code from generated expressions. 
+        Generates Python, C (C99), Matlab/Octave, Cython and/or LaTeX code.  
         Needs 'closed_form_inv_dyn_body_fixed' and/or 
         'closed_form_kinematics_body_fixed' to run first.
 
@@ -243,26 +245,19 @@ class _AbstractCodeGeneration():
 
                 else:
                     s.append("\n    def "+names[i]+"(self) -> numpy.ndarray:")
-                # if len(const_syms) > 0:
-                #     s.append("        "
-                #              + ", ".join([str(const_syms[i]) 
-                #                           for i in range(len(const_syms))])
-                #              + " = " 
-                #              + ", ".join(["self."+str(const_syms[i]) 
-                #                           for i in range(len(const_syms))])
-                #              )
-
+                
                 if const_syms: # insert self. in front of const_syms
                     s.append("        "
                             + names[i] 
                             + " = " 
-                            + regex.sub(f"(?<=\W|^)(?={'|'.join([str(i) for i in const_syms])}(\W|\Z))","self.",p.doprint(expressions[i])))
+                            + regex.sub(f"(?<=\W|^)(?={'|'.join([str(i) for i in const_syms])}(\W|\Z))",
+                                        "self.",
+                                        p.doprint(expressions[i])))
                 else: 
                     s.append("        "
                             + names[i] 
                             + " = " 
                             + p.doprint(expressions[i]))
-                        #  + p.doprint(expressions[i]))
                 s.append("        return " + names[i])
 
             # replace numpy with np for better readability
@@ -309,7 +304,7 @@ class _AbstractCodeGeneration():
                         for i in self.subex_dict])))
                     
             
-            # define __init__ function
+            # define __cinit__ function
             s.append("    def __cinit__(self, %s):" % (
                 ", ".join(
                     ["double "+str(not_assigned_syms[i]) 
@@ -325,7 +320,7 @@ class _AbstractCodeGeneration():
                                       for i in range(len(not_assigned_syms))])
                          )
 
-            # append preassigned values to __init__ function
+            # append preassigned values to __cinit__ function
             if len(self.assignment_dict) > 0:
                 s.append("        "
                          + ", ".join(sorted(["self."+str(i) 
@@ -335,7 +330,7 @@ class _AbstractCodeGeneration():
                                              for i in self.assignment_dict]))
                          )
 
-            # append cse expressions to __init__ function
+            # append cse expressions to __cinit__ function
             if len(self.subex_dict) > 0:
                 for i in sorted([str(j) for j in self.subex_dict], key=lambda x: int(regex.findall("(?<=sub)\d*",x)[0])):
                     modstring = p.doprint(self.subex_dict[symbols(i)])
@@ -363,14 +358,7 @@ class _AbstractCodeGeneration():
 
                 else:
                     s.append("\n    cpdef "+names[i]+"(self):")
-                # if len(const_syms) > 0:
-                #     s.append("        "
-                #              + ", ".join(["double "+str(const_syms[i]) 
-                #                           for i in range(len(const_syms))])
-                #              + " = " 
-                #              + ", ".join(["self."+str(const_syms[i]) 
-                #                           for i in range(len(const_syms))])
-                #              )
+                
                 s.append(f"        cdef numpy.ndarray[DTYPE_t,ndim={len(expressions[i].shape)}] "
                          + names[i])
                 if const_syms:
@@ -395,6 +383,7 @@ class _AbstractCodeGeneration():
             # join list to string
             s = "\n".join(s)
 
+            # create setup file to compile cython code
             su = ("from setuptools import setup\n"
                   + "from Cython.Build import cythonize\n"
                   + "\n"
@@ -411,6 +400,7 @@ class _AbstractCodeGeneration():
             with open(os.path.join(folder, "cython", name + ".pyx"), "w+") as f:
                 f.write(s)
             
+            # write setup file
             with open(os.path.join(folder, "cython", "setup_" + name + ".py"), "w+") as f:
                 f.write(su)
             
@@ -460,7 +450,7 @@ class _AbstractCodeGeneration():
                 i += 1
             c_code = "".join(c_lines)
             
-            # save assinged parameters 
+            # save assinged parameters to another c file
             c_def_name = f"{c_name[:-2]}_parameters.c"
             header_insert = []
             c_definitions = [f'#include "{h_name}"\n']
@@ -614,13 +604,14 @@ class _AbstractCodeGeneration():
             doc.packages.append(NoEscape(r"\usepackage{amsmath}"))
             doc.packages.append(NoEscape(r"\usepackage{graphicx}"))
             
-            #doc.packages.append(Command(r"\\usepackage{float}"))
             doc.preamble.append(Command("title", "Equations of Motion"))
             doc.preamble.append(Command("author", "Author: SymbolicKinDyn"))
             doc.preamble.append(Command("date", NoEscape(r"\today")))
             doc.append(NoEscape(r"\maketitle"))
             doc.append(NoEscape(r"\tableofcontents"))
             doc.append(NoEscape(r"\newpage"))
+            
+            # create symbols and indices for equations
             for i in range(len(expressions)):
                 letter = ""
                 if "jacobian" in names[i]: letter = "J"
@@ -651,28 +642,13 @@ class _AbstractCodeGeneration():
                     # doc.append(NoEscape(r"\end{footnotesize}"))
                     doc.append("\n")
             
+            # save tex file and compile pdf
             doc.generate_pdf(os.path.join(folder, "latex",name), clean_tex=False)
                 
             
 class SymbolicKinDyn(_AbstractCodeGeneration):
     BODY_FIXED = "body_fixed"
     SPACIAL = "spacial"
-    
-    # compatibility with older version, where these functions have been 
-    # member functions of class.
-    SE3AdjInvMatrix = staticmethod(SE3AdjInvMatrix)
-    SE3AdjMatrix = staticmethod(SE3AdjMatrix)
-    SE3adMatrix = staticmethod(SE3adMatrix)
-    SE3Exp = staticmethod(SE3Exp)
-    SE3Inv = staticmethod(SE3Inv)
-    SO3Exp = staticmethod(SO3Exp)
-    InertiaMatrix = staticmethod(inertia_matrix)
-    TransformationMatrix = staticmethod(transformation_matrix)
-    MassMatrixMixedData = staticmethod(mass_matrix_mixed_data)
-    rpy_to_matrix = staticmethod(rpy_to_matrix)
-    xyz_rpy_to_matrix = staticmethod(xyz_rpy_to_matrix)
-    
-    
     
     def __init__(self, gravity_vector: MutableDenseMatrix=None, 
                  ee: MutableDenseMatrix=None, 
@@ -714,13 +690,19 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
                 List of Mass Inertia matrices for all links. Only 
                 necessary for inverse dynamics. Defaults to [].
             parent (list, optional):
-                TODO
+                list of parent link indices for any joint. Use 0 for world.
+                Only necessary for tree-like robot structures. 
                 Defaults to [].
             support (list, optional):
-                TODO
+                list of lists with one list per link which includes all 
+                support links beginning with the first link in the chain 
+                and including the current link.
+                Only necessary for tree-like robot structures. 
                 Defaults to [].
             child (list, optional):
-                TODO
+                list of lists with one list per link which includes all
+                child links. Use empty list if no child link is present.
+                Only necessary for tree-like robot structures. 
                 Defaults to [].
                 
         Usage:
@@ -923,11 +905,11 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
             Needs class parameters body_ref_config, joint_screw_coord and ee to be defined.
 
         Args:
-            q (sympy.Matrix): 
+            q (sympy.Matrix, optional): 
                 (n,1) Generalized position vector. Defaults to None.
-            qd (sympy.Matrix): 
+            qd (sympy.Matrix, optional): 
                 (n,1) Generalized velocity vector. Defaults to None.
-            q2d (sympy.Matrix): 
+            q2d (sympy.Matrix, optional): 
                 (n,1) Generalized acceleration vector. Defaults to None.
             simplify_expressions (bool, optional): 
                 Use simplify command on saved expressions. 
@@ -974,11 +956,11 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
             inverse_dynamics
 
         Args:
-            q (sympy.Matrix): 
+            q (sympy.Matrix, optional): 
                 (n,1) Generalized position vector. Defaults to None.
-            qd (sympy.Matrix): 
+            qd (sympy.Matrix, optional): 
                 (n,1) Generalized velocity vector. Defaults to None.
-            q2d (sympy.Matrix): 
+            q2d (sympy.Matrix, optional): 
                 (n,1) Generalized acceleration vector. Defaults to None.
             WEE (sympy.Matrix, optional): 
                 (6,1) WEE (t) is the time varying wrench on the EE link. 
@@ -2064,6 +2046,11 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
         return exp
 
     def _create_topology_lists(self,robot: URDF) -> None:
+        """Generate parent, support and child list from URDF.
+
+        Args:
+            robot (URDF): URDF of robot.
+        """
         # names of all links in urdf
         link_names = [link.name for link in robot.links] 
         parent_names = [] # names of parent links corresponding link_names
@@ -2134,6 +2121,20 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
     def _nsimplify(
         self,num: float, *args, max_denominator: int=0, **kwargs
         ) -> Union[sympy.Expr, float]:
+        """Find a simple sympy representation for a number like 1/2 
+        instead of 0.5. This function extends sympy.nsimplify with a 
+        parameter to specify a maximum denominator to avoid simplifications
+        like 13/157.  
+
+        Args:
+            num (float): number to simplify.
+            max_denominator (int, optional): 
+                maximum denominator to use. Use 0 to deactivate. 
+                Defaults to 0.
+
+        Returns:
+            Union[sympy.Expr, float]: simplified number.
+        """
         ex = nsimplify(num,*args,**kwargs)
         if not max_denominator:
             return ex
@@ -2152,8 +2153,29 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
         return ex
         
     def load_from_urdf(self, path: str, symbolic: bool=True, 
-                       simplify_numbers: bool=True, cse_ex: bool=False, 
+                       cse_ex: bool=False, simplify_numbers: bool=True,  
                        tolerance: float=0.0001, max_denominator: int=9) -> None:
+        """Load robot from urdf.
+
+        Args:
+            path (str): path to URDF.
+            symbolic (bool, optional): 
+                generate symbols for numeric values. 
+                Defaults to True.
+            cse_ex (bool, optional): 
+                use common subexpression elimination. Defaults to False.
+            simplify_numbers (bool, optional): 
+                Use eg. pi/2 instead of 1.5708. Defaults to True.
+            tolerance (float, optional): 
+                tolerance for simplify_numbers. Defaults to 0.0001.
+            max_denominator (int, optional): 
+                Maximum denominator to use for simplify numbers to avoid
+                values like 13/153. Use 0 to deactivate. Defaults to 9.
+
+        Raises:
+            NotImplementedError: supports only the joint types 
+                "revolute", "continuous" and "prismatic".
+        """
         robot = URDF.load(path)
         self.B = []
         self.X = []
@@ -2522,9 +2544,13 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
                 list: sorted symbols
             """
             return [x for _, x in sorted(zip(list(map(str, data)), data))]
+        
         # return sorted list
-        return symsort(q) + symsort(dq) + symsort(ddq) + symsort(var_rest) \
-            + symsort(rest)
+        return (symsort(q) 
+                + symsort(dq) 
+                + symsort(ddq) 
+                + symsort(var_rest) 
+                + symsort(rest))
 
     def _cse_expression(self, exp: sympy.Expr) -> sympy.Expr:
         """Use common subexpression elimination to shorten expression.
@@ -2565,6 +2591,21 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
     def _calc_A_matrix(
         self, q: MutableDenseMatrix
         ) -> Tuple[List[MutableDenseMatrix], MutableDenseMatrix]:
+        """Calculate forward kinematics and the block diagonal matrix 
+        A (6n x 6n) of the Adjoint of body frame for serial robots.
+
+        Args:
+            q (sympy.MutableDenseMatrix): 
+                Generalized position vector.
+
+        Raises:
+            ValueError: 
+                Joint screw coordinates or body reference configuration 
+                not found.
+
+        Returns:
+            Tuple[List[MutableDenseMatrix], MutableDenseMatrix]: (FK, A)
+        """
         # calc Forward kinematics
         if self._FK_C is not None:
             FK_C = self._FK_C
@@ -2608,6 +2649,22 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
         return FK_C, A
 
     def _calc_A_matrix_tree(self, q: MutableDenseMatrix):
+        """Calculate forward kinematics and the block diagonal matrix 
+        A (6n x 6n) of the Adjoint of body frame for tree like robot 
+        structures.
+
+        Args:
+            q (sympy.MutableDenseMatrix): 
+                Generalized position vector.
+
+        Raises:
+            ValueError: 
+                Joint screw coordinates or body reference configuration 
+                not found.
+
+        Returns:
+            Tuple[List[MutableDenseMatrix], MutableDenseMatrix]: (FK, A)
+        """
         if self._FK_C is not None:
             FK_C = self._FK_C
         elif self.A:
@@ -2661,6 +2718,12 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
         return FK_C, A
     
     def _find_start_index(self) -> int:
+        """Guess if 0 or 1 is the first index in the robot by analysing 
+        used variable names.
+
+        Returns:
+            int: index.
+        """
         # search all symbols
         syms = set()
         for i in self.Mb:
