@@ -89,10 +89,10 @@ if __name__ == "__main__":
             
         elif ext in {".json",".JSON"}:
             skd = robot_from_json(path)
-            
-        elif ext in {".urdf"}:
-            skd = robot_from_urdf(path,cse_ex=args.cse) # TODO: add options
-            # TODO: deal with ee
+        
+        # elif ext in {".urdf"}:
+        #     skd = robot_from_urdf(path,cse_ex=args.cse) # TODO: add options
+        #     # TODO: deal with ee
 
         elif ext == ".py":
             if input(f"{path} is a python file. Should I run this file? [y/N] ") in {"y","Y"}:

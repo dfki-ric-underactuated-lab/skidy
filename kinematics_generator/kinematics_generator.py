@@ -2310,10 +2310,6 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
                 I = Matrix(inertia)
                 m = mass
                 cg = Matrix(inertiaorigin[0:3, 3])
-            # if is fixed child: # TODO: find out what to do
-            # cg =
-            # I =
-            # m =
             M = mass_matrix_mixed_data(m, I, cg)
             if name in [x[1] for x in fixed_links]:
                 j = i
