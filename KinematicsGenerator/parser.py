@@ -501,7 +501,7 @@ def generate_template_python(path:str="edit_me.py", structure:str=None, dof:int=
     p.append("")
     
     p.append("# Generate Code")
-    p.append('skd.generateCode(python=True, C=False, Matlab=False,')
+    p.append('skd.generateCode(python=True, C=False, Matlab=False, latex=False,')
     p.append('                 folder="./generated_code", use_global_vars=True,')
     p.append('                 name="plant", project="Project")')
     p.append("")

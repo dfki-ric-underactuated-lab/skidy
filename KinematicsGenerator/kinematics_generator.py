@@ -110,7 +110,7 @@ class _AbstractCodeGeneration():
         return all_expressions
 
     def generateCode(self, python: bool=False, C: bool=False, Matlab: bool=False, 
-                     cython: bool=False, latex: bool=False,
+                     cython: bool=False, latex: bool=False, landscape: bool=False,
                      folder: str="./generated_code", use_global_vars: bool=True, 
                      name: str="plant", project: str="Project") -> None:
         """Generate code of generated Expressions. 
@@ -130,6 +130,9 @@ class _AbstractCodeGeneration():
                 Generate cython code. Defaults to False.
             latex (bool, optional):
                 Generate latex code with all equations and generate pdf from it. 
+                Defaults to False.
+            landscape (bool, optional):
+                Generate LaTeX document in landscape mode to fit longer equations.
                 Defaults to False.
             folder (str, optional): 
                 Folder where to save code. 
@@ -186,13 +189,13 @@ class _AbstractCodeGeneration():
             # start python file with import
             s = ["import numpy\n\n"]
             # class name
-            s.append("class "+name.capitalize()+"():")
+            s.append("class "+regex.sub("^\w",lambda x: x.group().upper(),name)+"():")
             # define __init__ function
-            s.append("    def __init__(self, %s):" % (
+            s.append("    def __init__(self, %s) -> None:" % (
                 ", ".join(
-                    [str(not_assigned_syms[i]) 
+                    [str(not_assigned_syms[i])+": float" 
                      for i in range(len(not_assigned_syms))] 
-                    + [str(i)+" = " + str(self.assignment_dict[i]) 
+                    + [str(i)+": float=" + str(self.assignment_dict[i]) 
                        for i in self.assignment_dict])))
             if len(not_assigned_syms) > 0:
                 s.append("        "
@@ -234,12 +237,12 @@ class _AbstractCodeGeneration():
                     set(constant_syms).intersection(
                         expressions[i].free_symbols))
                 if len(var_syms) > 0:
-                    s.append("\n    def "+names[i]+"(self, %s):" % (
-                        ", ".join([str(var_syms[i]) 
+                    s.append("\n    def "+names[i]+"(self, %s) -> numpy.ndarray:" % (
+                        ", ".join([str(var_syms[i])+": float" 
                                    for i in range(len(var_syms))])))
 
                 else:
-                    s.append("\n    def "+names[i]+"(self):")
+                    s.append("\n    def "+names[i]+"(self) -> numpy.ndarray:")
                 # if len(const_syms) > 0:
                 #     s.append("        "
                 #              + ", ".join([str(const_syms[i]) 
@@ -249,10 +252,16 @@ class _AbstractCodeGeneration():
                 #                           for i in range(len(const_syms))])
                 #              )
 
-                s.append("        "
-                         + names[i] 
-                         + " = " 
-                         + regex.sub(f"(?<=\W|^)(?={'|'.join([str(i) for i in const_syms])}(\W|\Z))","self.",p.doprint(expressions[i])))
+                if const_syms: # insert self. in front of const_syms
+                    s.append("        "
+                            + names[i] 
+                            + " = " 
+                            + regex.sub(f"(?<=\W|^)(?={'|'.join([str(i) for i in const_syms])}(\W|\Z))","self.",p.doprint(expressions[i])))
+                else: 
+                    s.append("        "
+                            + names[i] 
+                            + " = " 
+                            + p.doprint(expressions[i]))
                         #  + p.doprint(expressions[i]))
                 s.append("        return " + names[i])
 
@@ -286,7 +295,7 @@ class _AbstractCodeGeneration():
             
             s.append("\n")
             # class name
-            s.append("cdef class "+name.capitalize()+"():")
+            s.append("cdef class "+regex.sub("^\w",lambda x: x.group().upper(),name)+"():")
             s.append("    cdef public double %s\n"%(
                 ", ".join(
                     [str(not_assigned_syms[i]) 
@@ -364,11 +373,18 @@ class _AbstractCodeGeneration():
                 #              )
                 s.append(f"        cdef numpy.ndarray[DTYPE_t,ndim={len(expressions[i].shape)}] "
                          + names[i])
-                s.append("        "
-                         + names[i] 
-                         + " = " 
-                         + regex.sub(f"(?<=\W|^)(?={'|'.join([str(i) for i in const_syms])}(\W|\Z))","self.",p.doprint(expressions[i])))
-                        #  + regex.sub("(?<=((?<=[^\.])\W)\d+)(?=\W)(?!\.)",".0",regex.sub(f"(?<=\W|^)(?={'|'.join([str(i) for i in const_syms])}(\W|\Z))","self.",p.doprint(expressions[i]))))
+                if const_syms:
+                    s.append("        "
+                            + names[i] 
+                            + " = " 
+                            + regex.sub(f"(?<=\W|^)(?={'|'.join([str(i) for i in const_syms])}(\W|\Z))","self.",p.doprint(expressions[i])))
+                            #  + regex.sub("(?<=((?<=[^\.])\W)\d+)(?=\W)(?!\.)",".0",regex.sub(f"(?<=\W|^)(?={'|'.join([str(i) for i in const_syms])}(\W|\Z))","self.",p.doprint(expressions[i]))))
+                else:
+                    s.append("        "
+                            + names[i] 
+                            + " = " 
+                            + p.doprint(expressions[i]))
+                    
                 s.append("        return " + names[i])
 
             # replace numpy with np for better readability
@@ -591,7 +607,10 @@ class _AbstractCodeGeneration():
 
             # Document with `\maketitle` command activated
             doc = Document(documentclass="article", inputenc="utf8")
-            doc.packages.append(NoEscape(r"\usepackage[a4paper,top=2cm,bottom=2cm,left=2.5cm,right=2.5cm,marginparwidth=1.75cm]{geometry}"))
+            if landscape:
+                doc.packages.append(NoEscape(r"\usepackage[landscape,a4paper,top=2cm,bottom=2cm,left=2.5cm,right=2.5cm,marginparwidth=1.75cm]{geometry}"))
+            else: 
+                doc.packages.append(NoEscape(r"\usepackage[a4paper,top=2cm,bottom=2cm,left=2.5cm,right=2.5cm,marginparwidth=1.75cm]{geometry}"))
             doc.packages.append(NoEscape(r"\usepackage{amsmath}"))
             doc.packages.append(NoEscape(r"\usepackage{graphicx}"))
             

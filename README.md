@@ -441,7 +441,7 @@ To start the code generation process use:
 python3 analyze_my_robot.py [options] path/to/robot.yaml
 ```
 
-In the options you have to specify what kind of code (python `-p`, Matlab `-m`, C `-C`) you'd like to generate and whether the equations should be simplified `-s`.
+In the options you have to specify what kind of code (python `-p`, Matlab `-m`, C `-C`, latex `-l`) you'd like to generate and whether the equations should be simplified `-s`.
 
 Use
 
@@ -538,7 +538,7 @@ skd.closed_form_kinematics_body_fixed(q, qd, q2d, simplify_expressions=True)
 skd.closed_form_inv_dyn_body_fixed(q, qd, q2d, simplify_expressions=True)
 
 # Generate Code
-skd.generateCode(python=True, C=True, Matlab=True,
+skd.generateCode(python=True, C=False, Matlab=False, latex=False,
                  folder="./generated_code", use_global_vars=True,
                  name="plant", project="Project")
 ```
@@ -891,12 +891,12 @@ and `skd.closed_form_inv_dyn_body_fixed` generates the following equations and s
 
 ```python
 # Generate Code
-skd.generateCode(python=True, C=True, Matlab=True,
+skd.generateCode(python=True, C=False, Matlab=False, latex=False,
                  folder="./generated_code", use_global_vars=True,
                  name="plant", project="Project")
 ```
 
-Generate Python, Matlab and/or C (C99) code from the generated equations.
+Generate Python, Matlab, C (C99) and/or LaTeX code from the generated equations.
 Note that this can take time, especially for non-simplified equations and complex robots.
 
 ### 2.3. URDF
@@ -955,7 +955,7 @@ skd.closed_form_kinematics_body_fixed(q, qd, q2d, simplify_expressions=True)
 skd.closed_form_inv_dyn_body_fixed(q, qd, q2d, simplify_expressions=True)
 
 # Generate Code
-skd.generateCode(python=True, C=False, Matlab=False,
+skd.generateCode(python=True, C=False, Matlab=False, latex=False,
                  folder="./generated_code", use_global_vars=True,
                  name="plant", project="Project")
 ```
@@ -1075,12 +1075,12 @@ Generate forward kinematics and inverse dynamics equations. See chapter [Python]
 
 ```python
 # Generate Code
-skd.generateCode(python=True, C=False, Matlab=False,
+skd.generateCode(python=True, C=False, Matlab=False, latex=False,
                  folder="./generated_code", use_global_vars=True,
                  name="plant", project="Project")
 ```
 
-Generate Python, Matlab and/or C (C99) code from the generated equations.
+Generate Python, Matlab, C (C99) and/or LaTeX code from the generated equations.
 Note that this can take time, especially for non-simplified equations and complex robots.
 
 ## 3. Unit testing
