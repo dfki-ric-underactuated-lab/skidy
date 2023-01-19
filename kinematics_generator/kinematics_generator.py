@@ -384,13 +384,14 @@ class _AbstractCodeGeneration():
             s = "\n".join(s)
 
             # create setup file to compile cython code
-            su = ("from setuptools import setup\n"
+            su = ("import os.path\n"
+                  + "from setuptools import setup\n"
                   + "from Cython.Build import cythonize\n"
                   + "\n"
                   + "setup(\n"
                   + f"    name='{name}',\n"
-                  + f"    ext_modules=cythonize('{name + '.pyx'}', "
-                  + "compiler_directives={'language_level' : '3'}),\n"
+                  + f"    ext_modules=cythonize(os.path.join(os.path.dirname(__file__), '{name + '.pyx'}'), \n"
+                  +  "                          compiler_directives={'language_level' : '3'}),\n"
                   + "    zip_safe=False,\n"
                   + ")\n"
             )

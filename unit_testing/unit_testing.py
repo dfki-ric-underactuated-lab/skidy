@@ -1,5 +1,7 @@
 import unittest
 import sys
+import os
+import shutil
 from os.path import dirname
 sys.path.append(dirname(dirname(__file__)))
 import kinematics_generator.kinematics_generator as kinematics_generator
@@ -10,7 +12,7 @@ from kinematics_generator import (SE3AdjInvMatrix, SE3AdjMatrix,
                                   xyz_rpy_to_matrix)
 from sympy import Matrix, cos, sin, symbols, Identity, simplify, zeros
 import random
-
+import numpy as np
 
 
 
@@ -351,16 +353,16 @@ class abstractFKinTest():
     
 class TestFKin(abstractFKinTest, unittest.TestCase):
     @classmethod
-    def setUpClass(self):
-        prepare(self)
-        T = self.s.closed_form_kinematics_body_fixed(self.q,self.qd,self.q2d,True,False,False)
+    def setUpClass(cls):
+        prepare(cls)
+        T = cls.s.closed_form_kinematics_body_fixed(cls.q,cls.qd,cls.q2d,True,False,False)
 
 
 class TestFKin_parallel(abstractFKinTest, unittest.TestCase):
     @classmethod
-    def setUpClass(self):
-        prepare(self)
-        T = self.s.closed_form_kinematics_body_fixed(self.q,self.qd,self.q2d,True,False,True)
+    def setUpClass(cls):
+        prepare(cls)
+        T = cls.s.closed_form_kinematics_body_fixed(cls.q,cls.qd,cls.q2d,True,False,True)
 
 
 class AbstractInvDyn():
@@ -442,9 +444,9 @@ class AbstractInvDyn():
         
 class TestInvDyn(AbstractInvDyn,unittest.TestCase):
     @classmethod
-    def setUpClass(self):
-        prepare(self)
-        Q = self.s.closed_form_inv_dyn_body_fixed(self.q,self.qd,self.q2d,zeros(6,1),True,False,False)
+    def setUpClass(cls):
+        prepare(cls)
+        Q = cls.s.closed_form_inv_dyn_body_fixed(cls.q,cls.qd,cls.q2d,zeros(6,1),True,False,False)
 
 
 class TestInvDynParallel(AbstractInvDyn,unittest.TestCase):
@@ -456,8 +458,8 @@ class TestInvDynParallel(AbstractInvDyn,unittest.TestCase):
 
 class TestKinGen(unittest.TestCase):
     
-    def setUp(self):
-        self.s = kinematics_generator.SymbolicKinDyn()
+    # def setUp(self):
+        # self.s = kinematics_generator.SymbolicKinDyn()
     
     def testInertiaMatrix(self):
         self.assertEqual(
@@ -525,8 +527,13 @@ class TestKinGen(unittest.TestCase):
                     [m*c2,-m*c1,0,0,0,m]])
         )
     
-    # def testSE3Inv(self):
-    #     pass
+    def testSE3Inv(self):
+        a,x,y,z = symbols("a,x,y,z")
+        m = Matrix([[cos(a),-sin(a),0,x],
+                    [sin(a), cos(a),0,y],
+                    [0,0,1,z],
+                    [0,0,0,1]])
+        self.assertEqual(simplify(SE3Inv(m) - m.inv()), zeros(4,4))
     
     # def testSE3adMatrix(self):
     #     pass
@@ -538,8 +545,455 @@ class TestKinGen(unittest.TestCase):
     #     pass
     
     
+class TestGeneratedCode(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        prepare(cls)
+        cls.s.closed_form_kinematics_body_fixed(
+            q = cls.q, qd=cls.qd,q2d=cls.q2d,
+            simplify_expressions=True,cse_ex=False,parallel=True)
+        cls.s.closed_form_inv_dyn_body_fixed(
+            q=cls.q, qd=cls.qd, q2d=cls.q2d, WEE=zeros(6,1),
+            simplify_expressions=True,cse_ex=False,parallel=True)
+        
+        folder = os.path.join(dirname(__file__),"generated_code")
+        cls.folder = folder
+        
+        cls.s.generate_code(python=True,C=True,Matlab=True,cython=True,latex=True,
+                            folder=folder, use_global_vars=True, name="testplant")
+        
+        sys.path.append(dirname(dirname(__file__)))
+        # import generated python code
+        from generated_code.python.testplant import Testplant as Pyplant
+        # build and import generated cython code
+        import pyximport; pyximport.install(build_dir=os.path.join(folder,"cython","build"))
+        from generated_code.cython.testplant import Testplant as Cyplant
+        cls.L1 = random.random()
+        cls.L2 = random.random()
+        cls.g = 9.81
+        cls.m1 = random.random()
+        cls.m2 = random.random()
+        cls.pyplant = Pyplant(L1=cls.L1,L2=cls.L2,g=cls.g,m1=cls.m1,m2=cls.m2)
+        cls.cyplant = Cyplant(L1=cls.L1,L2=cls.L2,g=cls.g,m1=cls.m1,m2=cls.m2)
+        
+        cls.plants = [cls.pyplant, cls.cyplant]
+        
+    @classmethod
+    def tearDownClass(cls):
+        try:
+            shutil.rmtree(cls.folder)
+        except:
+            pass
+    # def testNothing(self):
+    #     self.assertEqual(2,2)
     
+    def testfkin(self):
+        q1 = random.random()
+        q2 = random.random()
+        for plant in self.plants:
+            self.assertIsNone(np.testing.assert_allclose(
+                plant.forward_kinematics(q1,q2),
+                np.array([[np.cos(q1+q2), 
+                        -np.sin(q1+q2),
+                        0,
+                        self.L2*np.cos(q1+q2)+self.L1*np.cos(q1)],
+                        [np.sin(q1+q2), 
+                        np.cos(q1+q2),
+                        0, 
+                        self.L2*np.sin(q1+q2)+self.L1*np.sin(q1)],
+                        [0,0,1,0],
+                        [0,0,0,1]])
+            ))
+        
+    def testJ(self):
+        q2 = random.random()
+        for plant in self.plants:
+            self.assertIsNone(np.testing.assert_allclose(
+                plant.system_jacobian_matrix(q2),
+                np.array([[0,0],
+                        [0,0],
+                        [1,0],
+                        [0,0],
+                        [0,0],
+                        [0,0],
+                        [0,0],
+                        [0,0],
+                        [1,1],
+                        [self.L1*np.sin(q2),0],
+                        [self.L1*np.cos(q2),0],
+                        [0,0]])
+            ))
+        
+    def testJb_ee(self):
+        q2 = random.random()
+        for plant in self.plants:
+            self.assertIsNone(np.testing.assert_allclose(
+                plant.body_jacobian_matrix_ee(q2),
+                np.array([[0,0],
+                          [0,0],
+                          [1,1],
+                          [self.L1*np.sin(q2),0],
+                          [self.L2+self.L1*np.cos(q2),self.L2],
+                          [0,0]])
+            ))
+        
+    def testJh_ee(self):
+        q1 = random.random()
+        q2 = random.random()
+        for plant in self.plants:
+            self.assertIsNone(np.testing.assert_allclose(
+                plant.hybrid_jacobian_matrix_ee(q1,q2),
+                np.array([[0,0],
+                          [0,0],
+                          [1,1],
+                          [-self.L2*np.sin(q1+q2)-self.L1*np.sin(q1),
+                          -self.L2*np.sin(q1+q2)],
+                          [self.L2*np.cos(q1+q2)+self.L1*np.cos(q1),
+                          self.L2*np.cos(q1+q2)],
+                          [0,0]])
+            ))
+        
+    def testJb(self):
+        q1 = random.random()
+        q2 = random.random()
+        for plant in self.plants:
+            self.assertIsNone(np.testing.assert_allclose(
+                plant.body_jacobian_matrix(q2),
+                np.array([[0,0],
+                          [0,0],
+                          [1,1],
+                          [self.L1*np.sin(q2),0],
+                          [self.L1*np.cos(q2),0],
+                          [0,0]])
+            ))
+        
+    def testJh(self):
+        q1 = random.random()
+        q2 = random.random()
+        for plant in self.plants:
+            self.assertIsNone(np.testing.assert_allclose(
+                plant.hybrid_jacobian_matrix(q1),
+                np.array([[0,0],
+                        [0,0],
+                        [1,1],
+                        [-self.L1*np.sin(q1),0],
+                        [self.L1*np.cos(q1),0],
+                        [0,0]])
+            ))
+    
+    def testJdot(self):
+        q1 = random.random()
+        q2 = random.random()
+        dq2 = random.random()
+        for plant in self.plants:
+            self.assertIsNone(np.testing.assert_allclose(
+                plant.system_jacobian_dot(q2,dq2),
+                np.array([[0,0],
+                        [0,0],
+                        [0,0],
+                        [0,0],
+                        [0,0],
+                        [0,0],
+                        [0,0],
+                        [0,0],
+                        [0,0],
+                        [self.L1*dq2*np.cos(q2),0],
+                        [-self.L1*dq2*np.sin(q2),0],
+                        [0,0]])
+            ))
+    
+    def testVbd_BFn(self):
+        q1 = random.random()
+        q2 = random.random()
+        dq1 = random.random()
+        dq2 = random.random()
+        ddq1 = random.random()
+        ddq2 = random.random()
+        for plant in self.plants:
+            self.assertIsNone(np.testing.assert_allclose(
+                plant.body_acceleration(q2,dq1,dq2,ddq1,ddq2),
+                np.array([[0],
+                        [0],
+                        [ddq1+ddq2],
+                        [self.L1*(ddq1*np.sin(q2) + dq1*dq2*np.cos(q2))],
+                        [self.L1*(ddq1*np.cos(q2) - dq1*dq2*np.sin(q2))],
+                        [0]])
+            ))
+    
+    
+    def testVhd_BFn(self):
+        q1 = random.random()
+        q2 = random.random()
+        dq1 = random.random()
+        dq2 = random.random()
+        ddq1 = random.random()
+        ddq2 = random.random()
+        for plant in self.plants:
+            self.assertIsNone(np.testing.assert_allclose(
+                plant.hybrid_acceleration(q1,dq1,ddq1,ddq2),
+                np.array([[0],
+                          [0],
+                          [ddq1+ddq2],
+                          [-self.L1*(np.cos(q1)*dq1**2 + ddq1*np.sin(q1))],
+                          [-self.L1*(np.sin(q1)*dq1**2 - ddq1*np.cos(q1))],
+                          [0]])
+            ))
+    
+    def testVb_ee(self):
+        q1 = random.random()
+        q2 = random.random()
+        dq1 = random.random()
+        dq2 = random.random()
+        ddq1 = random.random()
+        ddq2 = random.random()
+        for plant in self.plants:
+            self.assertIsNone(np.testing.assert_allclose(
+                plant.body_twist_ee(q2,dq1,dq2),
+                np.array([[0],
+                          [0],
+                          [dq1+dq2],
+                          [self.L1*dq1*np.sin(q2)],
+                          [self.L2*(dq1+dq2) + self.L1*dq1*np.cos(q2)],
+                          [0]])
+                ))
+    
+    
+    def testVh_ee(self):
+        q1 = random.random()
+        q2 = random.random()
+        dq1 = random.random()
+        dq2 = random.random()
+        ddq1 = random.random()
+        ddq2 = random.random()
+        for plant in self.plants:
+            self.assertIsNone(np.testing.assert_allclose(
+                plant.hybrid_twist_ee(q1,q2,dq1,dq2),
+                np.array([[0],
+                          [0],
+                          [dq1+dq2],
+                          [- self.L2*dq1*np.sin(q1 + q2) 
+                           - self.L2*dq2*np.sin(q1 + q2) 
+                           - self.L1*dq1*np.sin(q1)],
+                          [self.L2*dq1*np.cos(q1 + q2) 
+                           + self.L2*dq2*np.cos(q1 + q2) 
+                           + self.L1*dq1*np.cos(q1)],
+                          [0]])
+                ))
+    
+    
+    def testVbd_ee(self):
+        q1 = random.random()
+        q2 = random.random()
+        dq1 = random.random()
+        dq2 = random.random()
+        ddq1 = random.random()
+        ddq2 = random.random()
+        for plant in self.plants:
+            self.assertIsNone(np.testing.assert_allclose(
+                plant.body_acceleration_ee(q2,dq1,dq2,ddq1,ddq2),
+                np.array([[0],
+                          [0],
+                          [ddq1+ddq2],
+                          [self.L1*(ddq1*np.sin(q2) + dq1*dq2*np.cos(q2))],
+                          [self.L1*(ddq1*np.cos(q2) - dq1*dq2*np.sin(q2))
+                           +self.L2*(ddq1+ddq2)],
+                          [0]])
+                ))
+        
+        
+    def testVhd_ee(self):
+        q1 = random.random()
+        q2 = random.random()
+        dq1 = random.random()
+        dq2 = random.random()
+        ddq1 = random.random()
+        ddq2 = random.random()
+        for plant in self.plants:
+            self.assertIsNone(np.testing.assert_allclose(
+                plant.hybrid_acceleration_ee(q1,q2,dq1,dq2,ddq1,ddq2),
+                np.array([[0],
+                          [0],
+                          [ddq1+ddq2],
+                          [- self.L2*dq1**2*np.cos(q1 + q2) 
+                           - self.L2*dq2**2*np.cos(q1 + q2) 
+                           - self.L1*dq1**2*np.cos(q1) 
+                           - self.L2*ddq1*np.sin(q1 + q2) 
+                           - self.L2*ddq2*np.sin(q1 + q2) 
+                           - self.L1*ddq1*np.sin(q1) 
+                           - 2*self.L2*dq1*dq2*np.cos(q1 + q2)],
+                          [self.L2*ddq1*np.cos(q1 + q2) 
+                           - self.L2*dq2**2*np.sin(q1 + q2) 
+                           - self.L1*dq1**2*np.sin(q1) 
+                           - self.L2*dq1**2*np.sin(q1 + q2) 
+                           + self.L2*ddq2*np.cos(q1 + q2) 
+                           + self.L1*ddq1*np.cos(q1) 
+                           - 2*self.L2*dq1*dq2*np.sin(q1 + q2)],
+                          [0]])
+                ))
+    
+    
+    def testJb_ee_dot(self):
+        q1 = random.random()
+        q2 = random.random()
+        dq1 = random.random()
+        dq2 = random.random()
+        ddq1 = random.random()
+        ddq2 = random.random()
+        for plant in self.plants:
+            self.assertIsNone(np.testing.assert_allclose(
+                plant.body_jacobian_matrix_ee_dot(q2,dq2),
+                np.array([[0,0],
+                          [0,0],
+                          [0,0],
+                          [self.L1*dq2*np.cos(q2),0],
+                          [-self.L1*dq2*np.sin(q2),0],[0,0]])
+            ))
+        
+    def testJh_ee_dot(self):
+        q1 = random.random()
+        q2 = random.random()
+        dq1 = random.random()
+        dq2 = random.random()
+        ddq1 = random.random()
+        ddq2 = random.random()
+        for plant in self.plants:
+            self.assertIsNone(np.testing.assert_allclose(
+                plant.hybrid_jacobian_matrix_ee_dot(q1,q2,dq1,dq2),
+                np.array([[0,0],
+                          [0,0],
+                          [0,0],
+                          [-self.L2*dq1*np.cos(q1 + q2) 
+                           - self.L2*dq2*np.cos(q1 + q2) 
+                           - self.L1*dq1*np.cos(q1), 
+                           -self.L2*np.cos(q1 + q2)*(dq1 + dq2)],
+                          [-self.L2*dq1*np.sin(q1 + q2) 
+                           - self.L2*dq2*np.sin(q1 + q2) 
+                           - self.L1*dq1*np.sin(q1), 
+                           -self.L2*np.sin(q1 + q2)*(dq1 + dq2)],
+                          [0,0]])
+                ))
     
         
+    def testJh_dot(self):
+        q1 = random.random()
+        q2 = random.random()
+        dq1 = random.random()
+        dq2 = random.random()
+        ddq1 = random.random()
+        ddq2 = random.random()
+        for plant in self.plants:
+            self.assertIsNone(np.testing.assert_allclose(
+                plant.hybrid_jacobian_matrix_dot(q1,dq1),
+                np.array([[0,0],
+                          [0,0],
+                          [0,0],
+                          [-self.L1*dq1*np.cos(q1),0],
+                          [-self.L1*dq1*np.sin(q1),0],
+                          [0,0]])
+                ))
+    
+    def testJb_dot(self):
+        q1 = random.random()
+        q2 = random.random()
+        dq1 = random.random()
+        dq2 = random.random()
+        ddq1 = random.random()
+        ddq2 = random.random()
+        for plant in self.plants:
+            self.assertIsNone(np.testing.assert_allclose(
+                plant.body_jacobian_matrix_dot(q2,dq2),
+                np.array([[0,0],
+                          [0,0],
+                          [0,0],
+                          [self.L1*dq2*np.cos(q2),0],
+                          [-self.L1*dq2*np.sin(q2),0],
+                          [0,0]])
+            ))
+    
+    
+    # dynamics
+    def testM(self):
+        q1 = random.random()
+        q2 = random.random()
+        dq1 = random.random()
+        dq2 = random.random()
+        ddq1 = random.random()
+        ddq2 = random.random()
+        for plant in self.plants:
+            self.assertIsNone(np.testing.assert_allclose(
+                plant.generalized_mass_inertia_matrix(q2),
+                np.array([[self.L1**2*self.m1
+                           + self.L1**2*self.m2
+                           + self.L2**2*self.m2
+                           + 2*self.L1*self.L2*self.m2*np.cos(q2),
+                           self.L2*self.m2*(self.L2+self.L1*np.cos(q2))],
+                          [self.L2*self.m2*(self.L2+self.L1*np.cos(q2)),
+                           self.L2**2*self.m2]])
+                ))
+        
+    
+    def testC(self):
+        q1 = random.random()
+        q2 = random.random()
+        dq1 = random.random()
+        dq2 = random.random()
+        ddq1 = random.random()
+        ddq2 = random.random()
+        for plant in self.plants:
+            self.assertIsNone(np.testing.assert_allclose(
+                plant.coriolis_centrifugal_matrix(q2,dq1,dq2),
+                np.array([[-2*self.L1*self.L2*dq2*self.m2*np.sin(q2),
+                           -self.L1*self.L2*dq2*self.m2*np.sin(q2)],
+                          [self.L1*self.L2*self.m2*np.sin(q2)*(dq1-dq2),
+                           self.L1*self.L2*dq1*self.m2*np.sin(q2)]])
+                ))
+                              
+        
+    def testQgrav(self):
+        q1 = random.random()
+        q2 = random.random()
+        dq1 = random.random()
+        dq2 = random.random()
+        ddq1 = random.random()
+        ddq2 = random.random()
+        for plant in self.plants:
+            self.assertIsNone(np.testing.assert_allclose(
+                plant.gravity_vector(q1,q2),
+                np.array([[self.g*(self.L2*self.m2*np.cos(q1+q2)
+                           +self.L1*self.m1*np.cos(q1)
+                           +self.L1*self.m2*np.cos(q1))],
+                          [self.L2*self.g*self.m2*np.cos(q1+q2)]])
+                ))
+        
+    def testQ(self):
+        q1 = random.random()
+        q2 = random.random()
+        dq1 = random.random()
+        dq2 = random.random()
+        ddq1 = random.random()
+        ddq2 = random.random()
+        Q1 = (self.L1**2*ddq1*self.m1+self.L1**2*ddq1*self.m2 
+              + self.L2**2*ddq1*self.m2+self.L2**2*ddq2*self.m2
+              + self.L2*self.g*self.m2*np.cos(q1+q2)
+              + self.L1*self.g*self.m1*np.cos(q1)
+              + self.L1*self.g*self.m2*np.cos(q1)
+              - self.L1*self.L2*dq2**2*self.m2*np.sin(q2)
+              + 2*self.L1*self.L2*ddq1*self.m2*np.cos(q2)
+              + self.L1*self.L2*ddq2*self.m2*np.cos(q2)
+              - 2*self.L1*self.L2*dq1*dq2*self.m2*np.sin(q2))
+        
+        Q2 = self.L2*self.m2*(self.L1*np.sin(q2)*dq1**2
+                              + self.L2*ddq1
+                              + self.L2*ddq2
+                              + self.g*np.cos(q1+q2)
+                              + self.L1*ddq1*np.cos(q2))       
+        for plant in self.plants:
+            self.assertIsNone(np.testing.assert_allclose(
+                plant.inverse_dynamics(q1,q2,dq1,dq2,ddq1,ddq2),
+                np.array([[Q1],[Q2]])
+            ))
+    
+    
+    
 if __name__ == "__main__":
     unittest.main()
