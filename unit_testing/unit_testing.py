@@ -13,6 +13,7 @@ from kinematics_generator import (SE3AdjInvMatrix, SE3AdjMatrix,
 from sympy import Matrix, cos, sin, symbols, Identity, simplify, zeros
 import random
 import numpy as np
+from oct2py import octave
 
 
 
@@ -562,7 +563,6 @@ class TestGeneratedCode(unittest.TestCase):
         cls.s.generate_code(python=True,C=True,Matlab=True,cython=True,latex=True,
                             folder=folder, use_global_vars=True, name="testplant")
         
-        sys.path.append(dirname(dirname(__file__)))
         # import generated python code
         from generated_code.python.testplant import Testplant as Pyplant
         # build and import generated cython code
@@ -576,7 +576,10 @@ class TestGeneratedCode(unittest.TestCase):
         cls.pyplant = Pyplant(L1=cls.L1,L2=cls.L2,g=cls.g,m1=cls.m1,m2=cls.m2)
         cls.cyplant = Cyplant(L1=cls.L1,L2=cls.L2,g=cls.g,m1=cls.m1,m2=cls.m2)
         
-        cls.plants = [cls.pyplant, cls.cyplant]
+        octave.addpath(os.path.join(folder,"matlab"))
+        cls.mplant = matlab_obj("plant", f"testplant({cls.L1},{cls.L2},{cls.g},{cls.m1},{cls.m2})")
+        
+        cls.plants = [cls.pyplant, cls.cyplant, cls.mplant]
         
     @classmethod
     def tearDownClass(cls):
@@ -993,7 +996,30 @@ class TestGeneratedCode(unittest.TestCase):
                 np.array([[Q1],[Q2]])
             ))
     
+
+class matlab_obj():
+    def __init__(self, name = "a", objdef = "") -> None:
+        """Use matlab object as python class.
+
+        Args:
+            name (str, optional): name in octave, should be unique. Defaults to "a".
+            objdef (str, optional): Class initialization as string. Defaults to "".
+        """
+        self.name = name
+        octave.eval(f"{name} = {objdef};")
     
+    def __getattr__(self, item):
+        """Maps values to attributes.
+        Only called if there *isn't* an attribute with this name
+        """
+        try:
+            def f(*args):
+                call = f"{self.name}.{item}({','.join([str(arg) for arg in args])});"
+                return octave.eval(call)
+            return f
+        except KeyError:
+            raise AttributeError(item)
     
+
 if __name__ == "__main__":
     unittest.main()

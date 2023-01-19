@@ -61,6 +61,22 @@ To install all dependencies use:
 python3 setup.py install
 ```
 
+For unit testing the following packages are required additionally:
+
+- oct2py
+
+    ```bash
+    python3 -m pip install oct2py
+    ```
+
+    This requires a working octave installation on your system.
+
+- cython
+
+    ```bash
+    python3 -m pip install cython
+    ```
+
 <!-- ## Usage
 
 The script kinematics generator contains one class `SymbolicKinDyn` which contains all needed functions.
