@@ -13,8 +13,16 @@ from kinematics_generator import (SE3AdjInvMatrix, SE3AdjMatrix,
 from sympy import Matrix, cos, sin, symbols, Identity, simplify, zeros
 import random
 import numpy as np
-from oct2py import octave
 
+try:
+    from oct2py import octave
+except (ImportError,ModuleNotFoundError):
+    octave = None
+try:
+    import cython
+except (ImportError,ModuleNotFoundError):
+    cython = None
+    
 
 
 def prepare(cls):
@@ -546,50 +554,7 @@ class TestKinGen(unittest.TestCase):
     #     pass
     
     
-class TestGeneratedCode(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
-        prepare(cls)
-        cls.s.closed_form_kinematics_body_fixed(
-            q = cls.q, qd=cls.qd,q2d=cls.q2d,
-            simplify_expressions=True,cse_ex=False,parallel=True)
-        cls.s.closed_form_inv_dyn_body_fixed(
-            q=cls.q, qd=cls.qd, q2d=cls.q2d, WEE=zeros(6,1),
-            simplify_expressions=True,cse_ex=False,parallel=True)
-        
-        folder = os.path.join(dirname(__file__),"generated_code")
-        cls.folder = folder
-        
-        cls.s.generate_code(python=True,C=True,Matlab=True,cython=True,latex=True,
-                            folder=folder, use_global_vars=True, name="testplant")
-        
-        # import generated python code
-        from generated_code.python.testplant import Testplant as Pyplant
-        # build and import generated cython code
-        import pyximport; pyximport.install(build_dir=os.path.join(folder,"cython","build"))
-        from generated_code.cython.testplant import Testplant as Cyplant
-        cls.L1 = random.random()
-        cls.L2 = random.random()
-        cls.g = 9.81
-        cls.m1 = random.random()
-        cls.m2 = random.random()
-        cls.pyplant = Pyplant(L1=cls.L1,L2=cls.L2,g=cls.g,m1=cls.m1,m2=cls.m2)
-        cls.cyplant = Cyplant(L1=cls.L1,L2=cls.L2,g=cls.g,m1=cls.m1,m2=cls.m2)
-        
-        octave.addpath(os.path.join(folder,"matlab"))
-        cls.mplant = matlab_obj("plant", f"testplant({cls.L1},{cls.L2},{cls.g},{cls.m1},{cls.m2})")
-        
-        cls.plants = [cls.pyplant, cls.cyplant, cls.mplant]
-        
-    @classmethod
-    def tearDownClass(cls):
-        try:
-            shutil.rmtree(cls.folder)
-        except:
-            pass
-    # def testNothing(self):
-    #     self.assertEqual(2,2)
-    
+class AbstractGeneratedCodeTests:    
     def testfkin(self):
         q1 = random.random()
         q2 = random.random()
@@ -996,6 +961,141 @@ class TestGeneratedCode(unittest.TestCase):
                 np.array([[Q1],[Q2]])
             ))
     
+class TestGeneratedPythonCode(AbstractGeneratedCodeTests,unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        prepare(cls)
+        
+        simplify_ex=True # necessary due to attributes in function calls
+        cse_ex=random.choice([True, False])
+        parallel=random.choice([True, False])
+                
+        
+        cls.s.closed_form_kinematics_body_fixed(
+            q = cls.q, qd=cls.qd,q2d=cls.q2d,
+            simplify_expressions=simplify_ex,cse_ex=cse_ex,parallel=parallel)
+        cls.s.closed_form_inv_dyn_body_fixed(
+            q=cls.q, qd=cls.qd, q2d=cls.q2d, WEE=zeros(6,1),
+            simplify_expressions=simplify_ex,cse_ex=cse_ex,parallel=parallel)
+        
+        folder = os.path.join(dirname(__file__),"generated_code")
+        cls.folder = folder
+        
+        cls.s.generate_code(python=True,C=False,Matlab=False,cython=False,latex=False,
+                            folder=folder, use_global_vars=True, name="testplant")
+        
+        cls.L1 = random.random()
+        cls.L2 = random.random()
+        cls.g = 9.81
+        cls.m1 = random.random()
+        cls.m2 = random.random()
+        
+        cls.plants = []
+        
+        # import generated python code
+        from generated_code.python.testplant import Testplant as Pyplant
+        cls.pyplant = Pyplant(L1=cls.L1,L2=cls.L2,g=cls.g,m1=cls.m1,m2=cls.m2)
+        cls.plants.append(cls.pyplant)
+        
+    @classmethod
+    def tearDownClass(cls):
+        try:
+            shutil.rmtree(cls.folder)
+        except:
+            pass
+
+@unittest.skipIf(cython is None, "Skip cython test as I cannot import cython")
+class TestGeneratedCythonCode(AbstractGeneratedCodeTests,unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        prepare(cls)
+        
+        simplify_ex=True # necessary due to attributes in function calls
+        cse_ex=random.choice([True, False])
+        parallel=random.choice([True, False])
+                
+        
+        cls.s.closed_form_kinematics_body_fixed(
+            q = cls.q, qd=cls.qd,q2d=cls.q2d,
+            simplify_expressions=simplify_ex,cse_ex=cse_ex,parallel=parallel)
+        cls.s.closed_form_inv_dyn_body_fixed(
+            q=cls.q, qd=cls.qd, q2d=cls.q2d, WEE=zeros(6,1),
+            simplify_expressions=simplify_ex,cse_ex=cse_ex,parallel=parallel)
+        
+        folder = os.path.join(dirname(__file__),"generated_code")
+        cls.folder = folder
+        
+        cls.s.generate_code(python=False,C=False,Matlab=False,cython=True,latex=False,
+                            folder=folder, use_global_vars=True, name="testplant")
+        
+        cls.L1 = random.random()
+        cls.L2 = random.random()
+        cls.g = 9.81
+        cls.m1 = random.random()
+        cls.m2 = random.random()
+        
+        cls.plants = []
+        
+        
+        # build and import generated cython code
+        import pyximport; pyximport.install(build_dir=os.path.join(folder,"cython","build"))
+        from generated_code.cython.testplant import Testplant as Cyplant
+        cls.cyplant = Cyplant(L1=cls.L1,L2=cls.L2,g=cls.g,m1=cls.m1,m2=cls.m2)
+        cls.plants.append(cls.cyplant)
+                
+    @classmethod
+    def tearDownClass(cls):
+        try:
+            shutil.rmtree(cls.folder)
+        except:
+            pass
+    
+@unittest.skipIf(octave is None, "Skip matlab test as I cannot import oct2py")
+class TestGeneratedMatlabCode(AbstractGeneratedCodeTests,unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        prepare(cls)
+        
+        simplify_ex=True # necessary due to attributes in function calls
+        cse_ex=random.choice([True, False])
+        parallel=random.choice([True, False])
+                
+        
+        cls.s.closed_form_kinematics_body_fixed(
+            q = cls.q, qd=cls.qd,q2d=cls.q2d,
+            simplify_expressions=simplify_ex,cse_ex=cse_ex,parallel=parallel)
+        cls.s.closed_form_inv_dyn_body_fixed(
+            q=cls.q, qd=cls.qd, q2d=cls.q2d, WEE=zeros(6,1),
+            simplify_expressions=simplify_ex,cse_ex=cse_ex,parallel=parallel)
+        
+        folder = os.path.join(dirname(__file__),"generated_code")
+        cls.folder = folder
+        
+        cls.s.generate_code(python=False,C=False,Matlab=True,cython=False,latex=False,
+                            folder=folder, use_global_vars=True, name="testplant")
+        
+        cls.L1 = random.random()
+        cls.L2 = random.random()
+        cls.g = 9.81
+        cls.m1 = random.random()
+        cls.m2 = random.random()
+        
+        cls.plants = []
+                
+        octave.addpath(os.path.join(folder,"matlab"))
+        cls.mplant = matlab_obj("plant", f"testplant({cls.L1},{cls.L2},{cls.g},{cls.m1},{cls.m2})")
+        cls.plants.append(cls.mplant)
+                
+    @classmethod
+    def tearDownClass(cls):
+        try:
+            shutil.rmtree(cls.folder)
+        except:
+            pass
+
+
+
+
 
 class matlab_obj():
     def __init__(self, name = "a", objdef = "") -> None:

@@ -61,7 +61,7 @@ To install all dependencies use:
 python3 setup.py install
 ```
 
-For unit testing the following packages are required additionally:
+For unit testing the following packages are additionally recommended:
 
 - oct2py
 
@@ -69,7 +69,12 @@ For unit testing the following packages are required additionally:
     python3 -m pip install oct2py
     ```
 
-    This requires a working octave installation on your system.
+    This requires a working octave installation on your system:
+    Install on ubuntu with:
+
+    ```bash
+    sudo apt install octave
+    ```
 
 - cython
 
@@ -921,7 +926,7 @@ URDF files are currently only supported in combination with a python script. But
 
 1. the URDF path
 2. the gravity vector
-3. end-effector configruation w.r.t. last link body fixed frame in the chain
+3. end-effector configuration w.r.t. last link body fixed frame in the chain
 
 To generate the python template file use:
 
@@ -944,7 +949,7 @@ import sympy
 # Define symbols:
 lee = sympy.symbols('lee', real=True, const=True)
 
-urdfpath = '/path/to/urdf' # TODO: change me!
+urdfpath = '/path/to/robot.urdf' # TODO: change me!
 
 # gravity vector
 gravity = sympy.Matrix([0,0,g])
@@ -1016,7 +1021,7 @@ Create symbolic variables which can be used in the equations for the robot defin
 ---
 
 ```python
-urdfpath = '/path/to/urdf' # TODO: change me!
+urdfpath = '/path/to/robot.urdf' # TODO: change me!
 ```
 
 Enter the path to your URDF file here.
