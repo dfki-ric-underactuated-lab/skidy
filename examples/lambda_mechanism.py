@@ -1,6 +1,6 @@
 from sympy import symbols, Matrix, Identity
-from kinematics_generator.kinematics_generator import SymbolicKinDyn as skd
-from kinematics_generator.kinematics_generator import transformation_matrix, mass_matrix_mixed_data
+from skidy import SymbolicKinDyn as skd
+from skidy import transformation_matrix, mass_matrix_mixed_data
 
 # Declaration of symbolic variables
 q1, q2, q3 = symbols("q1 q2 q3")

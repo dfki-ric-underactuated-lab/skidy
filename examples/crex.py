@@ -1,4 +1,4 @@
-from kinematics_generator.kinematics_generator import SymbolicKinDyn, mass_matrix_mixed_data, inertia_matrix
+from skidy. import SymbolicKinDyn, mass_matrix_mixed_data, inertia_matrix
 from sympy import symbols, Matrix, Identity
 
 skd = SymbolicKinDyn()

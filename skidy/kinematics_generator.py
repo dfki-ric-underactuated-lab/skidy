@@ -21,7 +21,7 @@ from sympy.simplify.fu import fu
 from sympy.utilities.codegen import codegen
 from urdfpy import URDF, matrix_to_xyz_rpy
 
-from kinematics_generator.matrices import (SE3AdjInvMatrix, SE3AdjMatrix,
+from skidy.matrices import (SE3AdjInvMatrix, SE3AdjMatrix,
                                            SE3adMatrix, SE3Exp, SE3Inv, SO3Exp,
                                            generalized_vectors, inertia_matrix,
                                            mass_matrix_mixed_data,

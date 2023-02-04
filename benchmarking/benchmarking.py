@@ -1,4 +1,4 @@
-from kinematics_generator.parser import robot_from_yaml
+from skidy.parser import robot_from_yaml
 import time
 import os
 import matplotlib.pyplot as plt

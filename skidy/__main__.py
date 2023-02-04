@@ -1,8 +1,8 @@
 import os
 import sys
 import argparse
-from kinematics_generator.kinematics_generator import SymbolicKinDyn
-from kinematics_generator.parser import (
+from skidy import SymbolicKinDyn
+from skidy.parser import (
     robot_from_yaml, generate_template_yaml,
     robot_from_json, generate_template_json,
     robot_from_urdf, generate_template_python 
@@ -11,7 +11,7 @@ from kinematics_generator.parser import (
 
 def main():
     parser = argparse.ArgumentParser(
-        prog="python -m kinematics_generator",
+        prog="python -m skidy",
         description="Symbolic kinematics and dynamics model generation using Equations of Motion in closed form.",
     )
     # TODO: add urdf to description as soon as supported.

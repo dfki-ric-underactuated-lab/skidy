@@ -1,5 +1,5 @@
 from sympy import symbols, Matrix, Identity
-from kinematics_generator.kinematics_generator import SymbolicKinDyn, mass_matrix_mixed_data, transformation_matrix
+from skidy import SymbolicKinDyn, mass_matrix_mixed_data, transformation_matrix
 
 
 # Declaration of symbolic variables

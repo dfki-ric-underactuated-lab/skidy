@@ -1,4 +1,4 @@
-# python symbolic kinematics and dynamics
+# SKiDy - symbolic kinematics and dynamics generator
 
 - [1. Install](#1-install)
 - [2. Usage](#2-usage)
@@ -137,14 +137,14 @@ There is a function to generate a **template YAML file** in which it is easy to 
 To generate your robot template use
 
 ```bash
-python3 -m kinematics_generator --please [options] new_filename.yaml
+python3 -m skidy --please [options] new_filename.yaml
 ```
 
-or the python function `kinematics_generator.generate_template_yaml(path, structure)`.
+or the python function `skidy.generate_template_yaml(path, structure)`.
 
 For [options] the option `--structure` is highly recommended. There you can define which joint types to use in the template. E.g. use `--structure 'rrp'` for a robot which has two revolute joints followed by one prismatic joint.
 
-The command `python3 -m kinematics_generator --please --structure 'rp' my_robot_template.yaml` creates the following output file:
+The command `python3 -m skidy --please --structure 'rp' my_robot_template.yaml` creates the following output file:
 
 ```yaml
 ---
@@ -459,7 +459,7 @@ Mass-inertia matrices of all links. For the definition you have the following sy
 To start the code generation process use:
 
 ```bash
-python3 -m kinematics_generator [options] path/to/robot.yaml
+python3 -m skidy [options] path/to/robot.yaml
 ```
 
 In the options you have to specify what kind of code (python `-p`, Matlab `-m`, C `-C`, latex `-l`) you'd like to generate and whether the equations should be simplified `-s`.
@@ -467,7 +467,7 @@ In the options you have to specify what kind of code (python `-p`, Matlab `-m`, 
 Use
 
 ```bash
-python3 -m kinematics_generator -h
+python3 -m skidy -h
 ```
 
 to get a description of all available options.
@@ -478,24 +478,24 @@ As for YAML and JSON there is a function to auto-generate a **python template fi
 To generate your robot template use
 
 ```bash
-python3 -m kinematics_generator --please [options] new_filename.py
+python3 -m skidy --please [options] new_filename.py
 ```
 
-or the python function `kinematics_generator.generate_template_python(path, structure)`.
+or the python function `skidy.generate_template_python(path, structure)`.
 
 For [options] the option `--structure` is highly recommended. There you can define which joint types to use in the template. E.g. use `--structure 'rrp'` for a robot which has two revolute joints followed by one prismatic joint.
 
-The command `python3 -m kinematics_generator --please --structure 'rp' my_robot_template.py` creates the following output file:
+The command `python3 -m skidy --please --structure 'rp' my_robot_template.py` creates the following output file:
 
 ```python
-from kinematics_generator import (SymbolicKinDyn,
-                                 transformation_matrix,
-                                 mass_matrix_mixed_data,
-                                 joint_screw,
-                                 SO3Exp,
-                                 inertia_matrix,
-                                 generalized_vectors)
-from kinematics_generator.symbols import g, pi
+from skidy import (SymbolicKinDyn,
+                   transformation_matrix,
+                   mass_matrix_mixed_data,
+                   joint_screw,
+                   SO3Exp,
+                   inertia_matrix,
+                   generalized_vectors)
+from skidy.symbols import g, pi
 import sympy
 
 # Define symbols:
@@ -567,13 +567,13 @@ skd.generate_code(python=True, C=False, Matlab=False, latex=False,
 The code explained:
 
 ```python
-from kinematics_generator import (SymbolicKinDyn,
-                                 transformation_matrix,
-                                 mass_matrix_mixed_data,
-                                 joint_screw,
-                                 SO3Exp,
-                                 inertia_matrix,
-                                 generalized_vectors)
+from skidy import (SymbolicKinDyn,
+                   transformation_matrix,
+                   mass_matrix_mixed_data,
+                   joint_screw,
+                   SO3Exp,
+                   inertia_matrix,
+                   generalized_vectors)
 ```
 
 The class `SymbolicKinDyn` is the main object for calculating the kinematic and dynamic equations of your robot and generate the code.
@@ -587,10 +587,10 @@ Additionally, we import several helper functions for defining the matrices which
 - `generalized_vectors`: generate symbolic generalized vectors q, qd and q2d of predefined length n.
 
 ```python
-from kinematics_generator.symbols import g, pi
+from skidy.symbols import g, pi
 ```
 
-The package `kinematics_generator.symbols` includes the most common used symbolic variables, which can be used for defining your robot.
+The package `skidy.symbols` includes the most common used symbolic variables, which can be used for defining your robot.
 
 ```python
 import sympy
@@ -611,7 +611,7 @@ Iyz1, Iyz2 = sympy.symbols('Iyz1 Iyz2', real=True, const=True)
 Izz1, Izz2 = sympy.symbols('Izz1 Izz2', real=True, const=True)
 ```
 
-Create symbolic variables which can be used in the equations for the robot definition later. The most common symbols are also already present in the `kinematics_generator.symbols` package and may be imported from there instead.
+Create symbolic variables which can be used in the equations for the robot definition later. The most common symbols are also already present in the `skidy.symbols` package and may be imported from there instead.
 
 ---
 
@@ -721,7 +721,7 @@ The body reference configuration is a list of SE(3) transformation matrices. To 
     body_ref_config.append(xyz_rpy_to_matrix([0, 0, L1, 0, pi/2, 0]))
     ```
 
-    Note that you have to import the function using `from kinematics_generator import xyz_rpy_to_matrix`.
+    Note that you have to import the function using `from skidy import xyz_rpy_to_matrix`.
 
 6. Use roll pitch yaw (rpy) euler angles to define rotation:
 
@@ -734,7 +734,7 @@ The body reference configuration is a list of SE(3) transformation matrices. To 
     )
     ```
 
-    Note that you have to import the function using `from kinematics_generator import rpy_to_matrix`.
+    Note that you have to import the function using `from skidy import rpy_to_matrix`.
 
 7. Use quaternion [w,x,y,z] to define rotation:
 
@@ -747,7 +747,7 @@ The body reference configuration is a list of SE(3) transformation matrices. To 
     )
     ```
 
-    Note that you have to import the function using `from kinematics_generator import quaternion_to_matrix`.
+    Note that you have to import the function using `from skidy import quaternion_to_matrix`.
 
 ---
 
@@ -829,7 +829,7 @@ Mass-inertia matrices of all links. For the definition you have the following sy
                   [ 0, 0,I1]])
     ```
 
-    Note that you have to import the function using `from kinematics_generator import symbolic_inertia_matrix`.
+    Note that you have to import the function using `from skidy import symbolic_inertia_matrix`.
 
 ---
 
@@ -931,19 +931,19 @@ URDF files are currently only supported in combination with a python script. But
 To generate the python template file use:
 
 ```bash
-python -m kinematics_generator --please --urdf my_urdf_template.py
+python -m skidy --please --urdf my_urdf_template.py
 ```
 
-or the python function `kinematics_generator.generate_template_python(path, urdf=True)`.
+or the python function `skidy.generate_template_python(path, urdf=True)`.
 
 This generates the following output:
 
 ```python
-from kinematics_generator import (SymbolicKinDyn,
-                                 transformation_matrix,
-                                 SO3Exp,
-                                 generalized_vectors)
-from kinematics_generator.symbols import g, pi
+from skidy import (SymbolicKinDyn,
+                   transformation_matrix,
+                   SO3Exp,
+                   generalized_vectors)
+from skidy.symbols import g, pi
 import sympy
 
 # Define symbols:
@@ -984,10 +984,10 @@ skd.generate_code(python=True, C=False, Matlab=False, latex=False,
 The code explained:
 
 ```python
-from kinematics_generator import (SymbolicKinDyn,
-                                 transformation_matrix,
-                                 SO3Exp,
-                                 generalized_vectors)
+from skidy import (SymbolicKinDyn,
+                   transformation_matrix,
+                   SO3Exp,
+                   generalized_vectors)
 ```
 
 The class `SymbolicKinDyn` is the main object for calculating the kinematic and dynamic equations of your robot and generate the code.
@@ -998,10 +998,10 @@ Additionally, we import several helper functions for defining the matrices which
 - `generalized_vectors`: generate symbolic generalized vectors q, qd and q2d of predefined length n.
 
 ```python
-from kinematics_generator.symbols import g, pi
+from skidy.symbols import g, pi
 ```
 
-The package `kinematics_generator.symbols` includes the most common used symbolic variables, which can be used for defining your robot.
+The package `skidy.symbols` includes the most common used symbolic variables, which can be used for defining your robot.
 
 ```python
 import sympy
@@ -1016,7 +1016,7 @@ The whole library used sympy objects for all symbolic equations etc. Hence, we n
 lee = sympy.symbols('lee', real=True, const=True)
 ```
 
-Create symbolic variables which can be used in the equations for the robot definition later. The most common symbols are also already present in the `kinematics_generator.symbols` package and may be imported from there instead.
+Create symbolic variables which can be used in the equations for the robot definition later. The most common symbols are also already present in the `skidy.symbols` package and may be imported from there instead.
 
 ---
 

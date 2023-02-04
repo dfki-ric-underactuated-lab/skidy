@@ -1,7 +1,7 @@
 import yaml
 import json
 from typing import Union, Iterable
-from kinematics_generator import (SymbolicKinDyn, joint_screw, 
+from skidy import (SymbolicKinDyn, joint_screw, 
                                  symbolic_inertia_matrix, mass_matrix_mixed_data, 
                                  SO3Exp, transformation_matrix, inertia_matrix,
                                  quaternion_to_matrix, xyz_rpy_to_matrix,
@@ -16,7 +16,7 @@ def robot_from_yaml(path: str) -> SymbolicKinDyn:
         path (str): Path to yaml file.
 
     Returns:
-        kinematics_generator.SymbolicKinDyn object.
+        skidy.SymbolicKinDyn object.
     """
     with open(path, "r") as stream:
         y = yaml.safe_load(stream)
@@ -29,7 +29,7 @@ def robot_from_json(path: str) -> SymbolicKinDyn:
         path (str): Path to json file.
 
     Returns:
-        kinematics_generator.SymbolicKinDyn object.
+        skidy.SymbolicKinDyn object.
     """
     with open(path, "r") as stream:
         y = json.load(stream)
@@ -76,7 +76,7 @@ def dict_parser(d: dict) -> SymbolicKinDyn:
         ValueError: Unexpected entry.
 
     Returns:
-        kinematics_generator.SymbolicKinDyn object.
+        skidy.SymbolicKinDyn object.
     """
     d = parse_hierarchical_expr(d, include_keys={"mass", "index", "Ixx", "Ixy", "Ixz", "Iyy", "Ixz", "Izz"})
     
@@ -381,18 +381,18 @@ def generate_template_python(path:str="edit_me.py", structure:str=None, dof:int=
     elif dof:
         structure = "r"*dof
     
-    p = ["from kinematics_generator import (SymbolicKinDyn,"]
-    p.append("                                 transformation_matrix,")
+    p = ["from skidy import (SymbolicKinDyn,"]
+    p.append("                   transformation_matrix,")
     if not urdf:
-        p.append("                                 mass_matrix_mixed_data,")
-        p.append("                                 joint_screw,")
-        p.append("                                 inertia_matrix,")
-    p.append("                                 SO3Exp,")
-    p.append("                                 generalized_vectors)")
-    p.append("from kinematics_generator.symbols import g, pi")
+        p.append("                   mass_matrix_mixed_data,")
+        p.append("                   joint_screw,")
+        p.append("                   inertia_matrix,")
+    p.append("                   SO3Exp,")
+    p.append("                   generalized_vectors)")
+    p.append("from skidy.symbols import g, pi")
     p.append("import sympy")
     p.append("")
-    p.append("# Define symbols: (Hint: you can import the most common use symbols from kinematics_generator.symbols instead)")
+    p.append("# Define symbols: (Hint: you can import the most common use symbols from skidy.symbols instead)")
     if not urdf:
         p.append(f"{'m'+ ', m'.join(str(i) for i in range(1, dof+1))} = sympy.symbols('{'m'+ ' m'.join(str(i) for i in range(1, dof+1))}', real=True, const=True)")
         p.append(f"{'Ixx'+ ', Ixx'.join(str(i) for i in range(1, dof+1))} = sympy.symbols('{'Ixx'+ ' Ixx'.join(str(i) for i in range(1, dof+1))}', real=True, const=True)")

@@ -1,5 +1,5 @@
 from sympy import symbols, Matrix, Identity, init_printing
-from kinematics_generator.kinematics_generator import SymbolicKinDyn, mass_matrix_mixed_data, transformation_matrix, inertia_matrix
+from skidy import SymbolicKinDyn, mass_matrix_mixed_data, transformation_matrix, inertia_matrix
 
 
 init_printing()

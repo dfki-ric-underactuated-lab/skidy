@@ -4,8 +4,8 @@ import os
 import shutil
 from os.path import dirname
 sys.path.append(dirname(dirname(__file__)))
-import kinematics_generator.kinematics_generator as kinematics_generator
-from kinematics_generator import (SE3AdjInvMatrix, SE3AdjMatrix, 
+import skidy
+from skidy import (SE3AdjInvMatrix, SE3AdjMatrix, 
                                   SE3adMatrix, SE3Exp, SE3Inv, SO3Exp, 
                                   inertia_matrix, transformation_matrix, 
                                   mass_matrix_mixed_data, rpy_to_matrix, 
@@ -26,7 +26,7 @@ except (ImportError,ModuleNotFoundError):
 delete_generated_code = True # False deactivates cleanup functions
 
 def prepare(cls):
-    cls.s = kinematics_generator.SymbolicKinDyn()
+    cls.s = skidy.SymbolicKinDyn()
     cls.q1, cls.q2 = symbols("q1 q2")
     cls.dq1, cls.dq2 = symbols("dq1 dq2")
     cls.ddq1, cls.ddq2 = symbols("ddq1 ddq2")
@@ -468,7 +468,7 @@ class TestInvDynParallel(AbstractInvDyn,unittest.TestCase):
 class TestKinGen(unittest.TestCase):
     
     # def setUp(self):
-        # self.s = kinematics_generator.SymbolicKinDyn()
+        # self.s = skidy.SymbolicKinDyn()
     
     def testInertiaMatrix(self):
         self.assertEqual(
