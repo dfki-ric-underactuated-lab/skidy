@@ -17,13 +17,13 @@ import numpy as np
 try:
     from oct2py import octave
 except (ImportError,ModuleNotFoundError):
-    octave = None
+    octave = None # skip octave tests
 try:
     import cython
 except (ImportError,ModuleNotFoundError):
-    cython = None
+    cython = None  # skip cython tests
     
-
+delete_generated_code = True # False deactivates cleanup functions
 
 def prepare(cls):
     cls.s = kinematics_generator.SymbolicKinDyn()
@@ -996,7 +996,8 @@ class TestGeneratedPythonCode(AbstractGeneratedCodeTests,unittest.TestCase):
         from generated_code.python.testplant import Testplant as Pyplant
         cls.pyplant = Pyplant(L1=cls.L1,L2=cls.L2,g=cls.g,m1=cls.m1,m2=cls.m2)
         cls.plants.append(cls.pyplant)
-        
+    
+    @unittest.skipIf(not delete_generated_code,"selected to keep generated code")    
     @classmethod
     def tearDownClass(cls):
         try:
@@ -1043,6 +1044,7 @@ class TestGeneratedCythonCode(AbstractGeneratedCodeTests,unittest.TestCase):
         cls.cyplant = Cyplant(L1=cls.L1,L2=cls.L2,g=cls.g,m1=cls.m1,m2=cls.m2)
         cls.plants.append(cls.cyplant)
                 
+    @unittest.skipIf(not delete_generated_code,"selected to keep generated code")    
     @classmethod
     def tearDownClass(cls):
         try:
@@ -1083,9 +1085,10 @@ class TestGeneratedMatlabCode(AbstractGeneratedCodeTests,unittest.TestCase):
         cls.plants = []
                 
         octave.addpath(os.path.join(folder,"matlab"))
-        cls.mplant = matlab_obj("plant", f"testplant({cls.L1},{cls.L2},{cls.g},{cls.m1},{cls.m2})")
+        cls.mplant = MatlabClass(f"testplant({cls.L1},{cls.L2},{cls.g},{cls.m1},{cls.m2})")
         cls.plants.append(cls.mplant)
                 
+    @unittest.skipIf(not delete_generated_code,"selected to keep generated code")    
     @classmethod
     def tearDownClass(cls):
         try:
@@ -1097,29 +1100,26 @@ class TestGeneratedMatlabCode(AbstractGeneratedCodeTests,unittest.TestCase):
 
 
 
-class matlab_obj():
-    def __init__(self, name = "a", objdef = "") -> None:
+class MatlabClass():
+    _counter = 0
+    def __init__(self, objdef = "") -> None:
         """Use matlab object as python class.
 
         Args:
-            name (str, optional): name in octave, should be unique. Defaults to "a".
             objdef (str, optional): Class initialization as string. Defaults to "".
         """
-        self.name = name
-        octave.eval(f"{name} = {objdef};")
+        MatlabClass._counter += 1
+        self.name = f"object_for_python{MatlabClass._counter}"
+        octave.eval(f"{self.name} = {objdef};")
     
     def __getattr__(self, item):
         """Maps values to attributes.
         Only called if there *isn't* an attribute with this name
         """
-        try:
-            def f(*args):
-                call = f"{self.name}.{item}({','.join([str(arg) for arg in args])});"
-                return octave.eval(call)
-            return f
-        except KeyError:
-            raise AttributeError(item)
-    
+        def f(*args):
+            call = f"{self.name}.{item}({','.join([str(arg) for arg in args])});"
+            return octave.eval(call)
+        return f    
 
 if __name__ == "__main__":
     unittest.main()

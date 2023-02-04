@@ -137,14 +137,14 @@ There is a function to generate a **template YAML file** in which it is easy to 
 To generate your robot template use
 
 ```bash
-python3 analyze_my_robot.py --please [options] new_filename.yaml
+python3 -m kinematics_generator --please [options] new_filename.yaml
 ```
 
 or the python function `kinematics_generator.generate_template_yaml(path, structure)`.
 
 For [options] the option `--structure` is highly recommended. There you can define which joint types to use in the template. E.g. use `--structure 'rrp'` for a robot which has two revolute joints followed by one prismatic joint.
 
-The command `python3 analyze_my_robot.py --please --structure 'rp' my_robot_template.yaml` creates the following output file:
+The command `python3 -m kinematics_generator --please --structure 'rp' my_robot_template.yaml` creates the following output file:
 
 ```yaml
 ---
@@ -459,7 +459,7 @@ Mass-inertia matrices of all links. For the definition you have the following sy
 To start the code generation process use:
 
 ```bash
-python3 analyze_my_robot.py [options] path/to/robot.yaml
+python3 -m kinematics_generator [options] path/to/robot.yaml
 ```
 
 In the options you have to specify what kind of code (python `-p`, Matlab `-m`, C `-C`, latex `-l`) you'd like to generate and whether the equations should be simplified `-s`.
@@ -467,7 +467,7 @@ In the options you have to specify what kind of code (python `-p`, Matlab `-m`, 
 Use
 
 ```bash
-python3 analyze_my_robot.py -h
+python3 -m kinematics_generator -h
 ```
 
 to get a description of all available options.
@@ -478,14 +478,14 @@ As for YAML and JSON there is a function to auto-generate a **python template fi
 To generate your robot template use
 
 ```bash
-python3 analyze_my_robot.py --please [options] new_filename.py
+python3 -m kinematics_generator --please [options] new_filename.py
 ```
 
 or the python function `kinematics_generator.generate_template_python(path, structure)`.
 
 For [options] the option `--structure` is highly recommended. There you can define which joint types to use in the template. E.g. use `--structure 'rrp'` for a robot which has two revolute joints followed by one prismatic joint.
 
-The command `python3 analyze_my_robot.py --please --structure 'rp' my_robot_template.py` creates the following output file:
+The command `python3 -m kinematics_generator --please --structure 'rp' my_robot_template.py` creates the following output file:
 
 ```python
 from kinematics_generator import (SymbolicKinDyn,
@@ -931,7 +931,7 @@ URDF files are currently only supported in combination with a python script. But
 To generate the python template file use:
 
 ```bash
-python analyze_my_robot.py --please --urdf my_urdf_template.py
+python -m kinematics_generator --please --urdf my_urdf_template.py
 ```
 
 or the python function `kinematics_generator.generate_template_python(path, urdf=True)`.
