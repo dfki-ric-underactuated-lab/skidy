@@ -1,4 +1,4 @@
-# SKiDy - symbolic kinematics and dynamics generator
+# skidy - symbolic kinematics and dynamics generator
 
 - [1. Install](#1-install)
 - [2. Usage](#2-usage)
