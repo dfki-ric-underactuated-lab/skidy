@@ -19,13 +19,15 @@ from sympy.printing.numpy import NumPyPrinter
 from sympy.simplify.cse_main import numbered_symbols
 from sympy.simplify.fu import fu
 from sympy.utilities.codegen import codegen
-from urdfpy import URDF, matrix_to_xyz_rpy
+# from urdfpy import URDF
+from urdf_parser_py.urdf import URDF
+
 
 from skidy.matrices import (SE3AdjInvMatrix, SE3AdjMatrix,
                                            SE3adMatrix, SE3Exp, SE3Inv, SO3Exp,
                                            generalized_vectors, inertia_matrix,
                                            mass_matrix_mixed_data,
-                                           xyz_rpy_to_matrix)
+                                           xyz_rpy_to_matrix, matrix_to_xyz_rpy)
 
 
 class _AbstractCodeGeneration():
@@ -2153,6 +2155,172 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
                 return num
         return ex
         
+    # # using urdfpy
+    # def load_from_urdf(self, path: str, symbolic: bool=True, 
+    #                    cse_ex: bool=False, simplify_numbers: bool=True,  
+    #                    tolerance: float=0.0001, max_denominator: int=9) -> None:
+    #     """Load robot from urdf.
+
+    #     Args:
+    #         path (str): path to URDF.
+    #         symbolic (bool, optional): 
+    #             generate symbols for numeric values. 
+    #             Defaults to True.
+    #         cse_ex (bool, optional): 
+    #             use common subexpression elimination. Defaults to False.
+    #         simplify_numbers (bool, optional): 
+    #             Use eg. pi/2 instead of 1.5708. Defaults to True.
+    #         tolerance (float, optional): 
+    #             tolerance for simplify_numbers. Defaults to 0.0001.
+    #         max_denominator (int, optional): 
+    #             Maximum denominator to use for simplify numbers to avoid
+    #             values like 13/153. Use 0 to deactivate. Defaults to 9.
+
+    #     Raises:
+    #         NotImplementedError: supports only the joint types 
+    #             "revolute", "continuous" and "prismatic".
+    #     """
+    #     robot = URDF.load(path)
+    #     self.B = []
+    #     self.X = []
+    #     self._create_topology_lists(robot)
+    #     fixed_origin = None
+    #     fixed_links = []
+    #     DOF = 0
+    #     xyz_rpy_syms = []
+    #     for joint in robot.joints:
+    #         if joint.joint_type in ["revolute", "continuous", "prismatic"]:
+    #             DOF += 1
+    #         elif joint.joint_type in ["fixed"]:
+    #             pass
+    #         else:
+    #             raise NotImplementedError(
+    #                 "Joint type '" + joint.joint_type+"' not implemented yet!")
+
+    #     ji = 0  # joint index of used joints
+    #     jia = 0  # joint index of all joints (fixed included)
+    #     joint_origins = []
+    #     for joint in robot.joints:
+    #         name = joint.name
+    #         origin = Matrix(joint.origin)
+    #         if symbolic:
+    #             xyz_rpy = matrix_to_xyz_rpy(joint.origin)
+    #             xyz_rpy_syms.append(symbols(
+    #                 " ".join([name+"_%s" % s for s in ["x", "y", "z", "roll", "pitch", "yar"]])))
+    #             xyzrpylist = []
+    #             if simplify_numbers:
+    #                 for i in range(6):
+    #                     if (self._nsimplify(xyz_rpy[i], 
+    #                                        tolerance=tolerance, 
+    #                                        max_denominator=max_denominator) 
+    #                         in [0, -1, 1, pi, -pi, pi/2, -pi/2, 3*pi/2, -3*pi/2]
+    #                         ):
+    #                         xyzrpylist.append(
+    #                             self._nsimplify(xyz_rpy[i], tolerance=tolerance,
+    #                                             max_denominator=max_denominator))
+    #                     else:
+    #                         xyzrpylist.append(xyz_rpy_syms[jia][i])
+    #                         self.assignment_dict[xyz_rpy_syms[jia]
+    #                                              [i]] = xyz_rpy[i]
+    #             else:
+    #                 for i in range(6):
+    #                     if xyz_rpy[i] == 0:
+    #                         xyzrpylist.append(0)
+    #                     elif xyz_rpy[i] == 1:
+    #                         xyzrpylist.append(1)
+    #                     elif xyz_rpy[i] == -1:
+    #                         xyzrpylist.append(-1)
+    #                     else:
+    #                         xyzrpylist.append(xyz_rpy_syms[jia][i])
+    #                         self.assignment_dict[xyz_rpy_syms[jia]
+    #                                              [i]] = xyz_rpy[i]
+    #             origin = xyz_rpy_to_matrix(xyzrpylist)
+    #             if cse_ex:
+    #                 origin = self._cse_expression(origin)
+    #         elif simplify_numbers:
+    #             for i in range(4):
+    #                 for j in range(4):
+    #                     origin[i, j] = self._nsimplify(
+    #                         origin[i, j], [pi], tolerance=tolerance,
+    #                         max_denominator=max_denominator)
+    #         joint_origins.append(origin)
+    #         if joint.joint_type in ["revolute", "continuous", "prismatic"]:
+    #             axis = Matrix(joint.axis)
+    #             if simplify_numbers:
+    #                 for i in range(3):
+    #                     axis[i] = self._nsimplify(axis[i], [pi], tolerance=tolerance,
+    #                                         max_denominator=max_denominator)
+    #             if fixed_origin:
+    #                 origin *= fixed_origin
+    #                 fixed_origin = None
+    #             self.B.append(Matrix(origin))
+
+    #             if joint.joint_type in ["revolute", "continuous"]:
+    #                 self.X.append(Matrix(axis).col_join(Matrix([0, 0, 0])))
+    #             else:
+    #                 self.X.append(Matrix(Matrix([0, 0, 0])).col_join(axis))
+    #             ji += 1
+    #         elif joint.joint_type == "fixed":
+    #             if fixed_origin:
+    #                 fixed_origin *= origin
+    #             else:
+    #                 fixed_origin = origin
+    #             fixed_links.append((joint.parent, joint.child))
+    #         jia += 1
+
+    #     self.Mb = []
+    #     i = 0
+    #     first_non_fixed = 1
+    #     for link in robot.links:
+    #         name = link.name
+    #         # ignore base link
+    #         if i < first_non_fixed:
+    #             if name in [x[1] for x in fixed_links]:
+    #                 first_non_fixed += 1
+    #             i += 1
+    #             continue
+    #         inertia = Matrix(link.inertial.inertia)
+    #         mass = link.inertial.mass
+    #         inertiaorigin = Matrix(link.inertial.origin)
+    #         if symbolic:
+    #             I_syms = symbols("Ixx_%s Ixy_%s Ixz_%s Iyy_%s Iyz_%s Izz_%s" % (
+    #                 name, name, name, name, name, name))
+    #             c_syms = symbols("cx_%s cy_%s cz_%s" % (name, name, name))
+    #             I = inertia_matrix(*I_syms)
+    #             m = symbols("m_%s" % name)
+    #             cg = Matrix([*c_syms])
+    #         else:
+    #             if simplify_numbers:
+    #                 for i in range(4):
+    #                     for j in range(4):
+    #                         inertiaorigin[i, j] = self._nsimplify(
+    #                             inertiaorigin[i, j], [pi], tolerance=tolerance,
+    #                             max_denominator=max_denominator)
+    #                 for i in range(3):
+    #                     for j in range(3):
+    #                         inertia[i, j] = self._nsimplify(
+    #                             inertia[i, j], [pi], tolerance=tolerance,
+    #                             max_denominator=max_denominator)
+    #             I = Matrix(inertia)
+    #             m = mass
+    #             cg = Matrix(inertiaorigin[0:3, 3])
+    #         M = mass_matrix_mixed_data(m, I, cg)
+    #         if name in [x[1] for x in fixed_links]:
+    #             j = i
+    #             # transform Mass matrix
+    #             while robot.links[j].name in [x[1] for x in fixed_links]:
+    #                 M = SE3AdjInvMatrix(
+    #                     joint_origins[j-1]).T * M * SE3AdjInvMatrix(joint_origins[j-1])
+    #                 j -= 1
+    #             self.Mb[-1] += M
+    #             i += 1
+    #             continue
+    #         self.Mb.append(M)
+    #         i += 1
+
+    #     return
+
+    # using urdf_parser_py
     def load_from_urdf(self, path: str, symbolic: bool=True, 
                        cse_ex: bool=False, simplify_numbers: bool=True,  
                        tolerance: float=0.0001, max_denominator: int=9) -> None:
@@ -2176,11 +2344,12 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
         Raises:
             NotImplementedError: supports only the joint types 
                 "revolute", "continuous" and "prismatic".
-        """
-        robot = URDF.load(path)
+        """        
+        with open(path, "r") as f:
+            robot = URDF.from_xml_string(f.read())
         self.B = []
         self.X = []
-        self._create_topology_lists(robot)
+        self._create_topology_lists(robot) # TODO: check!
         fixed_origin = None
         fixed_links = []
         DOF = 0
@@ -2199,9 +2368,9 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
         joint_origins = []
         for joint in robot.joints:
             name = joint.name
-            origin = Matrix(joint.origin)
+            origin = xyz_rpy_to_matrix(joint.origin.xyz+joint.origin.rpy)
             if symbolic:
-                xyz_rpy = matrix_to_xyz_rpy(joint.origin)
+                xyz_rpy = Matrix(joint.origin.xyz+joint.origin.rpy)
                 xyz_rpy_syms.append(symbols(
                     " ".join([name+"_%s" % s for s in ["x", "y", "z", "roll", "pitch", "yar"]])))
                 xyzrpylist = []
@@ -2215,10 +2384,6 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
                             xyzrpylist.append(
                                 self._nsimplify(xyz_rpy[i], tolerance=tolerance,
                                                 max_denominator=max_denominator))
-                        # elif nsimplify(xyz_rpy[i],tolerance=tolerance) == 1:
-                            # xyzrpylist.append(1)
-                        # elif nsimplify(xyz_rpy[i],tolerance=tolerance) == -1:
-                            # xyzrpylist.append(-1)
                         else:
                             xyzrpylist.append(xyz_rpy_syms[jia][i])
                             self.assignment_dict[xyz_rpy_syms[jia]
@@ -2246,7 +2411,6 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
                             max_denominator=max_denominator)
             joint_origins.append(origin)
             if joint.joint_type in ["revolute", "continuous", "prismatic"]:
-                # origin = Matrix(joint.origin)
                 axis = Matrix(joint.axis)
                 if simplify_numbers:
                     for i in range(3):
@@ -2271,10 +2435,6 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
             jia += 1
 
         self.Mb = []
-        # I_syms = []
-        # m_syms = []
-        # I_syms = [symbols("I%dxx I%dxy I%dxz I%dyy I%dyz I%dzz"%(i,i,i,i,i,i)) for i in range(DOF)]
-        # m_syms = [symbols("m%d cx%d cy%d cz%d"%(i,i,i,i)) for i in range(DOF)]
         i = 0
         first_non_fixed = 1
         for link in robot.links:
@@ -2285,9 +2445,9 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
                     first_non_fixed += 1
                 i += 1
                 continue
-            inertia = Matrix(link.inertial.inertia)
+            inertia = Matrix(link.inertial.inertia.to_matrix())
             mass = link.inertial.mass
-            inertiaorigin = Matrix(link.inertial.origin)
+            inertiaorigin = xyz_rpy_to_matrix(link.inertial.origin.xyz+link.inertial.origin.rpy)
             if symbolic:
                 I_syms = symbols("Ixx_%s Ixy_%s Ixz_%s Iyy_%s Iyz_%s Izz_%s" % (
                     name, name, name, name, name, name))
@@ -2307,7 +2467,6 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
                             inertia[i, j] = self._nsimplify(
                                 inertia[i, j], [pi], tolerance=tolerance,
                                 max_denominator=max_denominator)
-                    # mass = nsimplify(mass, [pi], tolerance=tolerance)
                 I = Matrix(inertia)
                 m = mass
                 cg = Matrix(inertiaorigin[0:3, 3])
@@ -2324,9 +2483,6 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
                 continue
             self.Mb.append(M)
             i += 1
-
-        # for link in robot.links:
-        #     self.Mb.append(mass_matrix_mixed_data())
         return
 
     def dh_to_screw_coord(self, DH_param_table: MutableDenseMatrix) -> None:

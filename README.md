@@ -9,7 +9,6 @@
   - [2.3. URDF](#23-urdf)
 - [3. Unit testing](#3-unit-testing)
 - [4. Benchmarking](#4-benchmarking)
-- [5. Troubleshooting](#5-troubleshooting)
 
 Symbolic kinematics and dynamics model generation using Equations of Motion in closed form.
 
@@ -29,13 +28,19 @@ The project requires the following packages:
     python3 -m pip install numpy
     ```
 
-- urdfpy
+- urdf_parser_py
+
+    ```bash
+    python3 -m pip install urdf_parser_py
+    ```
+
+<!-- - urdfpy
 
     ```bash
     python3 -m pip install urdfpy
     ```
 
-    *Note:* If you have installed numpy>=1.24.0 you might need to upgrade the package networkx after installing urdfpy using `python -m pip install --upgrade networkx`. See chapter [Troubleshooting](#5-troubleshooting) for more information.
+    *Note:* If you have installed numpy>=1.24.0 you might need to upgrade the package networkx after installing urdfpy using `python -m pip install --upgrade networkx`. See chapter [Troubleshooting](#5-troubleshooting) for more information. -->
 
 - regex
 
@@ -1124,7 +1129,7 @@ simplify + cse|![1 dof: 0.56 s; 2 dof: 2.22 s; 3 dof: 12.86 s; 4 dof: 84.28 s](/
 no simplify|![1 dof: 0.74 s; 2 dof: 2.65 s; 3 dof: 11.29 s; 4 dof: 47.14 s](/benchmarking/parallel_without_simplification_without_cse.png) | ![1 dof: 0.08 s; 2 dof: 1.57 s; 3 dof: 9.51 s; 4 dof: 44.57 s](/benchmarking/serial_without_simplification_without_cse.png)
 no simplify + cse|![1 dof: 0.80 s; 2 dof: 4.50 s; 3 dof: 29.13 s; 4 dof: 161.01 s](/benchmarking/parallel_without_simplification_with_cse.png) |![1 dof: 0.08 s; 2 dof: 4.49 s; 3 dof: 37.74 s; 4 dof: 201.11 s](/benchmarking/serial_without_simplification_with_cse.png)
 
-## 5. Troubleshooting
+<!-- ## 5. Troubleshooting
 
 - **`AttributeError: module 'numpy' has no attribute 'int'`**
   
@@ -1139,4 +1144,4 @@ no simplify + cse|![1 dof: 0.80 s; 2 dof: 4.50 s; 3 dof: 29.13 s; 4 dof: 161.01 
   >  ERROR: pip's dependency resolver does not currently take into account all the packages that are installed. This behaviour is the source of the following dependency conflicts.
   urdfpy 0.0.22 requires networkx==2.2, but you have networkx 3.0 which is incompatible.
   
-  afterwards. This warning can be ignored.
+  afterwards. This warning can be ignored. -->

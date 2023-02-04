@@ -1,6 +1,6 @@
 numpy
 sympy>=1.8
-urdfpy
+urdf_parser_py
 regex
 PyYAML
 pylatex
