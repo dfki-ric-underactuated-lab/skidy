@@ -59,6 +59,7 @@ class _AbstractCodeGeneration():
 
         # set of variable symbols to use in generated functions as arguments
         self.var_syms = set()
+        self.optional_var_syms = set() # for wrenches
         
         # Value assignment
         # dict with assigned variables for code generation
@@ -170,12 +171,16 @@ class _AbstractCodeGeneration():
         if use_global_vars:
             # generate list of constant symbols
             constant_syms = self._sort_variables(
-                all_syms.difference(self.var_syms).union(self.subex_dict))
+                all_syms
+                .difference(self.var_syms)
+                .difference(self.optional_var_syms)
+                .union(self.subex_dict))
             # generate list with preassigned symbols like subexpressions
             # from common subexpression elimination
             not_assigned_syms = self._sort_variables(
                 all_syms
                 .difference(self.var_syms)
+                .difference(self.optional_var_syms)
                 .difference(self.assignment_dict)
                 .difference(self.subex_dict)
                 )
@@ -238,13 +243,17 @@ class _AbstractCodeGeneration():
             for i in range(len(expressions)):
                 var_syms = self._sort_variables(self.var_syms.intersection(
                     expressions[i].free_symbols))
+                optional_var_syms = self._sort_variables(self.optional_var_syms.intersection(
+                    expressions[i].free_symbols))
                 const_syms = self._sort_variables(
                     set(constant_syms).intersection(
                         expressions[i].free_symbols))
-                if len(var_syms) > 0:
+                if len(var_syms) > 0 or len(optional_var_syms) > 0:
                     s.append("\n    def "+names[i]+"(self, %s) -> numpy.ndarray:" % (
                         ", ".join([str(var_syms[i])+": float" 
-                                   for i in range(len(var_syms))])))
+                                   for i in range(len(var_syms))]
+                                  + [str(optional_var_syms[i])+": float=0" 
+                                   for i in range(len(optional_var_syms))])))
 
                 else:
                     s.append("\n    def "+names[i]+"(self) -> numpy.ndarray:")
@@ -351,14 +360,18 @@ class _AbstractCodeGeneration():
             for i in range(len(expressions)):
                 var_syms = self._sort_variables(self.var_syms.intersection(
                     expressions[i].free_symbols))
+                optional_var_syms = self._sort_variables(self.optional_var_syms.intersection(
+                    expressions[i].free_symbols))
                 const_syms = self._sort_variables(
                     set(constant_syms).intersection(
                         expressions[i].free_symbols))
-                if len(var_syms) > 0:
+                if len(var_syms) > 0 or len(optional_var_syms) > 0:
                     s.append(f"\n    cpdef "+names[i]+"(self, %s):" % (
                     # s.append(f"\n    cpdef np.ndarray[DTYPE_t,ndim={len(expressions[i].shape)}] "+names[i]+"(self, %s):" % (
                         ", ".join(["double "+str(var_syms[i]) 
-                                   for i in range(len(var_syms))])))
+                                   for i in range(len(var_syms))]
+                                  + ["double "+str(optional_var_syms[i])+"=0.0" 
+                                     for i in range(len(optional_var_syms))])))
 
                 else:
                     s.append("\n    cpdef "+names[i]+"(self):")
@@ -588,7 +601,7 @@ class _AbstractCodeGeneration():
                     "", m_func[0])
                 # remove unused variable symbols
                 m_func[0] = regex.sub(
-                    "(" + '|'.join([f', {str(v)}(?=\W)' for v in self.var_syms.difference(expressions[i].free_symbols)])+")",
+                    "(" + '|'.join([f', {str(v)}(?=\W)' for v in self.var_syms.union(self.optional_var_syms).difference(expressions[i].free_symbols)])+")",
                     "", m_func[0])
                 # use obj.variables defined in class parameters
                 for i in range(1, len(m_func)):
@@ -1262,7 +1275,7 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
         self.var_syms.update(q.free_symbols)
         self.var_syms.update(qd.free_symbols)
         self.var_syms.update(q2d.free_symbols)
-        self.var_syms.update(WEE.free_symbols)
+        self.optional_var_syms.update(WEE.free_symbols)
 
         self.n = len(q)
 
@@ -1759,7 +1772,7 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
         self.var_syms.update(q.free_symbols)
         self.var_syms.update(qd.free_symbols)
         self.var_syms.update(q2d.free_symbols)
-        self.var_syms.update(WEE.free_symbols)
+        self.optional_var_syms.update(WEE.free_symbols)
 
         self.n = len(q)
         self.queue_dict["subex_dict"] = Queue()
@@ -2634,12 +2647,14 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
         vars = set(vars)
         # divide into variable and constant symbols
         var_syms = self.var_syms.intersection(vars)
-        rest = list(vars.difference(var_syms))
+        optional_var_syms = self.optional_var_syms.intersection(vars)
+        rest = list(vars.difference(var_syms).difference(optional_var_syms))
         # divide variable symbols into q, dq, ddq and other variable symbols
         q = []
         dq = []
         ddq = []
         var_rest = []
+        opt_var = []
         for i in var_syms:
             if str(i).startswith("ddq"):
                 ddq.append(i)
@@ -2649,7 +2664,10 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
                 q.append(i)
             else:
                 var_rest.append(i)
-
+                
+        for i in optional_var_syms:  
+            opt_var.append(i)
+            
         def symsort(data: List[sympy.Symbol]) -> List[sympy.Symbol]:
             """Sort symbols
 
@@ -2666,6 +2684,7 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
                 + symsort(dq) 
                 + symsort(ddq) 
                 + symsort(var_rest) 
+                + symsort(opt_var) 
                 + symsort(rest))
 
     def _cse_expression(self, exp: sympy.Expr) -> sympy.Expr:
