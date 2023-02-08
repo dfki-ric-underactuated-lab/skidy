@@ -9,7 +9,7 @@ from skidy.parser import (
 )
 from skidy import __version__
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(
         prog="python -m skidy",
         description="Symbolic kinematics and dynamics model generation using Equations of Motion in closed form.",

@@ -1,0 +1,23 @@
+include \
+    LICENSE \
+    MANIFEST.in \
+    README.md \
+    pyproject.toml \
+    setup.py \
+    *.py \
+
+graft documentation
+graft examples
+graft benchmarking
+
+exclude \
+    .env* \
+    **/.git* \
+    **/.coverage \
+    **/*.graphml
+
+prune build
+prune dist
+prune **/generated_code
+prune **/__pycache__
+prune **/htmlcov

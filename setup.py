@@ -12,7 +12,9 @@ setup(
     long_description=long_description,
     long_description_content_type='text/markdown',
     # url="",
-    packages=find_packages(exclude="unit_testing"),
+    # packages=find_packages(exclude="unit_testing"),
+    packages=find_packages("src",exclude="unit_testing"),
+    package_dir={"": "src"},
     setup_requires=["numpy"],
     install_requires=[
         "numpy",

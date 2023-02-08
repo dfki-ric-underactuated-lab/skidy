@@ -2,6 +2,15 @@
 requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+"*" = ["*.png"]
+
 [project]
 name = "skidy"
 version = "0.0.1"
@@ -42,6 +51,7 @@ skidy = "skidy.__main__:main"
 # TODO: update 
 "Homepage" = "https://git.hb.dfki.de/underactuated-robotics/python_symbolic_kinematics_and_dynamics"
 
+# use `python -m bumpver update --patch` to update and commit version number in all files
 [tool.bumpver]
 current_version = "0.0.1"
 version_pattern = "MAJOR.MINOR.PATCH"
@@ -57,10 +67,5 @@ push = false
 ]
 "setup.py" = [
     "{version}",
-    # "{pep440_version}",
 ]
-# "README.md" = [
-#     "{version}",
-#     "{pep440_version}",
-# ]
 "src/skidy/__init__.py" = ["{version}"]
