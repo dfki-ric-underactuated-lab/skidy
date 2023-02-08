@@ -670,7 +670,12 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
                  Mb: List[MutableDenseMatrix]=[], 
                  parent: List[int]=[], 
                  support: List[List[int]]=[], 
-                 child: List[List[int]]=[], **kwargs) -> None:
+                 child: List[List[int]]=[], 
+                 q:MutableDenseMatrix=None, 
+                 qd: MutableDenseMatrix=None, 
+                 q2d: MutableDenseMatrix=None, 
+                 WEE: MutableDenseMatrix=zeros(6, 1),
+                 **kwargs) -> None:
         """SymbolicKinDyn
         Symbolic tool to compute equations of motion of serial chain 
         robots and autogenerate code from the calculated equations. 
@@ -717,6 +722,16 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
                 child links. Use empty list if no child link is present.
                 Only necessary for tree-like robot structures. 
                 Defaults to [].
+            q (sympy.Matrix, optional): 
+                (n,1) Generalized position vector. Defaults to None.
+            qd (sympy.Matrix, optional): 
+                (n,1) Generalized velocity vector. Defaults to None.
+            q2d (sympy.Matrix, optional): 
+                (n,1) Generalized acceleration vector. Defaults to None.
+            WEE (sympy.Matrix, optional): 
+                (6,1) WEE (t) is the time varying wrench on the EE link. 
+                Defaults to zeros(6, 1).
+            
         """
         super().__init__()
         self.n = None  # degrees of freedom
@@ -768,6 +783,12 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
         self.queue_dict = {}  
         # dict of running processes
         self.process_dict = {}  
+        
+        # generalized vectors end external forces
+        self.q = q
+        self.qd = qd
+        self.q2d = q2d
+        self.WEE = WEE
 
         
     @property
@@ -866,7 +887,10 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
         if not q or not qd or not q2d:
             if not self.n:
                 self.n = len(self.body_ref_config)
-            q, qd, q2d = generalized_vectors(self.n,self._find_start_index())
+            if not self.q or not self.qd or not self.q2d:
+                q, qd, q2d = generalized_vectors(self.n,self._find_start_index())
+            else:
+                q, qd, q2d = self.q, self.qd, self.q2d
             
         if parallel:
             self._closed_form_kinematics_body_fixed_parallel(
@@ -878,7 +902,7 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
 
     def closed_form_inv_dyn_body_fixed(
         self, q:sympy.MutableDenseMatrix=None, qd: MutableDenseMatrix=None, 
-        q2d: MutableDenseMatrix=None, WEE: MutableDenseMatrix=zeros(6, 1), 
+        q2d: MutableDenseMatrix=None, WEE: MutableDenseMatrix=..., 
         simplify_expressions: bool=True, cse_ex: bool=False, 
         parallel: bool=True) -> MutableDenseMatrix:
         """Inverse dynamics using body fixed representation of the 
@@ -921,8 +945,14 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
         if not q or not qd or not q2d:
             if not self.n:
                 self.n = len(self.body_ref_config)
-            q, qd, q2d = generalized_vectors(self.n,self._find_start_index())
+            if not self.q or not self.qd or not self.q2d:
+                q, qd, q2d = generalized_vectors(self.n,self._find_start_index())
+            else:
+                q, qd, q2d = self.q, self.qd, self.q2d
         
+        if WEE is Ellipsis:
+            WEE = self.WEE
+            
         if parallel:
             self._closed_form_inv_dyn_body_fixed_parallel(
                 q, qd, q2d, WEE, simplify_expressions, cse_ex)

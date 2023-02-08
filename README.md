@@ -214,6 +214,12 @@ mass_inertia:
       Iyz: Iyz2
       Izz: Izz2
     com: [0,0,0]
+
+q: [q1,q2]
+qd: [dq1,dq2]
+q2d: [ddq1,ddq2]
+WEE: [0,0,0,0,0,0]
+
 ```
 
 The code explained:
@@ -459,6 +465,17 @@ Mass-inertia matrices of all links. For the definition you have the following sy
      [ 0, 0,I1]]
     ```
 
+---
+
+```yaml
+q: [q1,q2]
+qd: [dq1,dq2]
+q2d: [ddq1,ddq2]
+WEE: [0,0,0,0,0,0]
+```
+
+Define symbolic generalized vectors (q, qd, q2d) and the time varying wrench on the end-effector link (WEE). Where the generalized vectors are list of length n and the wrench is a list of length 6 with symbolic values.
+
 #### 2.1.2. Code generation using YAML
 
 To start the code generation process use:
@@ -547,6 +564,7 @@ Mb.append(mass_matrix_mixed_data(m1, inertia_matrix(Ixx1,Ixy1,Ixz1,Iyy1,Iyz1,Izz
 Mb.append(mass_matrix_mixed_data(m2, inertia_matrix(Ixx2,Ixy2,Ixz2,Iyy2,Iyz2,Izz2), sympy.Matrix([0,0,0])))
 
 q, qd, q2d = generalized_vectors(len(body_ref_config), startindex=1)
+WEE = sympy.zeros(6,1)
 
 skd = SymbolicKinDyn(gravity_vector=gravity,
                      ee=ee,
@@ -561,7 +579,7 @@ skd = SymbolicKinDyn(gravity_vector=gravity,
 
 # run Calculations
 skd.closed_form_kinematics_body_fixed(q, qd, q2d, simplify_expressions=True)
-skd.closed_form_inv_dyn_body_fixed(q, qd, q2d, simplify_expressions=True)
+skd.closed_form_inv_dyn_body_fixed(q, qd, q2d, WEE, simplify_expressions=True)
 
 # Generate Code
 skd.generate_code(python=True, C=False, Matlab=False, latex=False,
@@ -858,6 +876,14 @@ q2d = sympy.Matrix([ddq1,ddq2])
 ---
 
 ```python
+WEE = sympy.zeros(6,1)
+```
+
+Define the time varying wrench on the end-effector link. Should be a (6,1) sympy.Matrix with symbolic variables.
+
+---
+
+```python
 skd = SymbolicKinDyn(gravity_vector=gravity,
                      ee=ee,
                      body_ref_config=body_ref_config,
@@ -877,7 +903,7 @@ Initialize class with all defined parameters.
 ```python
 # run Calculations
 skd.closed_form_kinematics_body_fixed(q, qd, q2d, simplify_expressions=True)
-skd.closed_form_inv_dyn_body_fixed(q, qd, q2d, simplify_expressions=True)
+skd.closed_form_inv_dyn_body_fixed(q, qd, q2d, WEE, simplify_expressions=True)
 ```
 
 Generate forward kinematics and inverse dynamics equations. Both functions share the following arguments:
@@ -975,10 +1001,11 @@ skd.load_from_urdf(path = urdfpath,
                    )
 
 q, qd, q2d = generalized_vectors(len(skd.body_ref_config), startindex=1)
+WEE = sympy.zeros(6,1)
 
 # run Calculations
 skd.closed_form_kinematics_body_fixed(q, qd, q2d, simplify_expressions=True)
-skd.closed_form_inv_dyn_body_fixed(q, qd, q2d, simplify_expressions=True)
+skd.closed_form_inv_dyn_body_fixed(q, qd, q2d, WEE, simplify_expressions=True)
 
 # Generate Code
 skd.generate_code(python=True, C=False, Matlab=False, latex=False,
@@ -1090,9 +1117,17 @@ Generate the generalized vectors (joint positions `q`, joint velocities `qd` and
 ---
 
 ```python
+WEE = sympy.zeros(6,1)
+```
+
+Define the time varying wrench on the end-effector link. Should be a (6,1) sympy.Matrix with symbolic variables.
+
+---
+
+```python
 # run Calculations
 skd.closed_form_kinematics_body_fixed(q, qd, q2d, simplify_expressions=True)
-skd.closed_form_inv_dyn_body_fixed(q, qd, q2d, simplify_expressions=True)
+skd.closed_form_inv_dyn_body_fixed(q, qd, q2d, WEE, simplify_expressions=True)
 ```
 
 Generate forward kinematics and inverse dynamics equations. See chapter [Python](#22-python) for more information.

@@ -6,7 +6,7 @@ from skidy import (SymbolicKinDyn, joint_screw,
                                  SO3Exp, transformation_matrix, inertia_matrix,
                                  quaternion_to_matrix, xyz_rpy_to_matrix,
                                  rpy_to_matrix)
-from sympy import Matrix, Identity, parse_expr, Expr
+from sympy import Matrix, Identity, parse_expr, Expr, zeros
 import regex
 
 def robot_from_yaml(path: str) -> SymbolicKinDyn:
@@ -82,7 +82,10 @@ def dict_parser(d: dict) -> SymbolicKinDyn:
     Returns:
         skidy.SymbolicKinDyn object.
     """
-    d = parse_hierarchical_expr(d, include_keys={"mass", "index", "Ixx", "Ixy", "Ixz", "Iyy", "Ixz", "Izz"})
+    d = parse_hierarchical_expr(d, include_keys={"mass", "index", 
+                                                 "Ixx", "Ixy", "Ixz", 
+                                                 "Iyy", "Ixz", "Izz", 
+                                                 "q", "qd", "d2d", "WEE"})
     
     config_representation = d["representation"] if "representation" in d else "spacial"
     
@@ -216,9 +219,18 @@ def dict_parser(d: dict) -> SymbolicKinDyn:
                         raise ValueError(f"Inertia {mb['inertia']} not supported.")
             else:
                 raise ValueError("Unable to process mass_inertia.")
-            
     
-    skd = SymbolicKinDyn(gravity,ee,body_ref_config,joint_screw_coord,config_representation, Mb, parent, support, child)
+    q = Matrix(d["q"]) if "q" in d else None        
+    qd = Matrix(d["qd"]) if "qd" in d else None        
+    q2d = Matrix(d["q2d"]) if "q2d" in d else None        
+    WEE = Matrix(d["WEE"]) if "WEE" in d else zeros(6,1)        
+    
+    skd = SymbolicKinDyn(gravity_vector=gravity,ee=ee,
+                         body_ref_config=body_ref_config,
+                         joint_screw_coord=joint_screw_coord,
+                         config_representation=config_representation, 
+                         Mb=Mb, parent=parent, support=support, child=child,
+                         q=q,qd=qd,q2d=q2d,WEE=WEE)
     return skd
 
 def generate_template_yaml(path: str="edit_me.yaml", structure: str = None, 
@@ -317,6 +329,12 @@ def generate_template_yaml(path: str="edit_me.yaml", structure: str = None,
         y.append(f"      Izz: Izz{i+1}")
         y.append( "    com: [0,0,0]")
         y.append("")
+    
+    y.append(f"q: [{','.join(['q'+str(i+1) for i in range(dof)])}]")
+    y.append(f"qd: [{','.join(['dq'+str(i+1) for i in range(dof)])}]")
+    y.append(f"q2d: [{','.join(['ddq'+str(i+1) for i in range(dof)])}]")
+    y.append("WEE: [0,0,0,0,0,0]")
+    y.append("")
     
     if "return_dict" in kwargs and kwargs["return_dict"]:
         return yaml.load("\n".join(y))
@@ -471,6 +489,7 @@ def generate_template_python(path:str="edit_me.py", structure:str=None, dof:int=
         p.append("")
         
         p.append(f"q, qd, q2d = generalized_vectors(len(body_ref_config), startindex=1)")
+        p.append("WEE = sympy.zeros(6,1)")
         p.append("")
     
     p.append("skd = SymbolicKinDyn(gravity_vector=gravity,")
@@ -497,11 +516,12 @@ def generate_template_python(path:str="edit_me.py", structure:str=None, dof:int=
         p.append("")
     
         p.append(f"q, qd, q2d = generalized_vectors(len(skd.body_ref_config), startindex=1)")
+        p.append("WEE = sympy.zeros(6,1)")
         p.append("")
     
     p.append("# run Calculations")
     p.append("skd.closed_form_kinematics_body_fixed(q, qd, q2d, simplify_expressions=True)")
-    p.append("skd.closed_form_inv_dyn_body_fixed(q, qd, q2d, simplify_expressions=True)")
+    p.append("skd.closed_form_inv_dyn_body_fixed(q, qd, q2d, WEE, simplify_expressions=True)")
     p.append("")
     
     p.append("# Generate Code")
