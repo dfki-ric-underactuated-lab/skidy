@@ -315,7 +315,7 @@ The body reference configuration is a list of SE(3) transformation matrices. To 
     ```
 
 3. Use axis angle representation for rotation:
-   -> See code above.
+    -> See code above.
 
 4. For zero rotations or translations it is possible to omit the option:
 

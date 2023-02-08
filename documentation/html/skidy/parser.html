@@ -1,0 +1,1378 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
+<meta name="generator" content="pdoc 0.10.0" />
+<title>skidy.parser API documentation</title>
+<meta name="description" content="" />
+<link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/sanitize.min.css" integrity="sha256-PK9q560IAAa6WVRRh76LtCaI8pjTJ2z11v0miyNNjrs=" crossorigin>
+<link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/typography.min.css" integrity="sha256-7l/o7C8jubJiy74VsKTidCy1yBkRtiUGbVkYBylBqUg=" crossorigin>
+<link rel="stylesheet preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.1/styles/github.min.css" crossorigin>
+<style>:root{--highlight-color:#fe9}.flex{display:flex !important}body{line-height:1.5em}#content{padding:20px}#sidebar{padding:30px;overflow:hidden}#sidebar > *:last-child{margin-bottom:2cm}.http-server-breadcrumbs{font-size:130%;margin:0 0 15px 0}#footer{font-size:.75em;padding:5px 30px;border-top:1px solid #ddd;text-align:right}#footer p{margin:0 0 0 1em;display:inline-block}#footer p:last-child{margin-right:30px}h1,h2,h3,h4,h5{font-weight:300}h1{font-size:2.5em;line-height:1.1em}h2{font-size:1.75em;margin:1em 0 .50em 0}h3{font-size:1.4em;margin:25px 0 10px 0}h4{margin:0;font-size:105%}h1:target,h2:target,h3:target,h4:target,h5:target,h6:target{background:var(--highlight-color);padding:.2em 0}a{color:#058;text-decoration:none;transition:color .3s ease-in-out}a:hover{color:#e82}.title code{font-weight:bold}h2[id^="header-"]{margin-top:2em}.ident{color:#900}pre code{background:#f8f8f8;font-size:.8em;line-height:1.4em}code{background:#f2f2f1;padding:1px 4px;overflow-wrap:break-word}h1 code{background:transparent}pre{background:#f8f8f8;border:0;border-top:1px solid #ccc;border-bottom:1px solid #ccc;margin:1em 0;padding:1ex}#http-server-module-list{display:flex;flex-flow:column}#http-server-module-list div{display:flex}#http-server-module-list dt{min-width:10%}#http-server-module-list p{margin-top:0}.toc ul,#index{list-style-type:none;margin:0;padding:0}#index code{background:transparent}#index h3{border-bottom:1px solid #ddd}#index ul{padding:0}#index h4{margin-top:.6em;font-weight:bold}@media (min-width:200ex){#index .two-column{column-count:2}}@media (min-width:300ex){#index .two-column{column-count:3}}dl{margin-bottom:2em}dl dl:last-child{margin-bottom:4em}dd{margin:0 0 1em 3em}#header-classes + dl > dd{margin-bottom:3em}dd dd{margin-left:2em}dd p{margin:10px 0}.name{background:#eee;font-weight:bold;font-size:.85em;padding:5px 10px;display:inline-block;min-width:40%}.name:hover{background:#e0e0e0}dt:target .name{background:var(--highlight-color)}.name > span:first-child{white-space:nowrap}.name.class > span:nth-child(2){margin-left:.4em}.inherited{color:#999;border-left:5px solid #eee;padding-left:1em}.inheritance em{font-style:normal;font-weight:bold}.desc h2{font-weight:400;font-size:1.25em}.desc h3{font-size:1em}.desc dt code{background:inherit}.source summary,.git-link-div{color:#666;text-align:right;font-weight:400;font-size:.8em;text-transform:uppercase}.source summary > *{white-space:nowrap;cursor:pointer}.git-link{color:inherit;margin-left:1em}.source pre{max-height:500px;overflow:auto;margin:0}.source pre code{font-size:12px;overflow:visible}.hlist{list-style:none}.hlist li{display:inline}.hlist li:after{content:',\2002'}.hlist li:last-child:after{content:none}.hlist .hlist{display:inline;padding-left:1em}img{max-width:100%}td{padding:0 .5em}.admonition{padding:.1em .5em;margin-bottom:1em}.admonition-title{font-weight:bold}.admonition.note,.admonition.info,.admonition.important{background:#aef}.admonition.todo,.admonition.versionadded,.admonition.tip,.admonition.hint{background:#dfd}.admonition.warning,.admonition.versionchanged,.admonition.deprecated{background:#fd4}.admonition.error,.admonition.danger,.admonition.caution{background:lightpink}</style>
+<style media="screen and (min-width: 700px)">@media screen and (min-width:700px){#sidebar{width:30%;height:100vh;overflow:auto;position:sticky;top:0}#content{width:70%;max-width:100ch;padding:3em 4em;border-left:1px solid #ddd}pre code{font-size:1em}.item .name{font-size:1em}main{display:flex;flex-direction:row-reverse;justify-content:flex-end}.toc ul ul,#index ul{padding-left:1.5em}.toc > ul > li{margin-top:.5em}}</style>
+<style media="print">@media print{#sidebar h1{page-break-before:always}.source{display:none}}@media print{*{background:transparent !important;color:#000 !important;box-shadow:none !important;text-shadow:none !important}a[href]:after{content:" (" attr(href) ")";font-size:90%}a[href][title]:after{content:none}abbr[title]:after{content:" (" attr(title) ")"}.ir a:after,a[href^="javascript:"]:after,a[href^="#"]:after{content:""}pre,blockquote{border:1px solid #999;page-break-inside:avoid}thead{display:table-header-group}tr,img{page-break-inside:avoid}img{max-width:100% !important}@page{margin:0.5cm}p,h2,h3{orphans:3;widows:3}h1,h2,h3,h4,h5,h6{page-break-after:avoid}}</style>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.1/highlight.min.js" integrity="sha256-Uv3H6lx7dJmRfRvH8TH6kJD1TSK1aFcwgx+mdg3epi8=" crossorigin></script>
+<script>window.addEventListener('DOMContentLoaded', () => hljs.initHighlighting())</script>
+</head>
+<body>
+<main>
+<article id="content">
+<header>
+<h1 class="title">Module <code>skidy.parser</code></h1>
+</header>
+<section id="section-intro">
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">import yaml
+import json
+from typing import Union, Iterable
+from skidy import (SymbolicKinDyn, joint_screw, 
+                                 symbolic_inertia_matrix, mass_matrix_mixed_data, 
+                                 SO3Exp, transformation_matrix, inertia_matrix,
+                                 quaternion_to_matrix, xyz_rpy_to_matrix,
+                                 rpy_to_matrix)
+from sympy import Matrix, Identity, parse_expr, Expr
+import regex
+
+def robot_from_yaml(path: str) -&gt; SymbolicKinDyn:
+    &#34;&#34;&#34;Parse yaml robot description and return SymbolicKinDyn Object.
+
+    Args:
+        path (str): Path to yaml file.
+
+    Returns:
+        skidy.SymbolicKinDyn object.
+    &#34;&#34;&#34;
+    with open(path, &#34;r&#34;) as stream:
+        y = yaml.safe_load(stream)
+    return dict_parser(y)
+
+def robot_from_json(path: str) -&gt; SymbolicKinDyn:
+    &#34;&#34;&#34;Parse json robot description and return SymbolicKinDyn Object.
+
+    Args:
+        path (str): Path to json file.
+
+    Returns:
+        skidy.SymbolicKinDyn object.
+    &#34;&#34;&#34;
+    with open(path, &#34;r&#34;) as stream:
+        y = json.load(stream)
+    return dict_parser(y)
+
+def parse_hierarchical_expr(x:Union[list,dict,str], 
+                            include_keys:Iterable={}, 
+                            exclude_keys:Iterable={}) -&gt; Union[list,dict,Expr]:
+    &#34;&#34;&#34;Convert strings in data structure (list or dict) to sympy 
+    expressions.
+
+    Args:
+        x (list or dict or str): 
+            Hierarchical structure which might contain symbolic 
+            expression as string. 
+        include_keys (Iterable): 
+            Only convert strings with listed dict_keys. 
+            Defaults to {}.
+        exclude_keys (Iterable): 
+            Don&#39;t convert strings with listed dict_keys. 
+            Defaults to {}.
+            
+    Returns:
+        list or dict or sympy.Expr: 
+            Same data structure with strings converted to sympy.Expr. 
+    &#34;&#34;&#34;
+    if type(x) in {dict, list}:
+        for i in x if type(x) is dict else range(len(x)):
+            if type(x[i]) in {list,dict}:
+                x[i] = parse_hierarchical_expr(x[i],include_keys,exclude_keys)
+            elif type(x[i]) is str:
+                if (type(x) is list 
+                    or (include_keys and i in include_keys) 
+                    or (not include_keys and i not in exclude_keys)):
+                    x[i] = parse_expr(x[i])
+    elif type(x) is str:
+        x = parse_expr(x)
+    return x
+
+def dict_parser(d: dict) -&gt; SymbolicKinDyn:
+    &#34;&#34;&#34;Parse dict to SymbolicKinDyn object.
+
+    Args:
+        d (dict): Dictionary containing robot description.
+
+    Raises:
+        KeyError: Entry not found.
+        ValueError: Unexpected entry.
+
+    Returns:
+        skidy.SymbolicKinDyn object.
+    &#34;&#34;&#34;
+    d = parse_hierarchical_expr(d, include_keys={&#34;mass&#34;, &#34;index&#34;, &#34;Ixx&#34;, &#34;Ixy&#34;, &#34;Ixz&#34;, &#34;Iyy&#34;, &#34;Ixz&#34;, &#34;Izz&#34;})
+    
+    config_representation = d[&#34;representation&#34;] if &#34;representation&#34; in d else &#34;spacial&#34;
+    
+    parent = d[&#34;parent&#34;] if &#34;parent&#34; in d else []
+    child = d[&#34;child&#34;] if &#34;child&#34; in d else []
+    support = d[&#34;support&#34;] if &#34;support&#34; in d else []
+    try:
+        gravity = d[&#34;gravity&#34;] if &#34;gravity&#34; in d else d[&#34;gravity_vector&#34;]
+    except KeyError:
+        gravity = None
+    
+    joint_screw_coord = []
+    if &#34;joint_screw_coord&#34; not in d:
+        raise KeyError(&#34;joint_screw_coord not found.&#34;)
+    for js in d[&#34;joint_screw_coord&#34;]:
+        if type(js) is list and len(js) == 6:
+            joint_screw_coord.append(Matrix(js))
+        elif type(js) is dict:
+            if js[&#34;type&#34;] == &#34;prismatic&#34;:
+                joint_screw_coord.append(
+                    joint_screw(js[&#34;axis&#34;],revolute=0))
+            elif js[&#34;type&#34;] == &#34;revolute&#34;:
+                joint_screw_coord.append(
+                    joint_screw(
+                        js[&#34;axis&#34;],
+                        js[&#34;vec&#34;] if &#34;vec&#34; in js else [0,0,0],
+                        revolute=1))
+            else:
+                raise ValueError(f&#34;joint type {js[&#39;type&#39;]} not supported.&#34;)
+        else:
+            raise ValueError(&#34;joint screw coordinates corrupted.&#34;) 
+    
+    body_ref_config = []
+    if &#34;body_ref_config&#34; not in d:
+        raise KeyError(&#34;body_ref_config not found&#34;)
+    for br in d[&#34;body_ref_config&#34;]:
+        if type(br) is list:
+            body_ref_config.append(Matrix(br))
+        elif type(br) is dict:
+            if &#34;xyzrpy&#34; in br:
+                body_ref_config.append(xyz_rpy_to_matrix(br[&#34;xyzrpy&#34;]))                
+            else:
+                t = br[&#34;translation&#34;] if &#34;translation&#34; in br else [0,0,0]
+                if &#34;rotation&#34; in br:
+                    if type(br[&#34;rotation&#34;]) is dict:
+                        if &#34;Q&#34; in br[&#34;rotation&#34;]:
+                            r = quaternion_to_matrix(br[&#34;rotation&#34;][&#34;Q&#34;])
+                        elif &#34;rpy&#34; in br[&#34;rotation&#34;]:
+                            r = rpy_to_matrix(br[&#34;rotation&#34;][&#34;rpy&#34;])
+                        elif &#34;axis&#34; in br[&#34;rotation&#34;]:
+                            axis = br[&#34;rotation&#34;][&#34;axis&#34;] if &#34;axis&#34; in br[&#34;rotation&#34;] else [0,0,1]
+                            angle = br[&#34;rotation&#34;][&#34;angle&#34;] if &#34;angle&#34; in br[&#34;rotation&#34;] else 0
+                            r = SO3Exp(Matrix(axis),angle)
+                    else:
+                        r = Matrix(br[&#34;rotation&#34;])
+                else:
+                    r = Matrix(Identity(3))
+                body_ref_config.append(transformation_matrix(r,t))
+    
+    if &#34;ee&#34; not in d:
+        raise KeyError(&#34;ee not found&#34;)
+            
+    if type(d[&#34;ee&#34;]) is list:
+        ee = Matrix(d[&#34;ee&#34;])
+    elif type(d[&#34;ee&#34;]) is dict:
+        if &#34;xyzrpy&#34; in br:
+            ee = xyz_rpy_to_matrix(br[&#34;xyzrpy&#34;])
+        else:
+            t = d[&#34;ee&#34;][&#34;translation&#34;] if &#34;translation&#34; in d[&#34;ee&#34;] else [0,0,0]
+            if &#34;rotation&#34; in d[&#34;ee&#34;]:
+                if type(d[&#34;ee&#34;][&#34;rotation&#34;]) is dict:
+                    if &#34;Q&#34; in br[&#34;rotation&#34;]:
+                        r = quaternion_to_matrix(br[&#34;rotation&#34;][&#34;Q&#34;])
+                    elif &#34;rpy&#34; in br[&#34;rotation&#34;]:
+                        r = rpy_to_matrix(br[&#34;rotation&#34;][&#34;rpy&#34;])
+                    elif &#34;axis&#34; in br[&#34;rotation&#34;]:
+                        axis = d[&#34;ee&#34;][&#34;rotation&#34;][&#34;axis&#34;] if &#34;axis&#34; in d[&#34;ee&#34;][&#34;rotation&#34;] else [0,0,1]
+                        angle = d[&#34;ee&#34;][&#34;rotation&#34;][&#34;angle&#34;] if &#34;angle&#34; in d[&#34;ee&#34;][&#34;rotation&#34;] else 0
+                        r = SO3Exp(Matrix(axis),angle)
+                else:
+                    r = Matrix(d[&#34;ee&#34;][&#34;rotation&#34;])
+            else:
+                r = Matrix(Identity(3))
+            ee = transformation_matrix(r,t)
+    else:
+        raise ValueError(f&#34;ee {d[&#39;ee&#39;]} cannot be processed.&#34;)
+    
+    
+    Mb = []
+    if &#34;mass_inertia&#34; in d:
+        for mb in d[&#34;mass_inertia&#34;]:
+            if type(mb) is list:
+                Mb.append(Matrix(mb))
+            elif type(mb) is dict:
+                if &#34;mass&#34; in mb and &#34;inertia&#34; in mb and &#34;com&#34; in mb:
+                    if type(mb[&#34;inertia&#34;]) is list:
+                        if len(mb[&#34;inertia&#34;]) == 6:
+                            Mb.append(
+                                mass_matrix_mixed_data(
+                                    mb[&#34;mass&#34;],
+                                    inertia_matrix(*mb[&#34;inertia&#34;]),
+                                    Matrix(mb[&#34;com&#34;])
+                                )
+                            )
+                        else:    
+                            Mb.append(
+                                mass_matrix_mixed_data(
+                                    mb[&#34;mass&#34;],
+                                    Matrix(mb[&#34;inertia&#34;]),
+                                    Matrix(mb[&#34;com&#34;])
+                                )
+                            )
+                    elif type(mb[&#34;inertia&#34;]) is dict and &#34;index&#34; in mb[&#34;inertia&#34;]:
+                        Mb.append(
+                            mass_matrix_mixed_data(
+                                mb[&#34;mass&#34;], 
+                                symbolic_inertia_matrix(mb[&#34;inertia&#34;][&#34;index&#34;],
+                                                    mb[&#34;inertia&#34;][&#34;pointmass&#34;]),
+                                Matrix(mb[&#34;com&#34;])
+                                )
+                            )
+                    elif type(mb[&#34;inertia&#34;]) is dict:
+                        Mb.append(
+                            mass_matrix_mixed_data(
+                                mb[&#34;mass&#34;], 
+                                inertia_matrix(**mb[&#34;inertia&#34;]),
+                                Matrix(mb[&#34;com&#34;])
+                                )
+                            )
+                    else:
+                        raise ValueError(f&#34;Inertia {mb[&#39;inertia&#39;]} not supported.&#34;)
+            else:
+                raise ValueError(&#34;Unable to process mass_inertia.&#34;)
+            
+    
+    skd = SymbolicKinDyn(gravity,ee,body_ref_config,joint_screw_coord,config_representation, Mb, parent, support, child)
+    return skd
+
+def generate_template_yaml(path: str=&#34;edit_me.yaml&#34;, structure: str = None, 
+                        dof: int=0, tree: bool=True, **kwargs) -&gt; None:
+    &#34;&#34;&#34;Generate template yaml file to modify for own robot.
+
+    Args:
+        path (str, optional): Path where to save generated yaml file.
+            Defaults to &#39;edit_me.yaml&#39; 
+        structure (str, optional): string containing only &#39;r&#39; and &#39;p&#39; of 
+            joint order. Use &#34;prr&#34; for a robot which has 1 prismatic joint
+            followed by 2 revolute joints. Defaults to None.
+        dof (int, optional): Degrees of freedom. Is usually calculated 
+            by length of &#39;structure&#39;. Defaults to 0.
+        tree (bool, optional): Generate parent, child and support array 
+            in yaml file. Defaults to True.
+
+    Raises:
+        ValueError: Unexpected letter in &#39;structure&#39;.
+    &#34;&#34;&#34;
+    if type(structure) is str:
+        if not dof:
+           dof = len(structure)
+        else:
+            # fill structure with r until length mathes dof
+            while len(structure) &lt; dof:
+                structure += &#34;r&#34;
+            
+    elif dof:
+        structure = &#34;r&#34;*dof
+    y = [&#34;---&#34;]
+    if tree:
+        y.append(&#34;parent:&#34;)
+        for i in range(dof):
+            y.append(f&#34;  - {i}&#34;)
+        y.append(&#34;&#34;)
+     
+        y.append(&#34;child:&#34;)
+        for i in range(dof):
+            y.append(f&#34;  - [{i+1 if i &lt; dof-1 else &#39;&#39;}]&#34;)
+        y.append(&#34;&#34;)
+     
+        y.append(&#34;support:&#34;)
+        for i in range(dof):
+            y.append(f&#34;  - [{&#39;,&#39;.join([str(j) for j in range(1,i+2)])}]&#34;)
+        y.append(&#34;&#34;)
+        
+    y.append(&#34;gravity: [0,0,g]&#34;)
+    y.append(&#34;&#34;)
+    
+    y.append(&#34;representation: spacial&#34;)
+    y.append(&#34;&#34;)
+    
+    y.append(&#34;joint_screw_coord:&#34;)
+    for i in range(dof):
+        if structure:
+            if structure[i] in &#34;rR&#34;:
+                y.append(f&#34;  - type: revolute&#34;)
+                y.append(f&#34;    axis: [0,0,1]&#34;)
+                y.append(f&#34;    vec: [0,0,0]&#34;)
+                y.append(&#34;&#34;)
+            elif structure[i] in &#34;pP&#34;:
+                y.append(f&#34;  - type: prismatic&#34;)
+                y.append(f&#34;    axis: [0,0,1]&#34;)
+                y.append(&#34;&#34;)
+            else:
+                raise ValueError(f&#34;structure {structure[i]} not supported.&#34;)
+        else:
+            y.append(&#34;  - []&#34;)
+            y.append(&#34;&#34;)
+    
+    y.append(&#34;body_ref_config:&#34;)
+    for i in range(dof):
+        y.append(&#34;  - rotation:&#34;)
+        y.append(&#34;      axis: [0,0,1]&#34;)
+        y.append(&#34;      angle: 0&#34;)
+        y.append(&#34;    translation: [0,0,0]&#34;)
+        y.append(&#34;&#34;)
+    
+    y.append(&#34;ee:&#34;)
+    y.append(&#34;  rotation:&#34;)
+    y.append(&#34;    axis: [0,0,1]&#34;)
+    y.append(&#34;    angle: 0&#34;)
+    y.append(&#34;  translation: [0,0,0]&#34;)
+    y.append(&#34;&#34;)
+    
+    y.append(&#34;mass_inertia:&#34;)
+    for i in range(dof):
+        y.append(f&#34;  - mass: m{i+1}&#34;)
+        y.append( &#34;    inertia:&#34;)
+        y.append(f&#34;      Ixx: Ixx{i+1}&#34;)
+        y.append(f&#34;      Ixy: Ixy{i+1}&#34;)
+        y.append(f&#34;      Ixz: Ixz{i+1}&#34;)
+        y.append(f&#34;      Iyy: Iyy{i+1}&#34;)
+        y.append(f&#34;      Iyz: Iyz{i+1}&#34;)
+        y.append(f&#34;      Izz: Izz{i+1}&#34;)
+        y.append( &#34;    com: [0,0,0]&#34;)
+        y.append(&#34;&#34;)
+    
+    if &#34;return_dict&#34; in kwargs and kwargs[&#34;return_dict&#34;]:
+        return yaml.load(&#34;\n&#34;.join(y))
+        
+    
+    # check if path ends with .yaml
+    if not bool(regex.search(&#34;(.yaml|.YAML|.yml|.YML)\Z&#34;, path)):
+        path += &#34;.yaml&#34;
+        
+    with open(path, &#34;w+&#34;) as f:
+        f.write(&#34;\n&#34;.join(y))
+    
+    
+def generate_template_json(path: str=&#34;edit_me.json&#34;, structure: str = None, 
+                        dof: int=0, tree: bool=True) -&gt; None:
+    &#34;&#34;&#34;Generate template json file to modify for own robot.
+
+    Args:
+        path (str, optional): Path where to save generated json file.
+            Defaults to &#39;edit_me.json&#39; 
+        structure (str, optional): string containing only &#39;r&#39; and &#39;p&#39; of 
+            joint order. Use &#34;prr&#34; for a robot which has 1 prismatic joint
+            followed by 2 revolute joints. Defaults to None.
+        dof (int, optional): Degrees of freedom. Is usually calculated 
+            by length of &#39;structure&#39;. Defaults to 0.
+        tree (bool, optional): Generate parent, child and support array 
+            in yaml file. Defaults to True.
+
+    Raises:
+        ValueError: Unexpected letter in &#39;structure&#39;.
+    &#34;&#34;&#34;
+    d = generate_template_yaml(&#34;&#34;,structure,dof,tree,return_dict=True)
+    s= json.dumps(d,indent=2)
+    # check if path ends with .json
+    if not bool(regex.search(&#34;(.JSON|.json)\Z&#34;, path)):
+        path += &#34;.json&#34;
+    
+    with open(path, &#34;w+&#34;) as f:
+        f.write(s)
+
+
+def generate_template_python(path:str=&#34;edit_me.py&#34;, structure:str=None, dof:int=0, tree:bool=True, urdf=False):
+    &#34;&#34;&#34;Generate template python file to modify for own robot.
+
+    Args:
+        path (str, optional): Path where to save generated python file.
+            Defaults to &#39;edit_me.py&#39; 
+        structure (str, optional): string containing only &#39;r&#39; and &#39;p&#39; of 
+            joint order. Use &#34;prr&#34; for a robot which has 1 prismatic joint
+            followed by 2 revolute joints. Defaults to None.
+        dof (int, optional): Degrees of freedom. Is usually calculated 
+            by length of &#39;structure&#39;. Defaults to 0.
+        tree (bool, optional): Generate parent, child and support array 
+            in yaml file. Defaults to True.
+
+    Raises:
+        ValueError: Unexpected letter in &#39;structure&#39;.
+    &#34;&#34;&#34;
+    if type(structure) is str:
+        if not dof:
+           dof = len(structure)
+        else:
+            # fill structure with r until length matches dof
+            while len(structure) &lt; dof:
+                structure += &#34;r&#34;
+    elif dof:
+        structure = &#34;r&#34;*dof
+    
+    p = [&#34;from skidy import (SymbolicKinDyn,&#34;]
+    p.append(&#34;                   transformation_matrix,&#34;)
+    if not urdf:
+        p.append(&#34;                   mass_matrix_mixed_data,&#34;)
+        p.append(&#34;                   joint_screw,&#34;)
+        p.append(&#34;                   inertia_matrix,&#34;)
+    p.append(&#34;                   SO3Exp,&#34;)
+    p.append(&#34;                   generalized_vectors)&#34;)
+    p.append(&#34;from skidy.symbols import g, pi&#34;)
+    p.append(&#34;import sympy&#34;)
+    p.append(&#34;&#34;)
+    p.append(&#34;# Define symbols: (Hint: you can import the most common use symbols from skidy.symbols instead)&#34;)
+    if not urdf:
+        p.append(f&#34;{&#39;m&#39;+ &#39;, m&#39;.join(str(i) for i in range(1, dof+1))} = sympy.symbols(&#39;{&#39;m&#39;+ &#39; m&#39;.join(str(i) for i in range(1, dof+1))}&#39;, real=True, const=True)&#34;)
+        p.append(f&#34;{&#39;Ixx&#39;+ &#39;, Ixx&#39;.join(str(i) for i in range(1, dof+1))} = sympy.symbols(&#39;{&#39;Ixx&#39;+ &#39; Ixx&#39;.join(str(i) for i in range(1, dof+1))}&#39;, real=True, const=True)&#34;)
+        p.append(f&#34;{&#39;Ixy&#39;+ &#39;, Ixy&#39;.join(str(i) for i in range(1, dof+1))} = sympy.symbols(&#39;{&#39;Ixy&#39;+ &#39; Ixy&#39;.join(str(i) for i in range(1, dof+1))}&#39;, real=True, const=True)&#34;)
+        p.append(f&#34;{&#39;Ixz&#39;+ &#39;, Ixz&#39;.join(str(i) for i in range(1, dof+1))} = sympy.symbols(&#39;{&#39;Ixz&#39;+ &#39; Ixz&#39;.join(str(i) for i in range(1, dof+1))}&#39;, real=True, const=True)&#34;)
+        p.append(f&#34;{&#39;Iyy&#39;+ &#39;, Iyy&#39;.join(str(i) for i in range(1, dof+1))} = sympy.symbols(&#39;{&#39;Iyy&#39;+ &#39; Iyy&#39;.join(str(i) for i in range(1, dof+1))}&#39;, real=True, const=True)&#34;)
+        p.append(f&#34;{&#39;Iyz&#39;+ &#39;, Iyz&#39;.join(str(i) for i in range(1, dof+1))} = sympy.symbols(&#39;{&#39;Iyz&#39;+ &#39; Iyz&#39;.join(str(i) for i in range(1, dof+1))}&#39;, real=True, const=True)&#34;)
+        p.append(f&#34;{&#39;Izz&#39;+ &#39;, Izz&#39;.join(str(i) for i in range(1, dof+1))} = sympy.symbols(&#39;{&#39;Izz&#39;+ &#39; Izz&#39;.join(str(i) for i in range(1, dof+1))}&#39;, real=True, const=True)&#34;)
+    else:
+        p.append(&#34;lee = sympy.symbols(&#39;lee&#39;, real=True, const=True)&#34;)
+    p.append(&#34;&#34;) # m1, m2,
+    if tree and not urdf:
+        p.append(&#34;# Define connectivity graph&#34;)
+        p.append(f&#34;parent = [0{&#39;,&#39; if dof &gt; 1 else &#39;]&#39;}&#34;)
+        for i in range(1, dof):
+            p.append(f&#34;          {i}{&#39;,&#39; if dof &gt; i+1 else &#39;]&#39;}&#34;)
+        p.append(&#34;&#34;)
+     
+        p.append(f&#34;child = [[{1 if dof &gt; 1 else &#39;&#39;}]{&#39;,&#39; if dof &gt; 1 else &#39;]&#39;}&#34;)
+        for i in range(1, dof):
+            p.append(f&#34;         [{i+1 if dof &gt; i+1 else &#39;&#39;}]{&#39;,&#39; if dof &gt; i+1 else &#39;]&#39;}&#34;)
+        p.append(&#34;&#34;)
+     
+        p.append(f&#34;support = [[1]{&#39;,&#39; if dof &gt; 1 else &#39;]&#39;}&#34;)
+        for i in range(1,dof):
+            p.append(f&#34;           [{&#39;,&#39;.join([str(j) for j in range(1,i+2)])}]{&#39;,&#39; if dof &gt; i+1 else &#39;]&#39;}&#34;)
+        p.append(&#34;&#34;)
+        
+    if urdf:
+        p.append(&#34;urdfpath = &#39;/path/to/urdf&#39; # TODO: change me!&#34;)
+        p.append(&#34;&#34;)
+    
+    p.append(&#34;# gravity vector&#34;)
+    p.append(&#34;gravity = sympy.Matrix([0,0,g])&#34;)
+    p.append(&#34;&#34;)
+    
+    if not urdf:
+        p.append(&#34;# representation of joint screw coordinates and body reference configurations&#34;)
+        p.append(&#34;representation = &#39;spacial&#39; # alternative: &#39;body_fixed&#39;&#34;)
+        p.append(&#34;&#34;)
+        
+        p.append(&#34;# joint screw coordinates (6x1 sympy.Matrix per joint)&#34;)
+        p.append(&#34;joint_screw_coord = []&#34;)
+        for i in range(dof):
+            if structure:
+                if structure[i] in &#34;rR&#34;:
+                    p.append(&#39;joint_screw_coord.append(joint_screw(axis=[0,0,1], vec=[0,0,0], revolute=True))&#39;)
+                elif structure[i] in &#34;pP&#34;:
+                    p.append(&#39;joint_screw_coord.append(joint_screw(axis=[0,0,1], revolute=False))&#39;)
+                else:
+                    raise ValueError(f&#34;structure {structure[i]} not supported.&#34;)
+            else:
+                p.append(&#34;  - []&#34;)
+                p.append(&#34;&#34;)
+        p.append(&#34;&#34;)
+        
+        p.append(&#34;# body reference configurations (4x4 SE3 Pose (sympy.Matrix) per link)&#34;)
+        p.append(&#34;body_ref_config = []&#34;)
+        for i in range(dof):
+            p.append(&#34;body_ref_config.append(transformation_matrix(r=SO3Exp(axis=[0,0,1],angle=0),t=[0,0,0]))&#34;)
+        p.append(&#34;&#34;)
+    
+    p.append(&#34;# end-effector configuration w.r.t. last link body fixed frame in the chain (4x4 SE3 Pose (sympy.Matrix))&#34;)
+    p.append(&#34;ee = transformation_matrix(r=SO3Exp(axis=[0,0,1],angle=0),t=[0,0,0])&#34;)
+    p.append(&#34;&#34;)
+    
+    if not urdf:
+        p.append(&#34;# mass_inertia parameters (6x6 sympy.Matrix per link)&#34;)
+        p.append(&#34;Mb = []&#34;)
+        for i in range(dof):
+            p.append(f&#34;Mb.append(mass_matrix_mixed_data(m{i+1}, inertia_matrix(Ixx{i+1},Ixy{i+1},Ixz{i+1},Iyy{i+1},Iyz{i+1},Izz{i+1}), sympy.Matrix([0,0,0])))&#34;)
+        p.append(&#34;&#34;)
+        
+        p.append(f&#34;q, qd, q2d = generalized_vectors(len(body_ref_config), startindex=1)&#34;)
+        p.append(&#34;&#34;)
+    
+    p.append(&#34;skd = SymbolicKinDyn(gravity_vector=gravity,&#34;)
+    p.append(&#34;                     ee=ee,&#34;)
+    if not urdf: 
+        p.append(&#34;                     body_ref_config=body_ref_config,&#34;)
+        p.append(&#34;                     joint_screw_coord=joint_screw_coord,&#34;)
+        p.append(&#34;                     config_representation=representation,&#34;)
+        p.append(&#34;                     Mb=Mb,&#34;)
+        if tree:
+            p.append(&#34;                     parent=parent,&#34;)
+            p.append(&#34;                     child=child,&#34;)
+            p.append(&#34;                     support=support,&#34;)
+    p.append(&#34;                     )&#34;)
+    p.append(&#34;&#34;)
+    if urdf:
+        p.append(&#34;skd.load_from_urdf(path = urdfpath,&#34;)
+        p.append(&#34;                   symbolic=True, # symbolify equations? (eg. use Ixx instead of numeric value)&#34;)
+        p.append(&#34;                   cse_ex=False, # use common subexpression elimination? &#34;)
+        p.append(&#34;                   simplify_numbers=True, # round numbers if close to common fractions like 1/2 etc and replace eg 3.1416 by pi?&#34;)
+        p.append(&#34;                   tolerance=0.0001, # tolerance for simplify numbers&#34;)
+        p.append(&#34;                   max_denominator=8, # define max denominator for simplify numbers to avoid simplification to something like 13/153&#34;)
+        p.append(&#34;                   )&#34;)
+        p.append(&#34;&#34;)
+    
+        p.append(f&#34;q, qd, q2d = generalized_vectors(len(skd.body_ref_config), startindex=1)&#34;)
+        p.append(&#34;&#34;)
+    
+    p.append(&#34;# run Calculations&#34;)
+    p.append(&#34;skd.closed_form_kinematics_body_fixed(q, qd, q2d, simplify_expressions=True)&#34;)
+    p.append(&#34;skd.closed_form_inv_dyn_body_fixed(q, qd, q2d, simplify_expressions=True)&#34;)
+    p.append(&#34;&#34;)
+    
+    p.append(&#34;# Generate Code&#34;)
+    p.append(&#39;skd.generate_code(python=True, C=False, Matlab=False, latex=False,&#39;)
+    p.append(&#39;                 folder=&#34;./generated_code&#34;, use_global_vars=True,&#39;)
+    p.append(&#39;                 name=&#34;plant&#34;, project=&#34;Project&#34;)&#39;)
+    p.append(&#34;&#34;)
+    
+    
+    # check if path ends with .yaml
+    if not bool(regex.search(&#34;(.py)\Z&#34;, path)):
+        path += &#34;.py&#34;
+        
+    with open(path, &#34;w+&#34;) as f:
+        f.write(&#34;\n&#34;.join(p))
+
+
+def robot_from_urdf(path: str, symbolic: bool=True, cse_ex: bool=False, 
+                    simplify_numbers: bool=True, tolerance: float=0.0001, 
+                    max_denominator: int=9) -&gt; SymbolicKinDyn:
+    &#34;&#34;&#34;Load robot from urdf.
+
+        Args:
+            path (str): path to URDF.
+            symbolic (bool, optional): 
+                generate symbols for numeric values. 
+                Defaults to True.
+            cse_ex (bool, optional): 
+                use common subexpression elimination. Defaults to False.
+            simplify_numbers (bool, optional): 
+                Use eg. pi/2 instead of 1.5708. Defaults to True.
+            tolerance (float, optional): 
+                tolerance for simplify_numbers. Defaults to 0.0001.
+            max_denominator (int, optional): 
+                Maximum denominator to use for simplify numbers to avoid
+                values like 13/153. Use 0 to deactivate. Defaults to 9.
+
+        Raises:
+            NotImplementedError: supports only the joint types 
+                &#34;revolute&#34;, &#34;continuous&#34; and &#34;prismatic&#34;.
+        
+        Returns:
+            skidy.SymbolicKinDyn object.
+    &#34;&#34;&#34;            
+    skd = SymbolicKinDyn()
+    skd.load_from_urdf(path, symbolic, simplify_numbers, 
+                       cse_ex, tolerance, max_denominator)
+    return skd</code></pre>
+</details>
+</section>
+<section>
+</section>
+<section>
+</section>
+<section>
+<h2 class="section-title" id="header-functions">Functions</h2>
+<dl>
+<dt id="skidy.parser.dict_parser"><code class="name flex">
+<span>def <span class="ident">dict_parser</span></span>(<span>d: dict) ‑> <a title="skidy.kinematics_generator.SymbolicKinDyn" href="kinematics_generator.html#skidy.kinematics_generator.SymbolicKinDyn">SymbolicKinDyn</a></span>
+</code></dt>
+<dd>
+<div class="desc"><p>Parse dict to SymbolicKinDyn object.</p>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>d</code></strong> :&ensp;<code>dict</code></dt>
+<dd>Dictionary containing robot description.</dd>
+</dl>
+<h2 id="raises">Raises</h2>
+<dl>
+<dt><code>KeyError</code></dt>
+<dd>Entry not found.</dd>
+<dt><code>ValueError</code></dt>
+<dd>Unexpected entry.</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<p>skidy.SymbolicKinDyn object.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def dict_parser(d: dict) -&gt; SymbolicKinDyn:
+    &#34;&#34;&#34;Parse dict to SymbolicKinDyn object.
+
+    Args:
+        d (dict): Dictionary containing robot description.
+
+    Raises:
+        KeyError: Entry not found.
+        ValueError: Unexpected entry.
+
+    Returns:
+        skidy.SymbolicKinDyn object.
+    &#34;&#34;&#34;
+    d = parse_hierarchical_expr(d, include_keys={&#34;mass&#34;, &#34;index&#34;, &#34;Ixx&#34;, &#34;Ixy&#34;, &#34;Ixz&#34;, &#34;Iyy&#34;, &#34;Ixz&#34;, &#34;Izz&#34;})
+    
+    config_representation = d[&#34;representation&#34;] if &#34;representation&#34; in d else &#34;spacial&#34;
+    
+    parent = d[&#34;parent&#34;] if &#34;parent&#34; in d else []
+    child = d[&#34;child&#34;] if &#34;child&#34; in d else []
+    support = d[&#34;support&#34;] if &#34;support&#34; in d else []
+    try:
+        gravity = d[&#34;gravity&#34;] if &#34;gravity&#34; in d else d[&#34;gravity_vector&#34;]
+    except KeyError:
+        gravity = None
+    
+    joint_screw_coord = []
+    if &#34;joint_screw_coord&#34; not in d:
+        raise KeyError(&#34;joint_screw_coord not found.&#34;)
+    for js in d[&#34;joint_screw_coord&#34;]:
+        if type(js) is list and len(js) == 6:
+            joint_screw_coord.append(Matrix(js))
+        elif type(js) is dict:
+            if js[&#34;type&#34;] == &#34;prismatic&#34;:
+                joint_screw_coord.append(
+                    joint_screw(js[&#34;axis&#34;],revolute=0))
+            elif js[&#34;type&#34;] == &#34;revolute&#34;:
+                joint_screw_coord.append(
+                    joint_screw(
+                        js[&#34;axis&#34;],
+                        js[&#34;vec&#34;] if &#34;vec&#34; in js else [0,0,0],
+                        revolute=1))
+            else:
+                raise ValueError(f&#34;joint type {js[&#39;type&#39;]} not supported.&#34;)
+        else:
+            raise ValueError(&#34;joint screw coordinates corrupted.&#34;) 
+    
+    body_ref_config = []
+    if &#34;body_ref_config&#34; not in d:
+        raise KeyError(&#34;body_ref_config not found&#34;)
+    for br in d[&#34;body_ref_config&#34;]:
+        if type(br) is list:
+            body_ref_config.append(Matrix(br))
+        elif type(br) is dict:
+            if &#34;xyzrpy&#34; in br:
+                body_ref_config.append(xyz_rpy_to_matrix(br[&#34;xyzrpy&#34;]))                
+            else:
+                t = br[&#34;translation&#34;] if &#34;translation&#34; in br else [0,0,0]
+                if &#34;rotation&#34; in br:
+                    if type(br[&#34;rotation&#34;]) is dict:
+                        if &#34;Q&#34; in br[&#34;rotation&#34;]:
+                            r = quaternion_to_matrix(br[&#34;rotation&#34;][&#34;Q&#34;])
+                        elif &#34;rpy&#34; in br[&#34;rotation&#34;]:
+                            r = rpy_to_matrix(br[&#34;rotation&#34;][&#34;rpy&#34;])
+                        elif &#34;axis&#34; in br[&#34;rotation&#34;]:
+                            axis = br[&#34;rotation&#34;][&#34;axis&#34;] if &#34;axis&#34; in br[&#34;rotation&#34;] else [0,0,1]
+                            angle = br[&#34;rotation&#34;][&#34;angle&#34;] if &#34;angle&#34; in br[&#34;rotation&#34;] else 0
+                            r = SO3Exp(Matrix(axis),angle)
+                    else:
+                        r = Matrix(br[&#34;rotation&#34;])
+                else:
+                    r = Matrix(Identity(3))
+                body_ref_config.append(transformation_matrix(r,t))
+    
+    if &#34;ee&#34; not in d:
+        raise KeyError(&#34;ee not found&#34;)
+            
+    if type(d[&#34;ee&#34;]) is list:
+        ee = Matrix(d[&#34;ee&#34;])
+    elif type(d[&#34;ee&#34;]) is dict:
+        if &#34;xyzrpy&#34; in br:
+            ee = xyz_rpy_to_matrix(br[&#34;xyzrpy&#34;])
+        else:
+            t = d[&#34;ee&#34;][&#34;translation&#34;] if &#34;translation&#34; in d[&#34;ee&#34;] else [0,0,0]
+            if &#34;rotation&#34; in d[&#34;ee&#34;]:
+                if type(d[&#34;ee&#34;][&#34;rotation&#34;]) is dict:
+                    if &#34;Q&#34; in br[&#34;rotation&#34;]:
+                        r = quaternion_to_matrix(br[&#34;rotation&#34;][&#34;Q&#34;])
+                    elif &#34;rpy&#34; in br[&#34;rotation&#34;]:
+                        r = rpy_to_matrix(br[&#34;rotation&#34;][&#34;rpy&#34;])
+                    elif &#34;axis&#34; in br[&#34;rotation&#34;]:
+                        axis = d[&#34;ee&#34;][&#34;rotation&#34;][&#34;axis&#34;] if &#34;axis&#34; in d[&#34;ee&#34;][&#34;rotation&#34;] else [0,0,1]
+                        angle = d[&#34;ee&#34;][&#34;rotation&#34;][&#34;angle&#34;] if &#34;angle&#34; in d[&#34;ee&#34;][&#34;rotation&#34;] else 0
+                        r = SO3Exp(Matrix(axis),angle)
+                else:
+                    r = Matrix(d[&#34;ee&#34;][&#34;rotation&#34;])
+            else:
+                r = Matrix(Identity(3))
+            ee = transformation_matrix(r,t)
+    else:
+        raise ValueError(f&#34;ee {d[&#39;ee&#39;]} cannot be processed.&#34;)
+    
+    
+    Mb = []
+    if &#34;mass_inertia&#34; in d:
+        for mb in d[&#34;mass_inertia&#34;]:
+            if type(mb) is list:
+                Mb.append(Matrix(mb))
+            elif type(mb) is dict:
+                if &#34;mass&#34; in mb and &#34;inertia&#34; in mb and &#34;com&#34; in mb:
+                    if type(mb[&#34;inertia&#34;]) is list:
+                        if len(mb[&#34;inertia&#34;]) == 6:
+                            Mb.append(
+                                mass_matrix_mixed_data(
+                                    mb[&#34;mass&#34;],
+                                    inertia_matrix(*mb[&#34;inertia&#34;]),
+                                    Matrix(mb[&#34;com&#34;])
+                                )
+                            )
+                        else:    
+                            Mb.append(
+                                mass_matrix_mixed_data(
+                                    mb[&#34;mass&#34;],
+                                    Matrix(mb[&#34;inertia&#34;]),
+                                    Matrix(mb[&#34;com&#34;])
+                                )
+                            )
+                    elif type(mb[&#34;inertia&#34;]) is dict and &#34;index&#34; in mb[&#34;inertia&#34;]:
+                        Mb.append(
+                            mass_matrix_mixed_data(
+                                mb[&#34;mass&#34;], 
+                                symbolic_inertia_matrix(mb[&#34;inertia&#34;][&#34;index&#34;],
+                                                    mb[&#34;inertia&#34;][&#34;pointmass&#34;]),
+                                Matrix(mb[&#34;com&#34;])
+                                )
+                            )
+                    elif type(mb[&#34;inertia&#34;]) is dict:
+                        Mb.append(
+                            mass_matrix_mixed_data(
+                                mb[&#34;mass&#34;], 
+                                inertia_matrix(**mb[&#34;inertia&#34;]),
+                                Matrix(mb[&#34;com&#34;])
+                                )
+                            )
+                    else:
+                        raise ValueError(f&#34;Inertia {mb[&#39;inertia&#39;]} not supported.&#34;)
+            else:
+                raise ValueError(&#34;Unable to process mass_inertia.&#34;)
+            
+    
+    skd = SymbolicKinDyn(gravity,ee,body_ref_config,joint_screw_coord,config_representation, Mb, parent, support, child)
+    return skd</code></pre>
+</details>
+</dd>
+<dt id="skidy.parser.generate_template_json"><code class="name flex">
+<span>def <span class="ident">generate_template_json</span></span>(<span>path: str = 'edit_me.json', structure: str = None, dof: int = 0, tree: bool = True) ‑> None</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Generate template json file to modify for own robot.</p>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>path</code></strong> :&ensp;<code>str</code>, optional</dt>
+<dd>Path where to save generated json file.
+Defaults to 'edit_me.json' </dd>
+<dt><strong><code>structure</code></strong> :&ensp;<code>str</code>, optional</dt>
+<dd>string containing only 'r' and 'p' of
+joint order. Use "prr" for a robot which has 1 prismatic joint
+followed by 2 revolute joints. Defaults to None.</dd>
+<dt><strong><code>dof</code></strong> :&ensp;<code>int</code>, optional</dt>
+<dd>Degrees of freedom. Is usually calculated
+by length of 'structure'. Defaults to 0.</dd>
+<dt><strong><code>tree</code></strong> :&ensp;<code>bool</code>, optional</dt>
+<dd>Generate parent, child and support array
+in yaml file. Defaults to True.</dd>
+</dl>
+<h2 id="raises">Raises</h2>
+<dl>
+<dt><code>ValueError</code></dt>
+<dd>Unexpected letter in 'structure'.</dd>
+</dl></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def generate_template_json(path: str=&#34;edit_me.json&#34;, structure: str = None, 
+                        dof: int=0, tree: bool=True) -&gt; None:
+    &#34;&#34;&#34;Generate template json file to modify for own robot.
+
+    Args:
+        path (str, optional): Path where to save generated json file.
+            Defaults to &#39;edit_me.json&#39; 
+        structure (str, optional): string containing only &#39;r&#39; and &#39;p&#39; of 
+            joint order. Use &#34;prr&#34; for a robot which has 1 prismatic joint
+            followed by 2 revolute joints. Defaults to None.
+        dof (int, optional): Degrees of freedom. Is usually calculated 
+            by length of &#39;structure&#39;. Defaults to 0.
+        tree (bool, optional): Generate parent, child and support array 
+            in yaml file. Defaults to True.
+
+    Raises:
+        ValueError: Unexpected letter in &#39;structure&#39;.
+    &#34;&#34;&#34;
+    d = generate_template_yaml(&#34;&#34;,structure,dof,tree,return_dict=True)
+    s= json.dumps(d,indent=2)
+    # check if path ends with .json
+    if not bool(regex.search(&#34;(.JSON|.json)\Z&#34;, path)):
+        path += &#34;.json&#34;
+    
+    with open(path, &#34;w+&#34;) as f:
+        f.write(s)</code></pre>
+</details>
+</dd>
+<dt id="skidy.parser.generate_template_python"><code class="name flex">
+<span>def <span class="ident">generate_template_python</span></span>(<span>path: str = 'edit_me.py', structure: str = None, dof: int = 0, tree: bool = True, urdf=False)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Generate template python file to modify for own robot.</p>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>path</code></strong> :&ensp;<code>str</code>, optional</dt>
+<dd>Path where to save generated python file.
+Defaults to 'edit_me.py' </dd>
+<dt><strong><code>structure</code></strong> :&ensp;<code>str</code>, optional</dt>
+<dd>string containing only 'r' and 'p' of
+joint order. Use "prr" for a robot which has 1 prismatic joint
+followed by 2 revolute joints. Defaults to None.</dd>
+<dt><strong><code>dof</code></strong> :&ensp;<code>int</code>, optional</dt>
+<dd>Degrees of freedom. Is usually calculated
+by length of 'structure'. Defaults to 0.</dd>
+<dt><strong><code>tree</code></strong> :&ensp;<code>bool</code>, optional</dt>
+<dd>Generate parent, child and support array
+in yaml file. Defaults to True.</dd>
+</dl>
+<h2 id="raises">Raises</h2>
+<dl>
+<dt><code>ValueError</code></dt>
+<dd>Unexpected letter in 'structure'.</dd>
+</dl></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def generate_template_python(path:str=&#34;edit_me.py&#34;, structure:str=None, dof:int=0, tree:bool=True, urdf=False):
+    &#34;&#34;&#34;Generate template python file to modify for own robot.
+
+    Args:
+        path (str, optional): Path where to save generated python file.
+            Defaults to &#39;edit_me.py&#39; 
+        structure (str, optional): string containing only &#39;r&#39; and &#39;p&#39; of 
+            joint order. Use &#34;prr&#34; for a robot which has 1 prismatic joint
+            followed by 2 revolute joints. Defaults to None.
+        dof (int, optional): Degrees of freedom. Is usually calculated 
+            by length of &#39;structure&#39;. Defaults to 0.
+        tree (bool, optional): Generate parent, child and support array 
+            in yaml file. Defaults to True.
+
+    Raises:
+        ValueError: Unexpected letter in &#39;structure&#39;.
+    &#34;&#34;&#34;
+    if type(structure) is str:
+        if not dof:
+           dof = len(structure)
+        else:
+            # fill structure with r until length matches dof
+            while len(structure) &lt; dof:
+                structure += &#34;r&#34;
+    elif dof:
+        structure = &#34;r&#34;*dof
+    
+    p = [&#34;from skidy import (SymbolicKinDyn,&#34;]
+    p.append(&#34;                   transformation_matrix,&#34;)
+    if not urdf:
+        p.append(&#34;                   mass_matrix_mixed_data,&#34;)
+        p.append(&#34;                   joint_screw,&#34;)
+        p.append(&#34;                   inertia_matrix,&#34;)
+    p.append(&#34;                   SO3Exp,&#34;)
+    p.append(&#34;                   generalized_vectors)&#34;)
+    p.append(&#34;from skidy.symbols import g, pi&#34;)
+    p.append(&#34;import sympy&#34;)
+    p.append(&#34;&#34;)
+    p.append(&#34;# Define symbols: (Hint: you can import the most common use symbols from skidy.symbols instead)&#34;)
+    if not urdf:
+        p.append(f&#34;{&#39;m&#39;+ &#39;, m&#39;.join(str(i) for i in range(1, dof+1))} = sympy.symbols(&#39;{&#39;m&#39;+ &#39; m&#39;.join(str(i) for i in range(1, dof+1))}&#39;, real=True, const=True)&#34;)
+        p.append(f&#34;{&#39;Ixx&#39;+ &#39;, Ixx&#39;.join(str(i) for i in range(1, dof+1))} = sympy.symbols(&#39;{&#39;Ixx&#39;+ &#39; Ixx&#39;.join(str(i) for i in range(1, dof+1))}&#39;, real=True, const=True)&#34;)
+        p.append(f&#34;{&#39;Ixy&#39;+ &#39;, Ixy&#39;.join(str(i) for i in range(1, dof+1))} = sympy.symbols(&#39;{&#39;Ixy&#39;+ &#39; Ixy&#39;.join(str(i) for i in range(1, dof+1))}&#39;, real=True, const=True)&#34;)
+        p.append(f&#34;{&#39;Ixz&#39;+ &#39;, Ixz&#39;.join(str(i) for i in range(1, dof+1))} = sympy.symbols(&#39;{&#39;Ixz&#39;+ &#39; Ixz&#39;.join(str(i) for i in range(1, dof+1))}&#39;, real=True, const=True)&#34;)
+        p.append(f&#34;{&#39;Iyy&#39;+ &#39;, Iyy&#39;.join(str(i) for i in range(1, dof+1))} = sympy.symbols(&#39;{&#39;Iyy&#39;+ &#39; Iyy&#39;.join(str(i) for i in range(1, dof+1))}&#39;, real=True, const=True)&#34;)
+        p.append(f&#34;{&#39;Iyz&#39;+ &#39;, Iyz&#39;.join(str(i) for i in range(1, dof+1))} = sympy.symbols(&#39;{&#39;Iyz&#39;+ &#39; Iyz&#39;.join(str(i) for i in range(1, dof+1))}&#39;, real=True, const=True)&#34;)
+        p.append(f&#34;{&#39;Izz&#39;+ &#39;, Izz&#39;.join(str(i) for i in range(1, dof+1))} = sympy.symbols(&#39;{&#39;Izz&#39;+ &#39; Izz&#39;.join(str(i) for i in range(1, dof+1))}&#39;, real=True, const=True)&#34;)
+    else:
+        p.append(&#34;lee = sympy.symbols(&#39;lee&#39;, real=True, const=True)&#34;)
+    p.append(&#34;&#34;) # m1, m2,
+    if tree and not urdf:
+        p.append(&#34;# Define connectivity graph&#34;)
+        p.append(f&#34;parent = [0{&#39;,&#39; if dof &gt; 1 else &#39;]&#39;}&#34;)
+        for i in range(1, dof):
+            p.append(f&#34;          {i}{&#39;,&#39; if dof &gt; i+1 else &#39;]&#39;}&#34;)
+        p.append(&#34;&#34;)
+     
+        p.append(f&#34;child = [[{1 if dof &gt; 1 else &#39;&#39;}]{&#39;,&#39; if dof &gt; 1 else &#39;]&#39;}&#34;)
+        for i in range(1, dof):
+            p.append(f&#34;         [{i+1 if dof &gt; i+1 else &#39;&#39;}]{&#39;,&#39; if dof &gt; i+1 else &#39;]&#39;}&#34;)
+        p.append(&#34;&#34;)
+     
+        p.append(f&#34;support = [[1]{&#39;,&#39; if dof &gt; 1 else &#39;]&#39;}&#34;)
+        for i in range(1,dof):
+            p.append(f&#34;           [{&#39;,&#39;.join([str(j) for j in range(1,i+2)])}]{&#39;,&#39; if dof &gt; i+1 else &#39;]&#39;}&#34;)
+        p.append(&#34;&#34;)
+        
+    if urdf:
+        p.append(&#34;urdfpath = &#39;/path/to/urdf&#39; # TODO: change me!&#34;)
+        p.append(&#34;&#34;)
+    
+    p.append(&#34;# gravity vector&#34;)
+    p.append(&#34;gravity = sympy.Matrix([0,0,g])&#34;)
+    p.append(&#34;&#34;)
+    
+    if not urdf:
+        p.append(&#34;# representation of joint screw coordinates and body reference configurations&#34;)
+        p.append(&#34;representation = &#39;spacial&#39; # alternative: &#39;body_fixed&#39;&#34;)
+        p.append(&#34;&#34;)
+        
+        p.append(&#34;# joint screw coordinates (6x1 sympy.Matrix per joint)&#34;)
+        p.append(&#34;joint_screw_coord = []&#34;)
+        for i in range(dof):
+            if structure:
+                if structure[i] in &#34;rR&#34;:
+                    p.append(&#39;joint_screw_coord.append(joint_screw(axis=[0,0,1], vec=[0,0,0], revolute=True))&#39;)
+                elif structure[i] in &#34;pP&#34;:
+                    p.append(&#39;joint_screw_coord.append(joint_screw(axis=[0,0,1], revolute=False))&#39;)
+                else:
+                    raise ValueError(f&#34;structure {structure[i]} not supported.&#34;)
+            else:
+                p.append(&#34;  - []&#34;)
+                p.append(&#34;&#34;)
+        p.append(&#34;&#34;)
+        
+        p.append(&#34;# body reference configurations (4x4 SE3 Pose (sympy.Matrix) per link)&#34;)
+        p.append(&#34;body_ref_config = []&#34;)
+        for i in range(dof):
+            p.append(&#34;body_ref_config.append(transformation_matrix(r=SO3Exp(axis=[0,0,1],angle=0),t=[0,0,0]))&#34;)
+        p.append(&#34;&#34;)
+    
+    p.append(&#34;# end-effector configuration w.r.t. last link body fixed frame in the chain (4x4 SE3 Pose (sympy.Matrix))&#34;)
+    p.append(&#34;ee = transformation_matrix(r=SO3Exp(axis=[0,0,1],angle=0),t=[0,0,0])&#34;)
+    p.append(&#34;&#34;)
+    
+    if not urdf:
+        p.append(&#34;# mass_inertia parameters (6x6 sympy.Matrix per link)&#34;)
+        p.append(&#34;Mb = []&#34;)
+        for i in range(dof):
+            p.append(f&#34;Mb.append(mass_matrix_mixed_data(m{i+1}, inertia_matrix(Ixx{i+1},Ixy{i+1},Ixz{i+1},Iyy{i+1},Iyz{i+1},Izz{i+1}), sympy.Matrix([0,0,0])))&#34;)
+        p.append(&#34;&#34;)
+        
+        p.append(f&#34;q, qd, q2d = generalized_vectors(len(body_ref_config), startindex=1)&#34;)
+        p.append(&#34;&#34;)
+    
+    p.append(&#34;skd = SymbolicKinDyn(gravity_vector=gravity,&#34;)
+    p.append(&#34;                     ee=ee,&#34;)
+    if not urdf: 
+        p.append(&#34;                     body_ref_config=body_ref_config,&#34;)
+        p.append(&#34;                     joint_screw_coord=joint_screw_coord,&#34;)
+        p.append(&#34;                     config_representation=representation,&#34;)
+        p.append(&#34;                     Mb=Mb,&#34;)
+        if tree:
+            p.append(&#34;                     parent=parent,&#34;)
+            p.append(&#34;                     child=child,&#34;)
+            p.append(&#34;                     support=support,&#34;)
+    p.append(&#34;                     )&#34;)
+    p.append(&#34;&#34;)
+    if urdf:
+        p.append(&#34;skd.load_from_urdf(path = urdfpath,&#34;)
+        p.append(&#34;                   symbolic=True, # symbolify equations? (eg. use Ixx instead of numeric value)&#34;)
+        p.append(&#34;                   cse_ex=False, # use common subexpression elimination? &#34;)
+        p.append(&#34;                   simplify_numbers=True, # round numbers if close to common fractions like 1/2 etc and replace eg 3.1416 by pi?&#34;)
+        p.append(&#34;                   tolerance=0.0001, # tolerance for simplify numbers&#34;)
+        p.append(&#34;                   max_denominator=8, # define max denominator for simplify numbers to avoid simplification to something like 13/153&#34;)
+        p.append(&#34;                   )&#34;)
+        p.append(&#34;&#34;)
+    
+        p.append(f&#34;q, qd, q2d = generalized_vectors(len(skd.body_ref_config), startindex=1)&#34;)
+        p.append(&#34;&#34;)
+    
+    p.append(&#34;# run Calculations&#34;)
+    p.append(&#34;skd.closed_form_kinematics_body_fixed(q, qd, q2d, simplify_expressions=True)&#34;)
+    p.append(&#34;skd.closed_form_inv_dyn_body_fixed(q, qd, q2d, simplify_expressions=True)&#34;)
+    p.append(&#34;&#34;)
+    
+    p.append(&#34;# Generate Code&#34;)
+    p.append(&#39;skd.generate_code(python=True, C=False, Matlab=False, latex=False,&#39;)
+    p.append(&#39;                 folder=&#34;./generated_code&#34;, use_global_vars=True,&#39;)
+    p.append(&#39;                 name=&#34;plant&#34;, project=&#34;Project&#34;)&#39;)
+    p.append(&#34;&#34;)
+    
+    
+    # check if path ends with .yaml
+    if not bool(regex.search(&#34;(.py)\Z&#34;, path)):
+        path += &#34;.py&#34;
+        
+    with open(path, &#34;w+&#34;) as f:
+        f.write(&#34;\n&#34;.join(p))</code></pre>
+</details>
+</dd>
+<dt id="skidy.parser.generate_template_yaml"><code class="name flex">
+<span>def <span class="ident">generate_template_yaml</span></span>(<span>path: str = 'edit_me.yaml', structure: str = None, dof: int = 0, tree: bool = True, **kwargs) ‑> None</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Generate template yaml file to modify for own robot.</p>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>path</code></strong> :&ensp;<code>str</code>, optional</dt>
+<dd>Path where to save generated yaml file.
+Defaults to 'edit_me.yaml' </dd>
+<dt><strong><code>structure</code></strong> :&ensp;<code>str</code>, optional</dt>
+<dd>string containing only 'r' and 'p' of
+joint order. Use "prr" for a robot which has 1 prismatic joint
+followed by 2 revolute joints. Defaults to None.</dd>
+<dt><strong><code>dof</code></strong> :&ensp;<code>int</code>, optional</dt>
+<dd>Degrees of freedom. Is usually calculated
+by length of 'structure'. Defaults to 0.</dd>
+<dt><strong><code>tree</code></strong> :&ensp;<code>bool</code>, optional</dt>
+<dd>Generate parent, child and support array
+in yaml file. Defaults to True.</dd>
+</dl>
+<h2 id="raises">Raises</h2>
+<dl>
+<dt><code>ValueError</code></dt>
+<dd>Unexpected letter in 'structure'.</dd>
+</dl></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def generate_template_yaml(path: str=&#34;edit_me.yaml&#34;, structure: str = None, 
+                        dof: int=0, tree: bool=True, **kwargs) -&gt; None:
+    &#34;&#34;&#34;Generate template yaml file to modify for own robot.
+
+    Args:
+        path (str, optional): Path where to save generated yaml file.
+            Defaults to &#39;edit_me.yaml&#39; 
+        structure (str, optional): string containing only &#39;r&#39; and &#39;p&#39; of 
+            joint order. Use &#34;prr&#34; for a robot which has 1 prismatic joint
+            followed by 2 revolute joints. Defaults to None.
+        dof (int, optional): Degrees of freedom. Is usually calculated 
+            by length of &#39;structure&#39;. Defaults to 0.
+        tree (bool, optional): Generate parent, child and support array 
+            in yaml file. Defaults to True.
+
+    Raises:
+        ValueError: Unexpected letter in &#39;structure&#39;.
+    &#34;&#34;&#34;
+    if type(structure) is str:
+        if not dof:
+           dof = len(structure)
+        else:
+            # fill structure with r until length mathes dof
+            while len(structure) &lt; dof:
+                structure += &#34;r&#34;
+            
+    elif dof:
+        structure = &#34;r&#34;*dof
+    y = [&#34;---&#34;]
+    if tree:
+        y.append(&#34;parent:&#34;)
+        for i in range(dof):
+            y.append(f&#34;  - {i}&#34;)
+        y.append(&#34;&#34;)
+     
+        y.append(&#34;child:&#34;)
+        for i in range(dof):
+            y.append(f&#34;  - [{i+1 if i &lt; dof-1 else &#39;&#39;}]&#34;)
+        y.append(&#34;&#34;)
+     
+        y.append(&#34;support:&#34;)
+        for i in range(dof):
+            y.append(f&#34;  - [{&#39;,&#39;.join([str(j) for j in range(1,i+2)])}]&#34;)
+        y.append(&#34;&#34;)
+        
+    y.append(&#34;gravity: [0,0,g]&#34;)
+    y.append(&#34;&#34;)
+    
+    y.append(&#34;representation: spacial&#34;)
+    y.append(&#34;&#34;)
+    
+    y.append(&#34;joint_screw_coord:&#34;)
+    for i in range(dof):
+        if structure:
+            if structure[i] in &#34;rR&#34;:
+                y.append(f&#34;  - type: revolute&#34;)
+                y.append(f&#34;    axis: [0,0,1]&#34;)
+                y.append(f&#34;    vec: [0,0,0]&#34;)
+                y.append(&#34;&#34;)
+            elif structure[i] in &#34;pP&#34;:
+                y.append(f&#34;  - type: prismatic&#34;)
+                y.append(f&#34;    axis: [0,0,1]&#34;)
+                y.append(&#34;&#34;)
+            else:
+                raise ValueError(f&#34;structure {structure[i]} not supported.&#34;)
+        else:
+            y.append(&#34;  - []&#34;)
+            y.append(&#34;&#34;)
+    
+    y.append(&#34;body_ref_config:&#34;)
+    for i in range(dof):
+        y.append(&#34;  - rotation:&#34;)
+        y.append(&#34;      axis: [0,0,1]&#34;)
+        y.append(&#34;      angle: 0&#34;)
+        y.append(&#34;    translation: [0,0,0]&#34;)
+        y.append(&#34;&#34;)
+    
+    y.append(&#34;ee:&#34;)
+    y.append(&#34;  rotation:&#34;)
+    y.append(&#34;    axis: [0,0,1]&#34;)
+    y.append(&#34;    angle: 0&#34;)
+    y.append(&#34;  translation: [0,0,0]&#34;)
+    y.append(&#34;&#34;)
+    
+    y.append(&#34;mass_inertia:&#34;)
+    for i in range(dof):
+        y.append(f&#34;  - mass: m{i+1}&#34;)
+        y.append( &#34;    inertia:&#34;)
+        y.append(f&#34;      Ixx: Ixx{i+1}&#34;)
+        y.append(f&#34;      Ixy: Ixy{i+1}&#34;)
+        y.append(f&#34;      Ixz: Ixz{i+1}&#34;)
+        y.append(f&#34;      Iyy: Iyy{i+1}&#34;)
+        y.append(f&#34;      Iyz: Iyz{i+1}&#34;)
+        y.append(f&#34;      Izz: Izz{i+1}&#34;)
+        y.append( &#34;    com: [0,0,0]&#34;)
+        y.append(&#34;&#34;)
+    
+    if &#34;return_dict&#34; in kwargs and kwargs[&#34;return_dict&#34;]:
+        return yaml.load(&#34;\n&#34;.join(y))
+        
+    
+    # check if path ends with .yaml
+    if not bool(regex.search(&#34;(.yaml|.YAML|.yml|.YML)\Z&#34;, path)):
+        path += &#34;.yaml&#34;
+        
+    with open(path, &#34;w+&#34;) as f:
+        f.write(&#34;\n&#34;.join(y))</code></pre>
+</details>
+</dd>
+<dt id="skidy.parser.parse_hierarchical_expr"><code class="name flex">
+<span>def <span class="ident">parse_hierarchical_expr</span></span>(<span>x: Union[list, dict, str], include_keys: Iterable[+T_co] = {}, exclude_keys: Iterable[+T_co] = {}) ‑> Union[list, dict, sympy.core.expr.Expr]</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Convert strings in data structure (list or dict) to sympy
+expressions.</p>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>x</code></strong> :&ensp;<code>list</code> or <code>dict</code> or <code>str</code></dt>
+<dd>Hierarchical structure which might contain symbolic
+expression as string. </dd>
+<dt><strong><code>include_keys</code></strong> :&ensp;<code>Iterable</code></dt>
+<dd>Only convert strings with listed dict_keys.
+Defaults to {}.</dd>
+<dt><strong><code>exclude_keys</code></strong> :&ensp;<code>Iterable</code></dt>
+<dd>Don't convert strings with listed dict_keys.
+Defaults to {}.</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><code>list</code> or <code>dict</code> or <code>sympy.Expr</code></dt>
+<dd>Same data structure with strings converted to sympy.Expr.</dd>
+</dl></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def parse_hierarchical_expr(x:Union[list,dict,str], 
+                            include_keys:Iterable={}, 
+                            exclude_keys:Iterable={}) -&gt; Union[list,dict,Expr]:
+    &#34;&#34;&#34;Convert strings in data structure (list or dict) to sympy 
+    expressions.
+
+    Args:
+        x (list or dict or str): 
+            Hierarchical structure which might contain symbolic 
+            expression as string. 
+        include_keys (Iterable): 
+            Only convert strings with listed dict_keys. 
+            Defaults to {}.
+        exclude_keys (Iterable): 
+            Don&#39;t convert strings with listed dict_keys. 
+            Defaults to {}.
+            
+    Returns:
+        list or dict or sympy.Expr: 
+            Same data structure with strings converted to sympy.Expr. 
+    &#34;&#34;&#34;
+    if type(x) in {dict, list}:
+        for i in x if type(x) is dict else range(len(x)):
+            if type(x[i]) in {list,dict}:
+                x[i] = parse_hierarchical_expr(x[i],include_keys,exclude_keys)
+            elif type(x[i]) is str:
+                if (type(x) is list 
+                    or (include_keys and i in include_keys) 
+                    or (not include_keys and i not in exclude_keys)):
+                    x[i] = parse_expr(x[i])
+    elif type(x) is str:
+        x = parse_expr(x)
+    return x</code></pre>
+</details>
+</dd>
+<dt id="skidy.parser.robot_from_json"><code class="name flex">
+<span>def <span class="ident">robot_from_json</span></span>(<span>path: str) ‑> <a title="skidy.kinematics_generator.SymbolicKinDyn" href="kinematics_generator.html#skidy.kinematics_generator.SymbolicKinDyn">SymbolicKinDyn</a></span>
+</code></dt>
+<dd>
+<div class="desc"><p>Parse json robot description and return SymbolicKinDyn Object.</p>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>path</code></strong> :&ensp;<code>str</code></dt>
+<dd>Path to json file.</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<p>skidy.SymbolicKinDyn object.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def robot_from_json(path: str) -&gt; SymbolicKinDyn:
+    &#34;&#34;&#34;Parse json robot description and return SymbolicKinDyn Object.
+
+    Args:
+        path (str): Path to json file.
+
+    Returns:
+        skidy.SymbolicKinDyn object.
+    &#34;&#34;&#34;
+    with open(path, &#34;r&#34;) as stream:
+        y = json.load(stream)
+    return dict_parser(y)</code></pre>
+</details>
+</dd>
+<dt id="skidy.parser.robot_from_urdf"><code class="name flex">
+<span>def <span class="ident">robot_from_urdf</span></span>(<span>path: str, symbolic: bool = True, cse_ex: bool = False, simplify_numbers: bool = True, tolerance: float = 0.0001, max_denominator: int = 9) ‑> <a title="skidy.kinematics_generator.SymbolicKinDyn" href="kinematics_generator.html#skidy.kinematics_generator.SymbolicKinDyn">SymbolicKinDyn</a></span>
+</code></dt>
+<dd>
+<div class="desc"><p>Load robot from urdf.</p>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>path</code></strong> :&ensp;<code>str</code></dt>
+<dd>path to URDF.</dd>
+<dt><strong><code>symbolic</code></strong> :&ensp;<code>bool</code>, optional</dt>
+<dd>generate symbols for numeric values.
+Defaults to True.</dd>
+<dt><strong><code>cse_ex</code></strong> :&ensp;<code>bool</code>, optional</dt>
+<dd>use common subexpression elimination. Defaults to False.</dd>
+<dt><strong><code>simplify_numbers</code></strong> :&ensp;<code>bool</code>, optional</dt>
+<dd>Use eg. pi/2 instead of 1.5708. Defaults to True.</dd>
+<dt><strong><code>tolerance</code></strong> :&ensp;<code>float</code>, optional</dt>
+<dd>tolerance for simplify_numbers. Defaults to 0.0001.</dd>
+<dt><strong><code>max_denominator</code></strong> :&ensp;<code>int</code>, optional</dt>
+<dd>Maximum denominator to use for simplify numbers to avoid
+values like 13/153. Use 0 to deactivate. Defaults to 9.</dd>
+</dl>
+<h2 id="raises">Raises</h2>
+<dl>
+<dt><code>NotImplementedError</code></dt>
+<dd>supports only the joint types
+"revolute", "continuous" and "prismatic".</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<p>skidy.SymbolicKinDyn object.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def robot_from_urdf(path: str, symbolic: bool=True, cse_ex: bool=False, 
+                    simplify_numbers: bool=True, tolerance: float=0.0001, 
+                    max_denominator: int=9) -&gt; SymbolicKinDyn:
+    &#34;&#34;&#34;Load robot from urdf.
+
+        Args:
+            path (str): path to URDF.
+            symbolic (bool, optional): 
+                generate symbols for numeric values. 
+                Defaults to True.
+            cse_ex (bool, optional): 
+                use common subexpression elimination. Defaults to False.
+            simplify_numbers (bool, optional): 
+                Use eg. pi/2 instead of 1.5708. Defaults to True.
+            tolerance (float, optional): 
+                tolerance for simplify_numbers. Defaults to 0.0001.
+            max_denominator (int, optional): 
+                Maximum denominator to use for simplify numbers to avoid
+                values like 13/153. Use 0 to deactivate. Defaults to 9.
+
+        Raises:
+            NotImplementedError: supports only the joint types 
+                &#34;revolute&#34;, &#34;continuous&#34; and &#34;prismatic&#34;.
+        
+        Returns:
+            skidy.SymbolicKinDyn object.
+    &#34;&#34;&#34;            
+    skd = SymbolicKinDyn()
+    skd.load_from_urdf(path, symbolic, simplify_numbers, 
+                       cse_ex, tolerance, max_denominator)
+    return skd</code></pre>
+</details>
+</dd>
+<dt id="skidy.parser.robot_from_yaml"><code class="name flex">
+<span>def <span class="ident">robot_from_yaml</span></span>(<span>path: str) ‑> <a title="skidy.kinematics_generator.SymbolicKinDyn" href="kinematics_generator.html#skidy.kinematics_generator.SymbolicKinDyn">SymbolicKinDyn</a></span>
+</code></dt>
+<dd>
+<div class="desc"><p>Parse yaml robot description and return SymbolicKinDyn Object.</p>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>path</code></strong> :&ensp;<code>str</code></dt>
+<dd>Path to yaml file.</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<p>skidy.SymbolicKinDyn object.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def robot_from_yaml(path: str) -&gt; SymbolicKinDyn:
+    &#34;&#34;&#34;Parse yaml robot description and return SymbolicKinDyn Object.
+
+    Args:
+        path (str): Path to yaml file.
+
+    Returns:
+        skidy.SymbolicKinDyn object.
+    &#34;&#34;&#34;
+    with open(path, &#34;r&#34;) as stream:
+        y = yaml.safe_load(stream)
+    return dict_parser(y)</code></pre>
+</details>
+</dd>
+</dl>
+</section>
+<section>
+</section>
+</article>
+<nav id="sidebar">
+<h1>Index</h1>
+<div class="toc">
+<ul></ul>
+</div>
+<ul id="index">
+<li><h3>Super-module</h3>
+<ul>
+<li><code><a title="skidy" href="index.html">skidy</a></code></li>
+</ul>
+</li>
+<li><h3><a href="#header-functions">Functions</a></h3>
+<ul class="">
+<li><code><a title="skidy.parser.dict_parser" href="#skidy.parser.dict_parser">dict_parser</a></code></li>
+<li><code><a title="skidy.parser.generate_template_json" href="#skidy.parser.generate_template_json">generate_template_json</a></code></li>
+<li><code><a title="skidy.parser.generate_template_python" href="#skidy.parser.generate_template_python">generate_template_python</a></code></li>
+<li><code><a title="skidy.parser.generate_template_yaml" href="#skidy.parser.generate_template_yaml">generate_template_yaml</a></code></li>
+<li><code><a title="skidy.parser.parse_hierarchical_expr" href="#skidy.parser.parse_hierarchical_expr">parse_hierarchical_expr</a></code></li>
+<li><code><a title="skidy.parser.robot_from_json" href="#skidy.parser.robot_from_json">robot_from_json</a></code></li>
+<li><code><a title="skidy.parser.robot_from_urdf" href="#skidy.parser.robot_from_urdf">robot_from_urdf</a></code></li>
+<li><code><a title="skidy.parser.robot_from_yaml" href="#skidy.parser.robot_from_yaml">robot_from_yaml</a></code></li>
+</ul>
+</li>
+</ul>
+</nav>
+</main>
+<footer id="footer">
+<p>Generated by <a href="https://pdoc3.github.io/pdoc" title="pdoc: Python API documentation generator"><cite>pdoc</cite> 0.10.0</a>.</p>
+</footer>
+</body>
+</html>

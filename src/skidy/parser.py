@@ -42,15 +42,19 @@ def parse_hierarchical_expr(x:Union[list,dict,str],
     expressions.
 
     Args:
-        x (list|dict|str): Hierarchical structure which might contain 
-            symbolic expression as string. 
-        include_keys (Iterable): Only convert strings with listed dict_keys. 
-            Defaults to {}.    
-        exclude_keys (Iterable): Don't convert strings with listed dict_keys. 
-            Defaults to {}.    
+        x (list or dict or str): 
+            Hierarchical structure which might contain symbolic 
+            expression as string. 
+        include_keys (Iterable): 
+            Only convert strings with listed dict_keys. 
+            Defaults to {}.
+        exclude_keys (Iterable): 
+            Don't convert strings with listed dict_keys. 
+            Defaults to {}.
+            
     Returns:
-        list|dict|sympy.Expr: Same data structure with strings converted 
-            to sympy.Expr 
+        list or dict or sympy.Expr: 
+            Same data structure with strings converted to sympy.Expr. 
     """
     if type(x) in {dict, list}:
         for i in x if type(x) is dict else range(len(x)):
@@ -515,9 +519,33 @@ def generate_template_python(path:str="edit_me.py", structure:str=None, dof:int=
         f.write("\n".join(p))
 
 
-def robot_from_urdf(path: str, symbolic: bool=True, simplify_numbers: bool=True, 
-                    cse_ex: bool=False, tolerance: float=0.0001, 
+def robot_from_urdf(path: str, symbolic: bool=True, cse_ex: bool=False, 
+                    simplify_numbers: bool=True, tolerance: float=0.0001, 
                     max_denominator: int=9) -> SymbolicKinDyn:
+    """Load robot from urdf.
+
+        Args:
+            path (str): path to URDF.
+            symbolic (bool, optional): 
+                generate symbols for numeric values. 
+                Defaults to True.
+            cse_ex (bool, optional): 
+                use common subexpression elimination. Defaults to False.
+            simplify_numbers (bool, optional): 
+                Use eg. pi/2 instead of 1.5708. Defaults to True.
+            tolerance (float, optional): 
+                tolerance for simplify_numbers. Defaults to 0.0001.
+            max_denominator (int, optional): 
+                Maximum denominator to use for simplify numbers to avoid
+                values like 13/153. Use 0 to deactivate. Defaults to 9.
+
+        Raises:
+            NotImplementedError: supports only the joint types 
+                "revolute", "continuous" and "prismatic".
+        
+        Returns:
+            skidy.SymbolicKinDyn object.
+    """            
     skd = SymbolicKinDyn()
     skd.load_from_urdf(path, symbolic, simplify_numbers, 
                        cse_ex, tolerance, max_denominator)

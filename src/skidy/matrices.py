@@ -6,7 +6,9 @@ def generalized_vectors(
     DOF: int, startindex: int=0
     ) -> Tuple[MutableDenseMatrix, MutableDenseMatrix, MutableDenseMatrix]:
     """Generate symbolic generalized vectors q, qd and q2d.
+    
     The symbols are named as follows:
+        
         q0, q1, ....., qi for joint positions.
         dq0, dq1, ....., dqi for joint velocities.
         ddq0, ddq1, ....., ddqi for joint accelerations.
@@ -59,10 +61,11 @@ def symbolic_inertia_matrix(
     """Create 3 x 3 symbolic inertia matrix with auto generated variable names.
 
     Args:
-        index (int|str):
+        index (int or str): 
             postfix for variable name. Defaults to "".
-        pointmass (bool):
+        pointmass (bool): 
             Inertial matrix = I * Identity. Default to False.
+    
     Returns:
         sympy.Matrix: Inertia matrix (3,3)
     """
@@ -212,12 +215,12 @@ def inertia_matrix(Ixx: Union[float, Expr]=0, Ixy: Union[float, Expr]=0,
     """Create 3 x 3 inertia matrix from independent inertia values.
 
     Args:
-        Ixx (float|sympy.Expr): Inertia value I11. Defaults to 0.
-        Ixy (float|sympy.Expr): Inertia value I12. Defaults to 0.
-        Ixz (float|sympy.Expr): Inertia value I13. Defaults to 0.
-        Iyy (float|sympy.Expr): Inertia value I22. Defaults to 0.
-        Iyz (float|sympy.Expr): Inertia value I23. Defaults to 0.
-        Izz (float|sympy.Expr): Inertia value I33. Defaults to 0.
+        Ixx (float or sympy.Expr): Inertia value I11. Defaults to 0.
+        Ixy (float or sympy.Expr): Inertia value I12. Defaults to 0.
+        Ixz (float or sympy.Expr): Inertia value I13. Defaults to 0.
+        Iyy (float or sympy.Expr): Inertia value I22. Defaults to 0.
+        Iyz (float or sympy.Expr): Inertia value I23. Defaults to 0.
+        Izz (float or sympy.Expr): Inertia value I33. Defaults to 0.
 
     Returns:
         sympy.Matrix: Inertia matrix (3,3)

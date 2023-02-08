@@ -653,13 +653,15 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
     BODY_FIXED = "body_fixed"
     SPACIAL = "spacial"
     
-    def __init__(self, gravity_vector: MutableDenseMatrix=None, 
+    def __init__(self, 
+                 gravity_vector: MutableDenseMatrix=None, 
                  ee: MutableDenseMatrix=None, 
                  body_ref_config: List[MutableDenseMatrix]=[], 
                  joint_screw_coord: List[MutableDenseMatrix]=[], 
                  config_representation: str="spacial", 
                  Mb: List[MutableDenseMatrix]=[], 
-                 parent: List[int]=[], support: List[List[int]]=[], 
+                 parent: List[int]=[], 
+                 support: List[List[int]]=[], 
                  child: List[List[int]]=[], **kwargs) -> None:
         """SymbolicKinDyn
         Symbolic tool to compute equations of motion of serial chain 
@@ -684,7 +686,7 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
                 config_representation. 
                 Leave empty for dH Parameter usage (dhToScrewCoord(...)). 
                 Defaults to [].
-            config_representation (str):
+            config_representation (str, optional): 
                 Use body fixed or spacial representation for reference 
                 configuration of bodies and joint screw coordinates.
                 Has to be "body_fixed" or "spacial". 
@@ -692,100 +694,21 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
             Mb (list of sympy.Matrix, optional): 
                 List of Mass Inertia matrices for all links. Only 
                 necessary for inverse dynamics. Defaults to [].
-            parent (list, optional):
+            parent (list, optional): 
                 list of parent link indices for any joint. Use 0 for world.
                 Only necessary for tree-like robot structures. 
                 Defaults to [].
-            support (list, optional):
+            support (list, optional): 
                 list of lists with one list per link which includes all 
                 support links beginning with the first link in the chain 
                 and including the current link.
                 Only necessary for tree-like robot structures. 
                 Defaults to [].
-            child (list, optional):
+            child (list, optional): 
                 list of lists with one list per link which includes all
                 child links. Use empty list if no child link is present.
                 Only necessary for tree-like robot structures. 
                 Defaults to [].
-                
-        Usage:
-            Example of an 2R Serial chain robot:
-            Imports:
-                >>> import sympy 
-            
-            Declaration of symbolic variables:
-                joint positions:
-                >>> q1, q2 = sympy.symbols("q1 q2")
-                
-                joint velocities:
-                >>> dq1, dq2 = sympy.symbols("dq1 dq2")
-                
-                joint accelerations:
-                >>> ddq1, ddq2 = sympy.symbols("ddq1 ddq2")
-                
-                mass:
-                >>> m1, m2 = sympy.symbols("m1 m2", real=1, constant=1)
-                
-                center of gravity and gravity
-                >>> cg1, cg2, g = sympy.symbols("cg1 cg2 g", constant=1)
-                
-                link lengths:
-                >>> L1, L2 = sympy.symbols("L1 L2", real=1, constant=1)
-                
-            Definition of arguments:
-                Gravity vector:
-                >>> gravity_vector = sympy.Matrix([0, g, 0])
-                
-                Joint screw coordinate in body fixed representation:
-                >>> joint_screw_coord = []
-                >>> joint_screw_coord.append(sympy.Matrix([0, 0, 1, 0, 0, 0]).T)
-                >>> joint_screw_coord.append(sympy.Matrix([0, 0, 1, 0, -L1, 0]).T)
-                
-                Reference configurations of bodies 
-                (i.e. of body-fixed reference frames):
-                >>> body_ref_config = []
-                >>> body_ref_config.append(
-                ...     transformation_matrix(
-                ...     t=sympy.Matrix([0, 0, 0]))
-                >>> body_ref_config.append(
-                ...     transformation_matrix(
-                ...     t=sympy.Matrix([L1, 0, 0]))
-            
-                End-effector configuration wrt last link body fixed 
-                frame in the chain:
-                >>> ee = transformation_matrix(
-                ...     t=sympy.Matrix([L2, 0, 0]))
-
-                Mass-Intertia parameters:
-                >>> Mb = []
-                >>> Mb.append(mass_matrix_mixed_data(
-                ...     m1, (m1*L1**2) * sympy.Identity(3), cg1))
-                >>> Mb.append(mass_matrix_mixed_data(
-                ...     m2, (m2*L2**2) * sympy.Identity(3), cg2))
-
-                Declaring generalized vectors:
-                >>> q = Matrix([q1, q2])
-                >>> qd = Matrix([dq1, dq2])
-                >>> q2d = Matrix([ddq1, ddq2])
-            
-            Initialization and usage of SymbolicKinDyn:
-                Init:
-                >>> skd = SymbolicKinDyn(gravity_vector=gravity_vector, 
-                ...                      ee=ee, 
-                ...                      body_ref_config = body_ref_config, 
-                ...                      joint_screw_coord = joint_screw_coord, 
-                ...                      config_representation = "body_fixed", 
-                ...                      Mb=Mb)
-                
-                Generate Kinematics:
-                >>> skd.closed_form_kinematics_body_fixed(q, qd, q2d)
-                
-                Generate Dynamics:
-                >>> skd.closed_form_inv_dyn_body_fixed(q, qd, q2d)
-                
-                Generate Code:
-                >>> skd.generate_code(python=True, C=True, Matlab=True,  
-                ...                  name="R2_plant_example")
         """
         super().__init__()
         self.n = None  # degrees of freedom
@@ -889,6 +812,7 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
 
         The following expressions are saved in the class and can be 
         code generated afterwards:
+        
             body_acceleration
             body_acceleration_ee
             body_jacobian_matrix
@@ -905,7 +829,8 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
             hybrid_jacobian_matrix_ee_dot
             hybrid_twist_ee
 
-            Needs class parameters body_ref_config, joint_screw_coord and ee to be defined.
+        Needs class parameters body_ref_config, joint_screw_coord and ee 
+        to be defined.
 
         Args:
             q (sympy.Matrix, optional): 
