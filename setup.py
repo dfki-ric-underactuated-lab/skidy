@@ -29,5 +29,6 @@ setup(
         'Environment :: Console',
         'Intended Audience :: Academic Usage',
         'Programming Language :: Python',
+        "Operating System :: OS Independent",
     ],
 )

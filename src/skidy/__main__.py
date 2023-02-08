@@ -7,7 +7,7 @@ from skidy.parser import (
     robot_from_json, generate_template_json,
     robot_from_urdf, generate_template_python 
 )
-
+from skidy import __version__
 
 def main():
     parser = argparse.ArgumentParser(
@@ -16,6 +16,8 @@ def main():
     )
     # TODO: add urdf to description as soon as supported.
     parser.add_argument("filename",type=str, help=".yaml or .json file with definition of robot to analyse or location where to save generated template with '--template' option.")
+    parser.add_argument('--version', action='version',
+                    version='skidy {version}'.format(version=__version__))
     parser.add_argument("-s", "--simplify", action="store_true", help="simplify expressions")
     parser.add_argument("-c", "--cse", action="store_true", help="use common subexpression elimination to shorten expressions")
     parser.add_argument("-p", "--python", action="store_true", help="generate python code")

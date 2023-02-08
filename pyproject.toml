@@ -1,0 +1,66 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "skidy"
+version = "0.0.1"
+authors = [{name = "Underactuated Lab DFKI Robotics Innovation Center Bremen"}]
+maintainers = [
+    {name = "Hannah Isermann", email = "hannah.isermann@dfki.de"},
+]
+description = "Symbolic kinematics and dynamics model generation using Equations of Motion in closed form."
+readme = "README.md"
+requires-python = ">=3.8"
+keywords = ["symbolic", "code generation","robot","kinematics", "dynamics", "equation of motion"]
+license = {file = "LICENSE"}
+# license = {text = "BSD-3-Clause"}
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Academic Usage",
+    "License :: OSI Approved :: BSD License",
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+    "numpy",
+    "sympy >= 1.8",
+    "urdf_parser_py",
+    "regex",
+    "PyYAML",
+    "pylatex"
+]
+# dynamic = ["version"]
+
+[project.optional-dependencies]
+testing = ["cython", "oct2py"]
+
+[project.scripts]
+skidy = "skidy.__main__:main"
+
+[project.urls]
+# TODO: update 
+"Homepage" = "https://git.hb.dfki.de/underactuated-robotics/python_symbolic_kinematics_and_dynamics"
+
+[tool.bumpver]
+current_version = "0.0.1"
+version_pattern = "MAJOR.MINOR.PATCH"
+commit_message = "bump version {old_version} -> {new_version}"
+commit = true
+tag = true
+push = false
+
+[tool.bumpver.file_patterns]
+"pyproject.toml" = [
+    'current_version = "{version}"',
+    'version = "{version}"',
+]
+"setup.py" = [
+    "{version}",
+    # "{pep440_version}",
+]
+# "README.md" = [
+#     "{version}",
+#     "{pep440_version}",
+# ]
+"src/skidy/__init__.py" = ["{version}"]

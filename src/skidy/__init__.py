@@ -11,3 +11,4 @@ from skidy.matrices import (
 from skidy.parser import (
     robot_from_yaml, robot_from_json, robot_from_urdf,
     generate_template_yaml, generate_template_json, generate_template_python)
+__version__ = "0.0.1"
