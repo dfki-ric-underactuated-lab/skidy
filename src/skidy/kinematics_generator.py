@@ -46,8 +46,8 @@ class _AbstractCodeGeneration():
         self.C = None  # coriolis_centrifugal_matrix
         self.Qgrav = None  # gravity_vector
         self.Q = None  # inverse_dynamics
-        self.Vh_BFn = None
-        self.Vb_BFn = None
+        self.Vh_BFn = None # hybrid_twist
+        self.Vb_BFn = None # body_twist
         self.Vhd_BFn = None  # hybrid_acceleration
         self.Vbd_BFn = None  # body_acceleration
         self.Vhd_ee = None  # hybrid_acceleration_ee
@@ -91,6 +91,8 @@ class _AbstractCodeGeneration():
                            "system_jacobian_dot": self.Jdot,
                            "body_twist_ee": self.Vb_ee,
                            "hybrid_twist_ee": self.Vh_ee,
+                           "body_twist": self.Vb_BFn,
+                           "hybrid_twist": self.Vh_BFn,
                            "body_jacobian_matrix_ee": self.Jb_ee,
                            "hybrid_jacobian_matrix_ee": self.Jh_ee,
                            "generalized_mass_inertia_matrix": self.M,
@@ -105,7 +107,6 @@ class _AbstractCodeGeneration():
                            "body_jacobian_matrix_dot": self.Jb_dot,
                            "hybrid_jacobian_matrix_ee_dot": self.Jh_ee_dot,
                            "body_jacobian_matrix_ee_dot": self.Jb_ee_dot}  
-                            # not included: self.Vh_BFn, self.Vb_BFn
         # exclude expressions which are None
         if filterNone:
             filtered = {k: v for k, v in all_expressions.items()
