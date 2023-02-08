@@ -342,6 +342,7 @@ class _AbstractCodeGeneration():
                                     reverse=1):
                         modstring = regex.sub(
                             str(j), "self."+str(j), modstring)
+                        modstring = regex.sub("(?<=(\W|^)(?<!\.)\d+)(?!\.)(?=\W|\Z)",".0", modstring) # replace integer with floats
                         # remove double self
                         modstring = regex.sub("self.self.", "self.", modstring)
                     s.append("        self."+str(i)+" = " + modstring)
@@ -365,16 +366,22 @@ class _AbstractCodeGeneration():
                 s.append(f"        cdef numpy.ndarray[DTYPE_t,ndim={len(expressions[i].shape)}] "
                          + names[i])
                 if const_syms:
+                    ex_string = regex.sub(f"(?<=\W|^)(?={'|'.join([str(i) for i in const_syms])}(\W|\Z))","self.",p.doprint(expressions[i]))
+                    # replace integer with floats
+                    ex_string = regex.sub("(?<=(\W|^)(?<!\.)\d+)(?!\.)(?=\W|\Z)",".0", ex_string) 
                     s.append("        "
                             + names[i] 
                             + " = " 
-                            + regex.sub(f"(?<=\W|^)(?={'|'.join([str(i) for i in const_syms])}(\W|\Z))","self.",p.doprint(expressions[i])))
+                            + ex_string)
                             #  + regex.sub("(?<=((?<=[^\.])\W)\d+)(?=\W)(?!\.)",".0",regex.sub(f"(?<=\W|^)(?={'|'.join([str(i) for i in const_syms])}(\W|\Z))","self.",p.doprint(expressions[i]))))
                 else:
+                    ex_string = p.doprint(expressions[i])
+                    # replace integer with floats
+                    ex_string = regex.sub("(?<=(\W|^)(?<!\.)\d+)(?!\.)(?=\W|\Z)",".0", ex_string) 
                     s.append("        "
                             + names[i] 
                             + " = " 
-                            + p.doprint(expressions[i]))
+                            + ex_string)
                     
                 s.append("        return " + names[i])
 
