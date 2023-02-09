@@ -742,7 +742,8 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
             q2d (sympy.Matrix, optional): 
                 (n,1) Generalized acceleration vector. Defaults to None.
             WEE (sympy.Matrix, optional): 
-                (6,1) WEE (t) is the time varying wrench on the EE link. 
+                (6,1) WEE (t) = [Mx,My,Mz,Fx,Fy,Fz] is the time varying 
+                wrench on the EE link. 
                 Defaults to zeros(6, 1).
             
         """
@@ -936,7 +937,8 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
             q2d (sympy.Matrix, optional): 
                 (n,1) Generalized acceleration vector. Defaults to None.
             WEE (sympy.Matrix, optional): 
-                (6,1) WEE (t) is the time varying wrench on the EE link. 
+                (6,1) WEE (t) = [Mx,My,Mz,Fx,Fy,Fz] is the time varying 
+                wrench on the EE link. 
                 Defaults to zeros(6, 1).
             simplify_expressions (bool, optional): 
                 Use simplify command on saved expressions. 
@@ -1260,7 +1262,8 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
             q (sympy.Matrix): (n,1) Generalized position vector.
             qd (sympy.Matrix): (n,1 )Generalized velocity vector.
             q2d (sympy.Matrix): (n,1) Generalized acceleration vector.
-            WEE (sympy.Matrix, optional): (6,1) WEE (t) is the time 
+            WEE (sympy.Matrix, optional): 
+                (6,1) WEE (t) = [Mx,My,Mz,Fx,Fy,Fz] is the time 
                 varying wrench on the EE link. Defaults to zeros(6, 1).
             simplify_expressions (bool, optional): Use simplify command 
                 on saved expressions. Defaults to True.
@@ -1748,7 +1751,8 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
             q2d (sympy.Matrix): 
                 (n,1) Generalized acceleration vector.
             WEE (sympy.Matrix, optional): 
-                (6,1) WEE (t) is the time varying wrench on the EE link. 
+                (6,1) WEE (t) = [Mx,My,Mz,Fx,Fy,Fz] is the time varying 
+                wrench on the EE link. 
                 Defaults to zeros(6, 1).
             simplify_expressions (bool, optional): 
                 Use simplify command on saved expressions. 

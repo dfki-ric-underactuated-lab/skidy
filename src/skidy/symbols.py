@@ -4,7 +4,7 @@ q0, q1, q2, q3, q4, q5, q6, q7, q8, q9, q10 = symbols("q0, q1, q2, q3, q4, q5, q
 dq, dq0, dq1, dq2, dq3, dq4, dq5, dq6, dq7, dq8, dq9, dq10 = symbols("dq, dq0, dq1, dq2, dq3, dq4, dq5, dq6, dq7, dq8, dq9, dq10", real=1, constant = 0)
 ddq, ddq0, ddq1, ddq2, ddq3, ddq4, ddq5, ddq6, ddq7, ddq8, ddq9, ddq10 = symbols("ddq, ddq0, ddq1, ddq2, ddq3, ddq4, ddq5, ddq6, ddq7, ddq8, ddq9, ddq10", real=1, constant = 0)
 
-Fx, Fy, Fz, Mx, My, Mz, fx, fy, fz, mx, my, mz = symbols("Fx, Fy, Fz, Mx, My, Mz, fx, fy, fz, mx, my, mz", real=1)
+Fx, Fy, Fz, Mx, My, Mz, fx, fy, fz, mx, my, mz, taux, tauy, tauz = symbols("Fx, Fy, Fz, Mx, My, Mz, fx, fy, fz, mx, my, mz, taux, tauy, tauz", real=1)
 
 m0, m1, m2, m3, m4, m5, m6, m7, m8, m9, m10 = symbols("m0, m1, m2, m3, m4, m5, m6, m7, m8, m9, m10", real=1, constant = 1)
 

@@ -474,7 +474,7 @@ q2d: [ddq1,ddq2]
 WEE: [0,0,0,0,0,0]
 ```
 
-Define symbolic generalized vectors (q, qd, q2d) and the time varying wrench on the end-effector link (WEE). Where the generalized vectors are list of length n and the wrench is a list of length 6 with symbolic values.
+Define symbolic generalized vectors (q, qd, q2d) and the time varying wrench on the end-effector link (WEE). Where the generalized vectors are list of length n and the wrench is a list of length 6 with symbolic values e.g.: `[Mx,My,Mz,Fx,Fy,Fz]`.
 
 #### 2.1.2. Code generation using YAML
 
@@ -879,7 +879,7 @@ q2d = sympy.Matrix([ddq1,ddq2])
 WEE = sympy.zeros(6,1)
 ```
 
-Define the time varying wrench on the end-effector link. Should be a (6,1) sympy.Matrix with symbolic variables.
+Define the time varying wrench on the end-effector link. Should be a (6,1) sympy.Matrix with symbolic variables, e.g.: `sympy.Matrix([Mx,My,Mz,Fx,Fy,Fz])`.
 
 ---
 
@@ -937,7 +937,7 @@ and `skd.closed_form_inv_dyn_body_fixed` generates the following equations and s
 - gravity_vector
 - inverse_dynamics
 
-`skd.closed_form_inv_dyn_body_fixed` takes the wrench `WEE` (6x1 sympy.Matrix) on the end-effector link as optional additional argument.
+`skd.closed_form_inv_dyn_body_fixed` takes the wrench `WEE` (6x1 sympy.Matrix) (tau,F) on the end-effector link as optional additional argument.
 
 ---
 
