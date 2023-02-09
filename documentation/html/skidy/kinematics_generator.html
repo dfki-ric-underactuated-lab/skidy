@@ -47,9 +47,7 @@ from sympy.printing.numpy import NumPyPrinter
 from sympy.simplify.cse_main import numbered_symbols
 from sympy.simplify.fu import fu
 from sympy.utilities.codegen import codegen
-# from urdfpy import URDF
 from urdf_parser_py.urdf import URDF
-
 
 from skidy.matrices import (SE3AdjInvMatrix, SE3AdjMatrix,
                                            SE3adMatrix, SE3Exp, SE3Inv, SO3Exp,
@@ -74,8 +72,8 @@ class _AbstractCodeGeneration():
         self.C = None  # coriolis_centrifugal_matrix
         self.Qgrav = None  # gravity_vector
         self.Q = None  # inverse_dynamics
-        self.Vh_BFn = None
-        self.Vb_BFn = None
+        self.Vh_BFn = None # hybrid_twist
+        self.Vb_BFn = None # body_twist
         self.Vhd_BFn = None  # hybrid_acceleration
         self.Vbd_BFn = None  # body_acceleration
         self.Vhd_ee = None  # hybrid_acceleration_ee
@@ -87,6 +85,7 @@ class _AbstractCodeGeneration():
 
         # set of variable symbols to use in generated functions as arguments
         self.var_syms = set()
+        self.optional_var_syms = set() # for wrenches
         
         # Value assignment
         # dict with assigned variables for code generation
@@ -119,6 +118,8 @@ class _AbstractCodeGeneration():
                            &#34;system_jacobian_dot&#34;: self.Jdot,
                            &#34;body_twist_ee&#34;: self.Vb_ee,
                            &#34;hybrid_twist_ee&#34;: self.Vh_ee,
+                           &#34;body_twist&#34;: self.Vb_BFn,
+                           &#34;hybrid_twist&#34;: self.Vh_BFn,
                            &#34;body_jacobian_matrix_ee&#34;: self.Jb_ee,
                            &#34;hybrid_jacobian_matrix_ee&#34;: self.Jh_ee,
                            &#34;generalized_mass_inertia_matrix&#34;: self.M,
@@ -133,7 +134,6 @@ class _AbstractCodeGeneration():
                            &#34;body_jacobian_matrix_dot&#34;: self.Jb_dot,
                            &#34;hybrid_jacobian_matrix_ee_dot&#34;: self.Jh_ee_dot,
                            &#34;body_jacobian_matrix_ee_dot&#34;: self.Jb_ee_dot}  
-                            # not included: self.Vh_BFn, self.Vb_BFn
         # exclude expressions which are None
         if filterNone:
             filtered = {k: v for k, v in all_expressions.items()
@@ -197,12 +197,16 @@ class _AbstractCodeGeneration():
         if use_global_vars:
             # generate list of constant symbols
             constant_syms = self._sort_variables(
-                all_syms.difference(self.var_syms).union(self.subex_dict))
+                all_syms
+                .difference(self.var_syms)
+                .difference(self.optional_var_syms)
+                .union(self.subex_dict))
             # generate list with preassigned symbols like subexpressions
             # from common subexpression elimination
             not_assigned_syms = self._sort_variables(
                 all_syms
                 .difference(self.var_syms)
+                .difference(self.optional_var_syms)
                 .difference(self.assignment_dict)
                 .difference(self.subex_dict)
                 )
@@ -265,13 +269,17 @@ class _AbstractCodeGeneration():
             for i in range(len(expressions)):
                 var_syms = self._sort_variables(self.var_syms.intersection(
                     expressions[i].free_symbols))
+                optional_var_syms = self._sort_variables(self.optional_var_syms.intersection(
+                    expressions[i].free_symbols))
                 const_syms = self._sort_variables(
                     set(constant_syms).intersection(
                         expressions[i].free_symbols))
-                if len(var_syms) &gt; 0:
+                if len(var_syms) &gt; 0 or len(optional_var_syms) &gt; 0:
                     s.append(&#34;\n    def &#34;+names[i]+&#34;(self, %s) -&gt; numpy.ndarray:&#34; % (
                         &#34;, &#34;.join([str(var_syms[i])+&#34;: float&#34; 
-                                   for i in range(len(var_syms))])))
+                                   for i in range(len(var_syms))]
+                                  + [str(optional_var_syms[i])+&#34;: float=0&#34; 
+                                   for i in range(len(optional_var_syms))])))
 
                 else:
                     s.append(&#34;\n    def &#34;+names[i]+&#34;(self) -&gt; numpy.ndarray:&#34;)
@@ -369,6 +377,7 @@ class _AbstractCodeGeneration():
                                     reverse=1):
                         modstring = regex.sub(
                             str(j), &#34;self.&#34;+str(j), modstring)
+                        modstring = regex.sub(&#34;(?&lt;=(\W|^)(?&lt;!\.)\d+)(?!\.)(?=\W|\Z)&#34;,&#34;.0&#34;, modstring) # replace integer with floats
                         # remove double self
                         modstring = regex.sub(&#34;self.self.&#34;, &#34;self.&#34;, modstring)
                     s.append(&#34;        self.&#34;+str(i)+&#34; = &#34; + modstring)
@@ -377,14 +386,18 @@ class _AbstractCodeGeneration():
             for i in range(len(expressions)):
                 var_syms = self._sort_variables(self.var_syms.intersection(
                     expressions[i].free_symbols))
+                optional_var_syms = self._sort_variables(self.optional_var_syms.intersection(
+                    expressions[i].free_symbols))
                 const_syms = self._sort_variables(
                     set(constant_syms).intersection(
                         expressions[i].free_symbols))
-                if len(var_syms) &gt; 0:
+                if len(var_syms) &gt; 0 or len(optional_var_syms) &gt; 0:
                     s.append(f&#34;\n    cpdef &#34;+names[i]+&#34;(self, %s):&#34; % (
                     # s.append(f&#34;\n    cpdef np.ndarray[DTYPE_t,ndim={len(expressions[i].shape)}] &#34;+names[i]+&#34;(self, %s):&#34; % (
                         &#34;, &#34;.join([&#34;double &#34;+str(var_syms[i]) 
-                                   for i in range(len(var_syms))])))
+                                   for i in range(len(var_syms))]
+                                  + [&#34;double &#34;+str(optional_var_syms[i])+&#34;=0.0&#34; 
+                                     for i in range(len(optional_var_syms))])))
 
                 else:
                     s.append(&#34;\n    cpdef &#34;+names[i]+&#34;(self):&#34;)
@@ -392,16 +405,22 @@ class _AbstractCodeGeneration():
                 s.append(f&#34;        cdef numpy.ndarray[DTYPE_t,ndim={len(expressions[i].shape)}] &#34;
                          + names[i])
                 if const_syms:
+                    ex_string = regex.sub(f&#34;(?&lt;=\W|^)(?={&#39;|&#39;.join([str(i) for i in const_syms])}(\W|\Z))&#34;,&#34;self.&#34;,p.doprint(expressions[i]))
+                    # replace integer with floats
+                    ex_string = regex.sub(&#34;(?&lt;=(\W|^)(?&lt;!\.)\d+)(?!\.)(?=\W|\Z)&#34;,&#34;.0&#34;, ex_string) 
                     s.append(&#34;        &#34;
                             + names[i] 
                             + &#34; = &#34; 
-                            + regex.sub(f&#34;(?&lt;=\W|^)(?={&#39;|&#39;.join([str(i) for i in const_syms])}(\W|\Z))&#34;,&#34;self.&#34;,p.doprint(expressions[i])))
+                            + ex_string)
                             #  + regex.sub(&#34;(?&lt;=((?&lt;=[^\.])\W)\d+)(?=\W)(?!\.)&#34;,&#34;.0&#34;,regex.sub(f&#34;(?&lt;=\W|^)(?={&#39;|&#39;.join([str(i) for i in const_syms])}(\W|\Z))&#34;,&#34;self.&#34;,p.doprint(expressions[i]))))
                 else:
+                    ex_string = p.doprint(expressions[i])
+                    # replace integer with floats
+                    ex_string = regex.sub(&#34;(?&lt;=(\W|^)(?&lt;!\.)\d+)(?!\.)(?=\W|\Z)&#34;,&#34;.0&#34;, ex_string) 
                     s.append(&#34;        &#34;
                             + names[i] 
                             + &#34; = &#34; 
-                            + p.doprint(expressions[i]))
+                            + ex_string)
                     
                 s.append(&#34;        return &#34; + names[i])
 
@@ -608,7 +627,7 @@ class _AbstractCodeGeneration():
                     &#34;&#34;, m_func[0])
                 # remove unused variable symbols
                 m_func[0] = regex.sub(
-                    &#34;(&#34; + &#39;|&#39;.join([f&#39;, {str(v)}(?=\W)&#39; for v in self.var_syms.difference(expressions[i].free_symbols)])+&#34;)&#34;,
+                    &#34;(&#34; + &#39;|&#39;.join([f&#39;, {str(v)}(?=\W)&#39; for v in self.var_syms.union(self.optional_var_syms).difference(expressions[i].free_symbols)])+&#34;)&#34;,
                     &#34;&#34;, m_func[0])
                 # use obj.variables defined in class parameters
                 for i in range(1, len(m_func)):
@@ -690,7 +709,12 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
                  Mb: List[MutableDenseMatrix]=[], 
                  parent: List[int]=[], 
                  support: List[List[int]]=[], 
-                 child: List[List[int]]=[], **kwargs) -&gt; None:
+                 child: List[List[int]]=[], 
+                 q:MutableDenseMatrix=None, 
+                 qd: MutableDenseMatrix=None, 
+                 q2d: MutableDenseMatrix=None, 
+                 WEE: MutableDenseMatrix=zeros(6, 1),
+                 **kwargs) -&gt; None:
         &#34;&#34;&#34;SymbolicKinDyn
         Symbolic tool to compute equations of motion of serial chain 
         robots and autogenerate code from the calculated equations. 
@@ -737,6 +761,17 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
                 child links. Use empty list if no child link is present.
                 Only necessary for tree-like robot structures. 
                 Defaults to [].
+            q (sympy.Matrix, optional): 
+                (n,1) Generalized position vector. Defaults to None.
+            qd (sympy.Matrix, optional): 
+                (n,1) Generalized velocity vector. Defaults to None.
+            q2d (sympy.Matrix, optional): 
+                (n,1) Generalized acceleration vector. Defaults to None.
+            WEE (sympy.Matrix, optional): 
+                (6,1) WEE (t) = [Mx,My,Mz,Fx,Fy,Fz] is the time varying 
+                wrench on the EE link. 
+                Defaults to zeros(6, 1).
+            
         &#34;&#34;&#34;
         super().__init__()
         self.n = None  # degrees of freedom
@@ -788,6 +823,12 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
         self.queue_dict = {}  
         # dict of running processes
         self.process_dict = {}  
+        
+        # generalized vectors end external forces
+        self.q = q
+        self.qd = qd
+        self.q2d = q2d
+        self.WEE = WEE
 
         
     @property
@@ -886,7 +927,10 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
         if not q or not qd or not q2d:
             if not self.n:
                 self.n = len(self.body_ref_config)
-            q, qd, q2d = generalized_vectors(self.n,self._find_start_index())
+            if not self.q or not self.qd or not self.q2d:
+                q, qd, q2d = generalized_vectors(self.n,self._find_start_index())
+            else:
+                q, qd, q2d = self.q, self.qd, self.q2d
             
         if parallel:
             self._closed_form_kinematics_body_fixed_parallel(
@@ -898,7 +942,7 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
 
     def closed_form_inv_dyn_body_fixed(
         self, q:sympy.MutableDenseMatrix=None, qd: MutableDenseMatrix=None, 
-        q2d: MutableDenseMatrix=None, WEE: MutableDenseMatrix=zeros(6, 1), 
+        q2d: MutableDenseMatrix=None, WEE: MutableDenseMatrix=..., 
         simplify_expressions: bool=True, cse_ex: bool=False, 
         parallel: bool=True) -&gt; MutableDenseMatrix:
         &#34;&#34;&#34;Inverse dynamics using body fixed representation of the 
@@ -919,7 +963,8 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
             q2d (sympy.Matrix, optional): 
                 (n,1) Generalized acceleration vector. Defaults to None.
             WEE (sympy.Matrix, optional): 
-                (6,1) WEE (t) is the time varying wrench on the EE link. 
+                (6,1) WEE (t) = [Mx,My,Mz,Fx,Fy,Fz] is the time varying 
+                wrench on the EE link. 
                 Defaults to zeros(6, 1).
             simplify_expressions (bool, optional): 
                 Use simplify command on saved expressions. 
@@ -941,8 +986,14 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
         if not q or not qd or not q2d:
             if not self.n:
                 self.n = len(self.body_ref_config)
-            q, qd, q2d = generalized_vectors(self.n,self._find_start_index())
+            if not self.q or not self.qd or not self.q2d:
+                q, qd, q2d = generalized_vectors(self.n,self._find_start_index())
+            else:
+                q, qd, q2d = self.q, self.qd, self.q2d
         
+        if WEE is Ellipsis:
+            WEE = self.WEE
+            
         if parallel:
             self._closed_form_inv_dyn_body_fixed_parallel(
                 q, qd, q2d, WEE, simplify_expressions, cse_ex)
@@ -1237,7 +1288,8 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
             q (sympy.Matrix): (n,1) Generalized position vector.
             qd (sympy.Matrix): (n,1 )Generalized velocity vector.
             q2d (sympy.Matrix): (n,1) Generalized acceleration vector.
-            WEE (sympy.Matrix, optional): (6,1) WEE (t) is the time 
+            WEE (sympy.Matrix, optional): 
+                (6,1) WEE (t) = [Mx,My,Mz,Fx,Fy,Fz] is the time 
                 varying wrench on the EE link. Defaults to zeros(6, 1).
             simplify_expressions (bool, optional): Use simplify command 
                 on saved expressions. Defaults to True.
@@ -1252,7 +1304,7 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
         self.var_syms.update(q.free_symbols)
         self.var_syms.update(qd.free_symbols)
         self.var_syms.update(q2d.free_symbols)
-        self.var_syms.update(WEE.free_symbols)
+        self.optional_var_syms.update(WEE.free_symbols)
 
         self.n = len(q)
 
@@ -1725,7 +1777,8 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
             q2d (sympy.Matrix): 
                 (n,1) Generalized acceleration vector.
             WEE (sympy.Matrix, optional): 
-                (6,1) WEE (t) is the time varying wrench on the EE link. 
+                (6,1) WEE (t) = [Mx,My,Mz,Fx,Fy,Fz] is the time varying 
+                wrench on the EE link. 
                 Defaults to zeros(6, 1).
             simplify_expressions (bool, optional): 
                 Use simplify command on saved expressions. 
@@ -1749,7 +1802,7 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
         self.var_syms.update(q.free_symbols)
         self.var_syms.update(qd.free_symbols)
         self.var_syms.update(q2d.free_symbols)
-        self.var_syms.update(WEE.free_symbols)
+        self.optional_var_syms.update(WEE.free_symbols)
 
         self.n = len(q)
         self.queue_dict[&#34;subex_dict&#34;] = Queue()
@@ -2108,172 +2161,6 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
                 return num
         return ex
         
-    # # using urdfpy
-    # def load_from_urdf(self, path: str, symbolic: bool=True, 
-    #                    cse_ex: bool=False, simplify_numbers: bool=True,  
-    #                    tolerance: float=0.0001, max_denominator: int=9) -&gt; None:
-    #     &#34;&#34;&#34;Load robot from urdf.
-
-    #     Args:
-    #         path (str): path to URDF.
-    #         symbolic (bool, optional): 
-    #             generate symbols for numeric values. 
-    #             Defaults to True.
-    #         cse_ex (bool, optional): 
-    #             use common subexpression elimination. Defaults to False.
-    #         simplify_numbers (bool, optional): 
-    #             Use eg. pi/2 instead of 1.5708. Defaults to True.
-    #         tolerance (float, optional): 
-    #             tolerance for simplify_numbers. Defaults to 0.0001.
-    #         max_denominator (int, optional): 
-    #             Maximum denominator to use for simplify numbers to avoid
-    #             values like 13/153. Use 0 to deactivate. Defaults to 9.
-
-    #     Raises:
-    #         NotImplementedError: supports only the joint types 
-    #             &#34;revolute&#34;, &#34;continuous&#34; and &#34;prismatic&#34;.
-    #     &#34;&#34;&#34;
-    #     robot = URDF.load(path)
-    #     self.B = []
-    #     self.X = []
-    #     self._create_topology_lists(robot)
-    #     fixed_origin = None
-    #     fixed_links = []
-    #     DOF = 0
-    #     xyz_rpy_syms = []
-    #     for joint in robot.joints:
-    #         if joint.joint_type in [&#34;revolute&#34;, &#34;continuous&#34;, &#34;prismatic&#34;]:
-    #             DOF += 1
-    #         elif joint.joint_type in [&#34;fixed&#34;]:
-    #             pass
-    #         else:
-    #             raise NotImplementedError(
-    #                 &#34;Joint type &#39;&#34; + joint.joint_type+&#34;&#39; not implemented yet!&#34;)
-
-    #     ji = 0  # joint index of used joints
-    #     jia = 0  # joint index of all joints (fixed included)
-    #     joint_origins = []
-    #     for joint in robot.joints:
-    #         name = joint.name
-    #         origin = Matrix(joint.origin)
-    #         if symbolic:
-    #             xyz_rpy = matrix_to_xyz_rpy(joint.origin)
-    #             xyz_rpy_syms.append(symbols(
-    #                 &#34; &#34;.join([name+&#34;_%s&#34; % s for s in [&#34;x&#34;, &#34;y&#34;, &#34;z&#34;, &#34;roll&#34;, &#34;pitch&#34;, &#34;yar&#34;]])))
-    #             xyzrpylist = []
-    #             if simplify_numbers:
-    #                 for i in range(6):
-    #                     if (self._nsimplify(xyz_rpy[i], 
-    #                                        tolerance=tolerance, 
-    #                                        max_denominator=max_denominator) 
-    #                         in [0, -1, 1, pi, -pi, pi/2, -pi/2, 3*pi/2, -3*pi/2]
-    #                         ):
-    #                         xyzrpylist.append(
-    #                             self._nsimplify(xyz_rpy[i], tolerance=tolerance,
-    #                                             max_denominator=max_denominator))
-    #                     else:
-    #                         xyzrpylist.append(xyz_rpy_syms[jia][i])
-    #                         self.assignment_dict[xyz_rpy_syms[jia]
-    #                                              [i]] = xyz_rpy[i]
-    #             else:
-    #                 for i in range(6):
-    #                     if xyz_rpy[i] == 0:
-    #                         xyzrpylist.append(0)
-    #                     elif xyz_rpy[i] == 1:
-    #                         xyzrpylist.append(1)
-    #                     elif xyz_rpy[i] == -1:
-    #                         xyzrpylist.append(-1)
-    #                     else:
-    #                         xyzrpylist.append(xyz_rpy_syms[jia][i])
-    #                         self.assignment_dict[xyz_rpy_syms[jia]
-    #                                              [i]] = xyz_rpy[i]
-    #             origin = xyz_rpy_to_matrix(xyzrpylist)
-    #             if cse_ex:
-    #                 origin = self._cse_expression(origin)
-    #         elif simplify_numbers:
-    #             for i in range(4):
-    #                 for j in range(4):
-    #                     origin[i, j] = self._nsimplify(
-    #                         origin[i, j], [pi], tolerance=tolerance,
-    #                         max_denominator=max_denominator)
-    #         joint_origins.append(origin)
-    #         if joint.joint_type in [&#34;revolute&#34;, &#34;continuous&#34;, &#34;prismatic&#34;]:
-    #             axis = Matrix(joint.axis)
-    #             if simplify_numbers:
-    #                 for i in range(3):
-    #                     axis[i] = self._nsimplify(axis[i], [pi], tolerance=tolerance,
-    #                                         max_denominator=max_denominator)
-    #             if fixed_origin:
-    #                 origin *= fixed_origin
-    #                 fixed_origin = None
-    #             self.B.append(Matrix(origin))
-
-    #             if joint.joint_type in [&#34;revolute&#34;, &#34;continuous&#34;]:
-    #                 self.X.append(Matrix(axis).col_join(Matrix([0, 0, 0])))
-    #             else:
-    #                 self.X.append(Matrix(Matrix([0, 0, 0])).col_join(axis))
-    #             ji += 1
-    #         elif joint.joint_type == &#34;fixed&#34;:
-    #             if fixed_origin:
-    #                 fixed_origin *= origin
-    #             else:
-    #                 fixed_origin = origin
-    #             fixed_links.append((joint.parent, joint.child))
-    #         jia += 1
-
-    #     self.Mb = []
-    #     i = 0
-    #     first_non_fixed = 1
-    #     for link in robot.links:
-    #         name = link.name
-    #         # ignore base link
-    #         if i &lt; first_non_fixed:
-    #             if name in [x[1] for x in fixed_links]:
-    #                 first_non_fixed += 1
-    #             i += 1
-    #             continue
-    #         inertia = Matrix(link.inertial.inertia)
-    #         mass = link.inertial.mass
-    #         inertiaorigin = Matrix(link.inertial.origin)
-    #         if symbolic:
-    #             I_syms = symbols(&#34;Ixx_%s Ixy_%s Ixz_%s Iyy_%s Iyz_%s Izz_%s&#34; % (
-    #                 name, name, name, name, name, name))
-    #             c_syms = symbols(&#34;cx_%s cy_%s cz_%s&#34; % (name, name, name))
-    #             I = inertia_matrix(*I_syms)
-    #             m = symbols(&#34;m_%s&#34; % name)
-    #             cg = Matrix([*c_syms])
-    #         else:
-    #             if simplify_numbers:
-    #                 for i in range(4):
-    #                     for j in range(4):
-    #                         inertiaorigin[i, j] = self._nsimplify(
-    #                             inertiaorigin[i, j], [pi], tolerance=tolerance,
-    #                             max_denominator=max_denominator)
-    #                 for i in range(3):
-    #                     for j in range(3):
-    #                         inertia[i, j] = self._nsimplify(
-    #                             inertia[i, j], [pi], tolerance=tolerance,
-    #                             max_denominator=max_denominator)
-    #             I = Matrix(inertia)
-    #             m = mass
-    #             cg = Matrix(inertiaorigin[0:3, 3])
-    #         M = mass_matrix_mixed_data(m, I, cg)
-    #         if name in [x[1] for x in fixed_links]:
-    #             j = i
-    #             # transform Mass matrix
-    #             while robot.links[j].name in [x[1] for x in fixed_links]:
-    #                 M = SE3AdjInvMatrix(
-    #                     joint_origins[j-1]).T * M * SE3AdjInvMatrix(joint_origins[j-1])
-    #                 j -= 1
-    #             self.Mb[-1] += M
-    #             i += 1
-    #             continue
-    #         self.Mb.append(M)
-    #         i += 1
-
-    #     return
-
-    # using urdf_parser_py
     def load_from_urdf(self, path: str, symbolic: bool=True, 
                        cse_ex: bool=False, simplify_numbers: bool=True,  
                        tolerance: float=0.0001, max_denominator: int=9) -&gt; None:
@@ -2624,12 +2511,14 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
         vars = set(vars)
         # divide into variable and constant symbols
         var_syms = self.var_syms.intersection(vars)
-        rest = list(vars.difference(var_syms))
+        optional_var_syms = self.optional_var_syms.intersection(vars)
+        rest = list(vars.difference(var_syms).difference(optional_var_syms))
         # divide variable symbols into q, dq, ddq and other variable symbols
         q = []
         dq = []
         ddq = []
         var_rest = []
+        opt_var = []
         for i in var_syms:
             if str(i).startswith(&#34;ddq&#34;):
                 ddq.append(i)
@@ -2639,7 +2528,10 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
                 q.append(i)
             else:
                 var_rest.append(i)
-
+                
+        for i in optional_var_syms:  
+            opt_var.append(i)
+            
         def symsort(data: List[sympy.Symbol]) -&gt; List[sympy.Symbol]:
             &#34;&#34;&#34;Sort symbols
 
@@ -2656,6 +2548,7 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
                 + symsort(dq) 
                 + symsort(ddq) 
                 + symsort(var_rest) 
+                + symsort(opt_var) 
                 + symsort(rest))
 
     def _cse_expression(self, exp: sympy.Expr) -&gt; sympy.Expr:
@@ -2862,7 +2755,13 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
 <dl>
 <dt id="skidy.kinematics_generator.SymbolicKinDyn"><code class="flex name class">
 <span>class <span class="ident">SymbolicKinDyn</span></span>
-<span>(</span><span>gravity_vector: sympy.matrices.dense.MutableDenseMatrix = None, ee: sympy.matrices.dense.MutableDenseMatrix = None, body_ref_config: List[sympy.matrices.dense.MutableDenseMatrix] = [], joint_screw_coord: List[sympy.matrices.dense.MutableDenseMatrix] = [], config_representation: str = 'spacial', Mb: List[sympy.matrices.dense.MutableDenseMatrix] = [], parent: List[int] = [], support: List[List[int]] = [], child: List[List[int]] = [], **kwargs)</span>
+<span>(</span><span>gravity_vector: sympy.matrices.dense.MutableDenseMatrix = None, ee: sympy.matrices.dense.MutableDenseMatrix = None, body_ref_config: List[sympy.matrices.dense.MutableDenseMatrix] = [], joint_screw_coord: List[sympy.matrices.dense.MutableDenseMatrix] = [], config_representation: str = 'spacial', Mb: List[sympy.matrices.dense.MutableDenseMatrix] = [], parent: List[int] = [], support: List[List[int]] = [], child: List[List[int]] = [], q: sympy.matrices.dense.MutableDenseMatrix = None, qd: sympy.matrices.dense.MutableDenseMatrix = None, q2d: sympy.matrices.dense.MutableDenseMatrix = None, WEE: sympy.matrices.dense.MutableDenseMatrix = Matrix([
+[0],
+[0],
+[0],
+[0],
+[0],
+[0]]), **kwargs)</span>
 </code></dt>
 <dd>
 <div class="desc"><p>SymbolicKinDyn
@@ -2911,6 +2810,16 @@ Defaults to [].</dd>
 child links. Use empty list if no child link is present.
 Only necessary for tree-like robot structures.
 Defaults to [].</dd>
+<dt><strong><code>q</code></strong> :&ensp;<code>sympy.Matrix</code>, optional</dt>
+<dd>(n,1) Generalized position vector. Defaults to None.</dd>
+<dt><strong><code>qd</code></strong> :&ensp;<code>sympy.Matrix</code>, optional</dt>
+<dd>(n,1) Generalized velocity vector. Defaults to None.</dd>
+<dt><strong><code>q2d</code></strong> :&ensp;<code>sympy.Matrix</code>, optional</dt>
+<dd>(n,1) Generalized acceleration vector. Defaults to None.</dd>
+<dt><strong><code>WEE</code></strong> :&ensp;<code>sympy.Matrix</code>, optional</dt>
+<dd>(6,1) WEE (t) = [Mx,My,Mz,Fx,Fy,Fz] is the time varying
+wrench on the EE link.
+Defaults to zeros(6, 1).</dd>
 </dl></div>
 <details class="source">
 <summary>
@@ -2929,7 +2838,12 @@ Defaults to [].</dd>
                  Mb: List[MutableDenseMatrix]=[], 
                  parent: List[int]=[], 
                  support: List[List[int]]=[], 
-                 child: List[List[int]]=[], **kwargs) -&gt; None:
+                 child: List[List[int]]=[], 
+                 q:MutableDenseMatrix=None, 
+                 qd: MutableDenseMatrix=None, 
+                 q2d: MutableDenseMatrix=None, 
+                 WEE: MutableDenseMatrix=zeros(6, 1),
+                 **kwargs) -&gt; None:
         &#34;&#34;&#34;SymbolicKinDyn
         Symbolic tool to compute equations of motion of serial chain 
         robots and autogenerate code from the calculated equations. 
@@ -2976,6 +2890,17 @@ Defaults to [].</dd>
                 child links. Use empty list if no child link is present.
                 Only necessary for tree-like robot structures. 
                 Defaults to [].
+            q (sympy.Matrix, optional): 
+                (n,1) Generalized position vector. Defaults to None.
+            qd (sympy.Matrix, optional): 
+                (n,1) Generalized velocity vector. Defaults to None.
+            q2d (sympy.Matrix, optional): 
+                (n,1) Generalized acceleration vector. Defaults to None.
+            WEE (sympy.Matrix, optional): 
+                (6,1) WEE (t) = [Mx,My,Mz,Fx,Fy,Fz] is the time varying 
+                wrench on the EE link. 
+                Defaults to zeros(6, 1).
+            
         &#34;&#34;&#34;
         super().__init__()
         self.n = None  # degrees of freedom
@@ -3027,6 +2952,12 @@ Defaults to [].</dd>
         self.queue_dict = {}  
         # dict of running processes
         self.process_dict = {}  
+        
+        # generalized vectors end external forces
+        self.q = q
+        self.qd = qd
+        self.q2d = q2d
+        self.WEE = WEE
 
         
     @property
@@ -3125,7 +3056,10 @@ Defaults to [].</dd>
         if not q or not qd or not q2d:
             if not self.n:
                 self.n = len(self.body_ref_config)
-            q, qd, q2d = generalized_vectors(self.n,self._find_start_index())
+            if not self.q or not self.qd or not self.q2d:
+                q, qd, q2d = generalized_vectors(self.n,self._find_start_index())
+            else:
+                q, qd, q2d = self.q, self.qd, self.q2d
             
         if parallel:
             self._closed_form_kinematics_body_fixed_parallel(
@@ -3137,7 +3071,7 @@ Defaults to [].</dd>
 
     def closed_form_inv_dyn_body_fixed(
         self, q:sympy.MutableDenseMatrix=None, qd: MutableDenseMatrix=None, 
-        q2d: MutableDenseMatrix=None, WEE: MutableDenseMatrix=zeros(6, 1), 
+        q2d: MutableDenseMatrix=None, WEE: MutableDenseMatrix=..., 
         simplify_expressions: bool=True, cse_ex: bool=False, 
         parallel: bool=True) -&gt; MutableDenseMatrix:
         &#34;&#34;&#34;Inverse dynamics using body fixed representation of the 
@@ -3158,7 +3092,8 @@ Defaults to [].</dd>
             q2d (sympy.Matrix, optional): 
                 (n,1) Generalized acceleration vector. Defaults to None.
             WEE (sympy.Matrix, optional): 
-                (6,1) WEE (t) is the time varying wrench on the EE link. 
+                (6,1) WEE (t) = [Mx,My,Mz,Fx,Fy,Fz] is the time varying 
+                wrench on the EE link. 
                 Defaults to zeros(6, 1).
             simplify_expressions (bool, optional): 
                 Use simplify command on saved expressions. 
@@ -3180,8 +3115,14 @@ Defaults to [].</dd>
         if not q or not qd or not q2d:
             if not self.n:
                 self.n = len(self.body_ref_config)
-            q, qd, q2d = generalized_vectors(self.n,self._find_start_index())
+            if not self.q or not self.qd or not self.q2d:
+                q, qd, q2d = generalized_vectors(self.n,self._find_start_index())
+            else:
+                q, qd, q2d = self.q, self.qd, self.q2d
         
+        if WEE is Ellipsis:
+            WEE = self.WEE
+            
         if parallel:
             self._closed_form_inv_dyn_body_fixed_parallel(
                 q, qd, q2d, WEE, simplify_expressions, cse_ex)
@@ -3476,7 +3417,8 @@ Defaults to [].</dd>
             q (sympy.Matrix): (n,1) Generalized position vector.
             qd (sympy.Matrix): (n,1 )Generalized velocity vector.
             q2d (sympy.Matrix): (n,1) Generalized acceleration vector.
-            WEE (sympy.Matrix, optional): (6,1) WEE (t) is the time 
+            WEE (sympy.Matrix, optional): 
+                (6,1) WEE (t) = [Mx,My,Mz,Fx,Fy,Fz] is the time 
                 varying wrench on the EE link. Defaults to zeros(6, 1).
             simplify_expressions (bool, optional): Use simplify command 
                 on saved expressions. Defaults to True.
@@ -3491,7 +3433,7 @@ Defaults to [].</dd>
         self.var_syms.update(q.free_symbols)
         self.var_syms.update(qd.free_symbols)
         self.var_syms.update(q2d.free_symbols)
-        self.var_syms.update(WEE.free_symbols)
+        self.optional_var_syms.update(WEE.free_symbols)
 
         self.n = len(q)
 
@@ -3964,7 +3906,8 @@ Defaults to [].</dd>
             q2d (sympy.Matrix): 
                 (n,1) Generalized acceleration vector.
             WEE (sympy.Matrix, optional): 
-                (6,1) WEE (t) is the time varying wrench on the EE link. 
+                (6,1) WEE (t) = [Mx,My,Mz,Fx,Fy,Fz] is the time varying 
+                wrench on the EE link. 
                 Defaults to zeros(6, 1).
             simplify_expressions (bool, optional): 
                 Use simplify command on saved expressions. 
@@ -3988,7 +3931,7 @@ Defaults to [].</dd>
         self.var_syms.update(q.free_symbols)
         self.var_syms.update(qd.free_symbols)
         self.var_syms.update(q2d.free_symbols)
-        self.var_syms.update(WEE.free_symbols)
+        self.optional_var_syms.update(WEE.free_symbols)
 
         self.n = len(q)
         self.queue_dict[&#34;subex_dict&#34;] = Queue()
@@ -4347,172 +4290,6 @@ Defaults to [].</dd>
                 return num
         return ex
         
-    # # using urdfpy
-    # def load_from_urdf(self, path: str, symbolic: bool=True, 
-    #                    cse_ex: bool=False, simplify_numbers: bool=True,  
-    #                    tolerance: float=0.0001, max_denominator: int=9) -&gt; None:
-    #     &#34;&#34;&#34;Load robot from urdf.
-
-    #     Args:
-    #         path (str): path to URDF.
-    #         symbolic (bool, optional): 
-    #             generate symbols for numeric values. 
-    #             Defaults to True.
-    #         cse_ex (bool, optional): 
-    #             use common subexpression elimination. Defaults to False.
-    #         simplify_numbers (bool, optional): 
-    #             Use eg. pi/2 instead of 1.5708. Defaults to True.
-    #         tolerance (float, optional): 
-    #             tolerance for simplify_numbers. Defaults to 0.0001.
-    #         max_denominator (int, optional): 
-    #             Maximum denominator to use for simplify numbers to avoid
-    #             values like 13/153. Use 0 to deactivate. Defaults to 9.
-
-    #     Raises:
-    #         NotImplementedError: supports only the joint types 
-    #             &#34;revolute&#34;, &#34;continuous&#34; and &#34;prismatic&#34;.
-    #     &#34;&#34;&#34;
-    #     robot = URDF.load(path)
-    #     self.B = []
-    #     self.X = []
-    #     self._create_topology_lists(robot)
-    #     fixed_origin = None
-    #     fixed_links = []
-    #     DOF = 0
-    #     xyz_rpy_syms = []
-    #     for joint in robot.joints:
-    #         if joint.joint_type in [&#34;revolute&#34;, &#34;continuous&#34;, &#34;prismatic&#34;]:
-    #             DOF += 1
-    #         elif joint.joint_type in [&#34;fixed&#34;]:
-    #             pass
-    #         else:
-    #             raise NotImplementedError(
-    #                 &#34;Joint type &#39;&#34; + joint.joint_type+&#34;&#39; not implemented yet!&#34;)
-
-    #     ji = 0  # joint index of used joints
-    #     jia = 0  # joint index of all joints (fixed included)
-    #     joint_origins = []
-    #     for joint in robot.joints:
-    #         name = joint.name
-    #         origin = Matrix(joint.origin)
-    #         if symbolic:
-    #             xyz_rpy = matrix_to_xyz_rpy(joint.origin)
-    #             xyz_rpy_syms.append(symbols(
-    #                 &#34; &#34;.join([name+&#34;_%s&#34; % s for s in [&#34;x&#34;, &#34;y&#34;, &#34;z&#34;, &#34;roll&#34;, &#34;pitch&#34;, &#34;yar&#34;]])))
-    #             xyzrpylist = []
-    #             if simplify_numbers:
-    #                 for i in range(6):
-    #                     if (self._nsimplify(xyz_rpy[i], 
-    #                                        tolerance=tolerance, 
-    #                                        max_denominator=max_denominator) 
-    #                         in [0, -1, 1, pi, -pi, pi/2, -pi/2, 3*pi/2, -3*pi/2]
-    #                         ):
-    #                         xyzrpylist.append(
-    #                             self._nsimplify(xyz_rpy[i], tolerance=tolerance,
-    #                                             max_denominator=max_denominator))
-    #                     else:
-    #                         xyzrpylist.append(xyz_rpy_syms[jia][i])
-    #                         self.assignment_dict[xyz_rpy_syms[jia]
-    #                                              [i]] = xyz_rpy[i]
-    #             else:
-    #                 for i in range(6):
-    #                     if xyz_rpy[i] == 0:
-    #                         xyzrpylist.append(0)
-    #                     elif xyz_rpy[i] == 1:
-    #                         xyzrpylist.append(1)
-    #                     elif xyz_rpy[i] == -1:
-    #                         xyzrpylist.append(-1)
-    #                     else:
-    #                         xyzrpylist.append(xyz_rpy_syms[jia][i])
-    #                         self.assignment_dict[xyz_rpy_syms[jia]
-    #                                              [i]] = xyz_rpy[i]
-    #             origin = xyz_rpy_to_matrix(xyzrpylist)
-    #             if cse_ex:
-    #                 origin = self._cse_expression(origin)
-    #         elif simplify_numbers:
-    #             for i in range(4):
-    #                 for j in range(4):
-    #                     origin[i, j] = self._nsimplify(
-    #                         origin[i, j], [pi], tolerance=tolerance,
-    #                         max_denominator=max_denominator)
-    #         joint_origins.append(origin)
-    #         if joint.joint_type in [&#34;revolute&#34;, &#34;continuous&#34;, &#34;prismatic&#34;]:
-    #             axis = Matrix(joint.axis)
-    #             if simplify_numbers:
-    #                 for i in range(3):
-    #                     axis[i] = self._nsimplify(axis[i], [pi], tolerance=tolerance,
-    #                                         max_denominator=max_denominator)
-    #             if fixed_origin:
-    #                 origin *= fixed_origin
-    #                 fixed_origin = None
-    #             self.B.append(Matrix(origin))
-
-    #             if joint.joint_type in [&#34;revolute&#34;, &#34;continuous&#34;]:
-    #                 self.X.append(Matrix(axis).col_join(Matrix([0, 0, 0])))
-    #             else:
-    #                 self.X.append(Matrix(Matrix([0, 0, 0])).col_join(axis))
-    #             ji += 1
-    #         elif joint.joint_type == &#34;fixed&#34;:
-    #             if fixed_origin:
-    #                 fixed_origin *= origin
-    #             else:
-    #                 fixed_origin = origin
-    #             fixed_links.append((joint.parent, joint.child))
-    #         jia += 1
-
-    #     self.Mb = []
-    #     i = 0
-    #     first_non_fixed = 1
-    #     for link in robot.links:
-    #         name = link.name
-    #         # ignore base link
-    #         if i &lt; first_non_fixed:
-    #             if name in [x[1] for x in fixed_links]:
-    #                 first_non_fixed += 1
-    #             i += 1
-    #             continue
-    #         inertia = Matrix(link.inertial.inertia)
-    #         mass = link.inertial.mass
-    #         inertiaorigin = Matrix(link.inertial.origin)
-    #         if symbolic:
-    #             I_syms = symbols(&#34;Ixx_%s Ixy_%s Ixz_%s Iyy_%s Iyz_%s Izz_%s&#34; % (
-    #                 name, name, name, name, name, name))
-    #             c_syms = symbols(&#34;cx_%s cy_%s cz_%s&#34; % (name, name, name))
-    #             I = inertia_matrix(*I_syms)
-    #             m = symbols(&#34;m_%s&#34; % name)
-    #             cg = Matrix([*c_syms])
-    #         else:
-    #             if simplify_numbers:
-    #                 for i in range(4):
-    #                     for j in range(4):
-    #                         inertiaorigin[i, j] = self._nsimplify(
-    #                             inertiaorigin[i, j], [pi], tolerance=tolerance,
-    #                             max_denominator=max_denominator)
-    #                 for i in range(3):
-    #                     for j in range(3):
-    #                         inertia[i, j] = self._nsimplify(
-    #                             inertia[i, j], [pi], tolerance=tolerance,
-    #                             max_denominator=max_denominator)
-    #             I = Matrix(inertia)
-    #             m = mass
-    #             cg = Matrix(inertiaorigin[0:3, 3])
-    #         M = mass_matrix_mixed_data(m, I, cg)
-    #         if name in [x[1] for x in fixed_links]:
-    #             j = i
-    #             # transform Mass matrix
-    #             while robot.links[j].name in [x[1] for x in fixed_links]:
-    #                 M = SE3AdjInvMatrix(
-    #                     joint_origins[j-1]).T * M * SE3AdjInvMatrix(joint_origins[j-1])
-    #                 j -= 1
-    #             self.Mb[-1] += M
-    #             i += 1
-    #             continue
-    #         self.Mb.append(M)
-    #         i += 1
-
-    #     return
-
-    # using urdf_parser_py
     def load_from_urdf(self, path: str, symbolic: bool=True, 
                        cse_ex: bool=False, simplify_numbers: bool=True,  
                        tolerance: float=0.0001, max_denominator: int=9) -&gt; None:
@@ -4863,12 +4640,14 @@ Defaults to [].</dd>
         vars = set(vars)
         # divide into variable and constant symbols
         var_syms = self.var_syms.intersection(vars)
-        rest = list(vars.difference(var_syms))
+        optional_var_syms = self.optional_var_syms.intersection(vars)
+        rest = list(vars.difference(var_syms).difference(optional_var_syms))
         # divide variable symbols into q, dq, ddq and other variable symbols
         q = []
         dq = []
         ddq = []
         var_rest = []
+        opt_var = []
         for i in var_syms:
             if str(i).startswith(&#34;ddq&#34;):
                 ddq.append(i)
@@ -4878,7 +4657,10 @@ Defaults to [].</dd>
                 q.append(i)
             else:
                 var_rest.append(i)
-
+                
+        for i in optional_var_syms:  
+            opt_var.append(i)
+            
         def symsort(data: List[sympy.Symbol]) -&gt; List[sympy.Symbol]:
             &#34;&#34;&#34;Sort symbols
 
@@ -4895,6 +4677,7 @@ Defaults to [].</dd>
                 + symsort(dq) 
                 + symsort(ddq) 
                 + symsort(var_rest) 
+                + symsort(opt_var) 
                 + symsort(rest))
 
     def _cse_expression(self, exp: sympy.Expr) -&gt; sympy.Expr:
@@ -5152,13 +4935,7 @@ def joint_screw_coord(self) -&gt; list:
 <h3>Methods</h3>
 <dl>
 <dt id="skidy.kinematics_generator.SymbolicKinDyn.closed_form_inv_dyn_body_fixed"><code class="name flex">
-<span>def <span class="ident">closed_form_inv_dyn_body_fixed</span></span>(<span>self, q: sympy.matrices.dense.MutableDenseMatrix = None, qd: sympy.matrices.dense.MutableDenseMatrix = None, q2d: sympy.matrices.dense.MutableDenseMatrix = None, WEE: sympy.matrices.dense.MutableDenseMatrix = Matrix([
-[0],
-[0],
-[0],
-[0],
-[0],
-[0]]), simplify_expressions: bool = True, cse_ex: bool = False, parallel: bool = True) ‑> sympy.matrices.dense.MutableDenseMatrix</span>
+<span>def <span class="ident">closed_form_inv_dyn_body_fixed</span></span>(<span>self, q: sympy.matrices.dense.MutableDenseMatrix = None, qd: sympy.matrices.dense.MutableDenseMatrix = None, q2d: sympy.matrices.dense.MutableDenseMatrix = None, WEE: sympy.matrices.dense.MutableDenseMatrix = Ellipsis, simplify_expressions: bool = True, cse_ex: bool = False, parallel: bool = True) ‑> sympy.matrices.dense.MutableDenseMatrix</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Inverse dynamics using body fixed representation of the
@@ -5178,7 +4955,8 @@ inverse_dynamics</p>
 <dt><strong><code>q2d</code></strong> :&ensp;<code>sympy.Matrix</code>, optional</dt>
 <dd>(n,1) Generalized acceleration vector. Defaults to None.</dd>
 <dt><strong><code>WEE</code></strong> :&ensp;<code>sympy.Matrix</code>, optional</dt>
-<dd>(6,1) WEE (t) is the time varying wrench on the EE link.
+<dd>(6,1) WEE (t) = [Mx,My,Mz,Fx,Fy,Fz] is the time varying
+wrench on the EE link.
 Defaults to zeros(6, 1).</dd>
 <dt><strong><code>simplify_expressions</code></strong> :&ensp;<code>bool</code>, optional</dt>
 <dd>Use simplify command on saved expressions.
@@ -5204,7 +4982,7 @@ of bodies not set.</p>
 </summary>
 <pre><code class="python">def closed_form_inv_dyn_body_fixed(
     self, q:sympy.MutableDenseMatrix=None, qd: MutableDenseMatrix=None, 
-    q2d: MutableDenseMatrix=None, WEE: MutableDenseMatrix=zeros(6, 1), 
+    q2d: MutableDenseMatrix=None, WEE: MutableDenseMatrix=..., 
     simplify_expressions: bool=True, cse_ex: bool=False, 
     parallel: bool=True) -&gt; MutableDenseMatrix:
     &#34;&#34;&#34;Inverse dynamics using body fixed representation of the 
@@ -5225,7 +5003,8 @@ of bodies not set.</p>
         q2d (sympy.Matrix, optional): 
             (n,1) Generalized acceleration vector. Defaults to None.
         WEE (sympy.Matrix, optional): 
-            (6,1) WEE (t) is the time varying wrench on the EE link. 
+            (6,1) WEE (t) = [Mx,My,Mz,Fx,Fy,Fz] is the time varying 
+            wrench on the EE link. 
             Defaults to zeros(6, 1).
         simplify_expressions (bool, optional): 
             Use simplify command on saved expressions. 
@@ -5247,8 +5026,14 @@ of bodies not set.</p>
     if not q or not qd or not q2d:
         if not self.n:
             self.n = len(self.body_ref_config)
-        q, qd, q2d = generalized_vectors(self.n,self._find_start_index())
+        if not self.q or not self.qd or not self.q2d:
+            q, qd, q2d = generalized_vectors(self.n,self._find_start_index())
+        else:
+            q, qd, q2d = self.q, self.qd, self.q2d
     
+    if WEE is Ellipsis:
+        WEE = self.WEE
+        
     if parallel:
         self._closed_form_inv_dyn_body_fixed_parallel(
             q, qd, q2d, WEE, simplify_expressions, cse_ex)
@@ -5369,7 +5154,10 @@ of bodies not set.</p>
     if not q or not qd or not q2d:
         if not self.n:
             self.n = len(self.body_ref_config)
-        q, qd, q2d = generalized_vectors(self.n,self._find_start_index())
+        if not self.q or not self.qd or not self.q2d:
+            q, qd, q2d = generalized_vectors(self.n,self._find_start_index())
+        else:
+            q, qd, q2d = self.q, self.qd, self.q2d
         
     if parallel:
         self._closed_form_kinematics_body_fixed_parallel(
