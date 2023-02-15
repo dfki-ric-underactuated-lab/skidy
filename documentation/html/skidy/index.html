@@ -92,7 +92,7 @@ For unit testing the following packages are additionally recommended:
 python3 -m pip install oct2py
 ```
 This requires a working octave installation on your system:
-Install on ubuntu with:
+Install on Ubuntu with:
 ```bash
 sudo apt install octave
 ```
@@ -235,7 +235,7 @@ Define whether the representation of the joint screw coordinates and the body re
   - type: prismatic
     axis: [0,0,1]
 </code></pre>
-The joint screw coordinates can be defined eighter using the syntax which is used above, where <code>type</code> is the joint type (<code>revolute</code> or <code>prismatic</code>), <code>axis</code> is the joint axis and <code>vec</code> is a vector from the origin to the joint axis.
+The joint screw coordinates can be defined either using the syntax which is used above, where <code>type</code> is the joint type (<code>revolute</code> or <code>prismatic</code>), <code>axis</code> is the joint axis and <code>vec</code> is a vector from the origin to the joint axis.
 Alternatively, you can directly use the 6D joint screw vectors instead:
 <pre><code class="yaml">joint_screw_coord:
   - [0,0,1,0,0,0]
@@ -408,7 +408,7 @@ index: 1
 pointmass: False
 com: [0,0,0]
 ```
-Here the parameter index is appended to the names <code>Ixx</code> etc and generates an inertia matrix following the naming scheme used in the examples above.
+Here the parameter index is appended to the names <code>Ixx</code> etc. and generates an inertia matrix following the naming scheme used in the examples above.
 With the parameter `pointmass: True` the resulting inertia matrix looks like this:
 ```yaml
 [[I1, 0, 0],
@@ -581,7 +581,7 @@ joint_screw_coord = []
 joint_screw_coord.append(joint_screw(axis=[0,0,1], vec=[0,0,0], revolute=True))
 joint_screw_coord.append(joint_screw(axis=[0,0,1], revolute=False))
 </code></pre>
-The joint screw coordinates can be defined eighter using the syntax which is used above, where <code>axis</code> is the joint axis, <code>vec</code> is a vector from the origin to the joint axis and <code>revolute</code> has to be <code>True</code> for revolute joints and <code>False</code> for prismatic joints. Note that prismatic joints don't need the parameter <code>vec</code>.
+The joint screw coordinates can be defined either using the syntax which is used above, where <code>axis</code> is the joint axis, <code>vec</code> is a vector from the origin to the joint axis and <code>revolute</code> has to be <code>True</code> for revolute joints and <code>False</code> for prismatic joints. Note that prismatic joints don't need the parameter <code>vec</code>.
 Alternatively, you can directly use the 6D joint screw vectors instead:
 <pre><code class="python">joint_screw_coord = []
 joint_screw_coord.append(sympy.Matrix([0,0,1,0,0,0]))
