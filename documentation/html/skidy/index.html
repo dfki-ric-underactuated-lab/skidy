@@ -24,7 +24,9 @@
 <section id="section-intro">
 <h1 id="skidy-symbolic-kinematics-and-dynamics-generator">skidy - symbolic kinematics and dynamics generator</h1>
 <ul>
-<li><a href="#1-install">1. Install</a></li>
+<li><a href="#1-installation">1. Installation</a></li>
+<li><a href="#install-package-from-source">Install package from source</a></li>
+<li><a href="#dependencies">Dependencies</a></li>
 <li><a href="#2-usage">2. Usage</a></li>
 <li><a href="#21-yaml-and-json">2.1. YAML and JSON</a><ul>
 <li><a href="#211-create-robot-model-as-yaml-file">2.1.1. Create robot model as YAML file</a></li>
@@ -35,118 +37,100 @@
 <li><a href="#23-urdf">2.3. URDF</a></li>
 <li><a href="#3-unit-testing">3. Unit testing</a></li>
 <li><a href="#4-benchmarking">4. Benchmarking</a></li>
+<li><a href="#5-license">5. License</a></li>
 </ul>
 <p>Symbolic kinematics and dynamics model generation using Equations of Motion in closed form.</p>
-<h2 id="1-install">1. Install</h2>
-<p>The project requires the following packages:</p>
-<ul>
-<li>
-<p>sympy (Version &gt;= 1.8)</p>
-<p><code>bash
-python3 -m pip install --upgrade sympy</code></p>
-</li>
-<li>
-<p>numpy</p>
-<p><code>bash
-python3 -m pip install numpy</code></p>
-</li>
-<li>
-<p>urdf_parser_py</p>
-<p><code>bash
-python3 -m pip install urdf_parser_py</code></p>
-</li>
-</ul>
-<!-- - urdfpy
+<h2 id="1-installation">1. Installation</h2>
+<!-- To install this package use:
+<pre><code class="bash">python3 -m pip install skidy
+``` --&gt;
+
+### Install package from source
+
+To install the package from source go to the root folder of the package:
+
 ```bash
-python3 -m pip install urdfpy
-```
-*Note:* If you have installed numpy>=1.24.0 you might need to upgrade the package networkx after installing urdfpy using `python -m pip install --upgrade networkx`. See chapter [Troubleshooting](#5-troubleshooting) for more information. -->
-<ul>
-<li>
-<p>regex</p>
-<p><code>bash
-python3 -m pip install regex</code></p>
-</li>
-<li>
-<p>PyYAML</p>
-<p><code>bash
-python3 -m pip install PyYAML</code></p>
-</li>
-<li>
-<p>pylatex</p>
-<p><code>bash
-python3 -m pip install pylatex</code></p>
-</li>
-</ul>
-<p>To install all dependencies use:</p>
-<pre><code class="bash">python3 setup.py install
+cd /path/to/project
 </code></pre>
-<p>For unit testing the following packages are additionally recommended:</p>
-<ul>
-<li>
-<p>oct2py</p>
-<p><code>bash
-python3 -m pip install oct2py</code></p>
-<p>This requires a working octave installation on your system:
-Install on ubuntu with:</p>
-<p><code>bash
-sudo apt install octave</code></p>
-</li>
-<li>
-<p>cython</p>
-<p><code>bash
-python3 -m pip install cython</code></p>
-</li>
-</ul>
-<!-- ## Usage
-The script kinematics generator contains one class <code>SymbolicKinDyn</code> which contains all needed functions.
-This class has the attributes <code>gravity\_vector</code>, <code>ee</code>, <code>A</code>, <code>B</code>, <code>X</code>, <code>Y</code> and <code>Mb</code>, which have to be set as described in <https://git.hb.dfki.de/underactuated-robotics/symbolic_kinematics_and_dynamics/-/blob/master/documentation/main.pdf>.
-The in this documentation described example of a 2R kinematic chain robot is coded after the `if __name__ == "__main__:"` part in the kinematics_generator.py script.
-If you have set all needed parameters (you have to either set <code>A</code> and <code>Y</code> or <code>B</code>, not all of them) the forward kinematics can be calculated with
-<code>closed\_form\_kinematics\_body\_fixed(q,dq,ddq)</code>.
-The inverse dynamics is calculated using:
-<code>closed\_form\_inv\_dyn\_body\_fixed(q,dq,ddq)</code>. -->
-<h2 id="2-usage">2. Usage</h2>
-<p>There are four ways to load your robot into the library:</p>
-<ol>
-<li>using a <em>YAML</em> file</li>
-<li>using a <em>JSON</em> file</li>
-<li>directly in <em>python</em></li>
-<li>using <em>URDF</em></li>
-</ol>
-<p>For defining a robot with one of the first three options (YAML, JSON, python) the following parameters are required:</p>
-<ul>
-<li>6D joint screw coordinates for any joint</li>
-<li>4x4 body reference coordinates for any link</li>
-<li>4x4 end-effector configuration w.r.t. last link body fixed frame in the chain</li>
-</ul>
-<p>For generating the inverse dynamics the following two parameters are required:</p>
-<ul>
-<li>3D gravity vector</li>
-<li>6x6 Mass-inertia matrix for any link</li>
-</ul>
-<p>Tree-like robot structures require the following graph description parameters additionally:</p>
-<ul>
-<li>parent link for any joint</li>
-<li>support graph for any joint</li>
-<li>(child links for any joint) -&gt; currently not used</li>
-</ul>
-<p>Using URDF the following three parameters are required:</p>
-<ul>
-<li>path to URDF file</li>
-<li>4x4 end-effector configuration w.r.t. last link body fixed frame in the chain</li>
-<li>3D gravity vector</li>
-</ul>
-<h3 id="21-yaml-and-json">2.1. YAML and JSON</h3>
-<p><strong>NOTE:</strong> As <em>JSON</em> and <em>YAML</em> files represent the same data structure this documentation covers only <em>YAML</em> files. Use <em>JSON</em> accordingly and just replace <code>yaml</code> with <code>json</code> in all commands.</p>
-<h4 id="211-create-robot-model-as-yaml-file">2.1.1. Create robot model as YAML file</h4>
-<p>There is a function to generate a <strong>template YAML file</strong> in which it is easy to modify the parameters for your robot.
-To generate your robot template use</p>
+then use:
+<pre><code class="bash">python3 -m pip install -e .
+</code></pre>
+to install the package in editable mode or:
+<pre><code class="bash">python3 -m pip install .
+</code></pre>
+to install the package uneditable.
+**Note:** The <code>.</code> is part of the command.
+### Dependencies
+The project has the following dependencies:
+- sympy (Version >= 1.8)
+```bash
+python3 -m pip install --upgrade sympy
+```
+- numpy
+```bash
+python3 -m pip install numpy
+```
+- urdf_parser_py
+```bash
+python3 -m pip install urdf_parser_py
+```
+- regex
+```bash
+python3 -m pip install regex
+```
+- PyYAML
+```bash
+python3 -m pip install PyYAML
+```
+- pylatex
+```bash
+python3 -m pip install pylatex
+```
+For unit testing the following packages are additionally recommended:
+- oct2py
+```bash
+python3 -m pip install oct2py
+```
+This requires a working octave installation on your system:
+Install on ubuntu with:
+```bash
+sudo apt install octave
+```
+- cython
+```bash
+python3 -m pip install cython
+```
+## 2. Usage
+There are four ways to load your robot into the library:
+1. using a *YAML* file
+2. using a *JSON* file
+3. directly in *python*
+4. using *URDF*
+For defining a robot with one of the first three options (YAML, JSON, python) the following parameters are required:
+- 6D joint screw coordinates for any joint
+- 4x4 body reference coordinates for any link
+- 4x4 end-effector configuration w.r.t. last link body fixed frame in the chain
+For generating the inverse dynamics the following two parameters are required:
+- 3D gravity vector
+- 6x6 Mass-inertia matrix for any link
+Tree-like robot structures require the following graph description parameters additionally:
+- parent link for any joint
+- support graph for any joint
+- (child links for any joint) -> currently not used
+Using URDF the following three parameters are required:
+- path to URDF file
+- 4x4 end-effector configuration w.r.t. last link body fixed frame in the chain
+- 3D gravity vector
+### 2.1. YAML and JSON
+**NOTE:** As *JSON* and *YAML* files represent the same data structure this documentation covers only *YAML* files. Use *JSON* accordingly and just replace <code>yaml</code> with <code>json</code> in all commands.
+#### 2.1.1. Create robot model as YAML file
+There is a function to generate a **template YAML file** in which it is easy to modify the parameters for your robot.
+To generate your robot template use
 <pre><code class="bash">python3 -m skidy --please [options] new_filename.yaml
 </code></pre>
-<p>or the python function <code>skidy.generate_template_yaml(path, structure)</code>.</p>
-<p>For [options] the option <code>--structure</code> is highly recommended. There you can define which joint types to use in the template. E.g. use <code>--structure 'rrp'</code> for a robot which has two revolute joints followed by one prismatic joint.</p>
-<p>The command <code>python3 -m skidy --please --structure 'rp' my_robot_template.yaml</code> creates the following output file:</p>
+or the python function <code>skidy.generate\_template\_yaml(path, structure)</code>.
+For [options] the option `--structure` is highly recommended. There you can define which joint types to use in the template. E.g. use `--structure 'rrp'` for a robot which has two revolute joints followed by one prismatic joint.
+The command `python3 -m skidy --please --structure 'rp' my_robot_template.yaml` creates the following output file:
 <pre><code class="yaml">---
 parent:
   - 0
@@ -162,7 +146,7 @@ support:
 
 gravity: [0,0,g]
 
-representation: spacial
+representation: spatial
 
 joint_screw_coord:
   - type: revolute
@@ -216,7 +200,7 @@ q2d: [ddq1,ddq2]
 WEE: [0,0,0,0,0,0]
 
 </code></pre>
-<p>The code explained:</p>
+The code explained:
 <pre><code class="yaml">parent:
   - 0
   - 1
@@ -229,22 +213,20 @@ support:
   - [1]
   - [1,2]
 </code></pre>
-<p>The parameters are generated to represent a serial robot by default. Modify parameters for tree-like structures. For serial robots these parameters are optional.</p>
-<ul>
-<li><strong>parent</strong>: list of parent links for any joint. Use 0 for World.</li>
-<li><strong>child</strong>: list of lists with child links for any link. Use empty list if no child is present.</li>
-<li><strong>support</strong>: list of lists with all support links beginning with first link including current link for any link.</li>
-</ul>
-<hr>
+The parameters are generated to represent a serial robot by default. Modify parameters for tree-like structures. For serial robots these parameters are optional.
+- **parent**: list of parent links for any joint. Use 0 for World.
+- **child**: list of lists with child links for any link. Use empty list if no child is present.
+- **support**: list of lists with all support links beginning with first link including current link for any link.
+---
 <pre><code class="yaml">gravity: [0,0,g]
 </code></pre>
-<p>Gravity vector.
-<strong>Note:</strong> you can always use symbolic variables instead of numeric values.</p>
-<hr>
-<pre><code class="yaml">representation: spacial
+Gravity vector.
+**Note:** you can always use symbolic variables instead of numeric values.
+---
+<pre><code class="yaml">representation: spatial
 </code></pre>
-<p>Define whether the representation of the joint screw coordinates and the body reference configuration is w.r.t. world frame (<code>representation: spacial</code>) or in body fixed coordinates (<code>representation: body_fixed</code>)</p>
-<hr>
+Define whether the representation of the joint screw coordinates and the body reference configuration is w.r.t. world frame (`representation: spatial`) or in body fixed coordinates (`representation: body_fixed`)
+---
 <pre><code class="yaml">joint_screw_coord:
   - type: revolute
     axis: [0,0,1]
@@ -253,13 +235,13 @@ support:
   - type: prismatic
     axis: [0,0,1]
 </code></pre>
-<p>The joint screw coordinates can be defined eighter using the syntax which is used above, where <code>type</code> is the joint type (<code>revolute</code> or <code>prismatic</code>), <code>axis</code> is the joint axis and <code>vec</code> is a vector from the origin to the joint axis.
-Alternatively, you can directly use the 6D joint screw vectors instead:</p>
+The joint screw coordinates can be defined eighter using the syntax which is used above, where <code>type</code> is the joint type (<code>revolute</code> or <code>prismatic</code>), <code>axis</code> is the joint axis and <code>vec</code> is a vector from the origin to the joint axis.
+Alternatively, you can directly use the 6D joint screw vectors instead:
 <pre><code class="yaml">joint_screw_coord:
   - [0,0,1,0,0,0]
   - [0,0,0,0,0,1]
 </code></pre>
-<hr>
+---
 <pre><code class="yaml">body_ref_config:
   - rotation:
       axis: [0,0,1]
@@ -271,11 +253,9 @@ Alternatively, you can directly use the 6D joint screw vectors instead:</p>
       angle: 0
     translation: [0,0,0]
 </code></pre>
-<p>The body reference configuration is a list of SE(3) transformation matrices. To define them you have several options:</p>
-<ol>
-<li>
-<p>Write down the whole matrix e.g.:</p>
-<p><code>yaml
+The body reference configuration is a list of SE(3) transformation matrices. To define them you have several options:
+1. Write down the whole matrix e.g.:
+```yaml
 body_ref_config:
 - [[cos(pi),-sin(pi),0, 0],
 [sin(pi), cos(pi),0, 0],
@@ -284,60 +264,52 @@ body_ref_config:
 0,1,L1],
 [
 0,
-0,0, 1]]</code></p>
-</li>
-<li>
-<p>Write rotation and translation separately:</p>
-<p><code>yaml
+0,0, 1]]
+```
+2. Write rotation and translation separately:
+```yaml
 body_ref_config:
 - rotation:
 [[1,0,0],
 [0,1,0],
 [0,0,1]]
-translation: [0,0,L1]</code></p>
-</li>
-<li>
-<p>Use axis angle representation for rotation:
--&gt; See code above.</p>
-</li>
-<li>
-<p>For zero rotations or translations it is possible to omit the option:</p>
-<p><code>yaml
+translation: [0,0,L1]
+```
+3. Use axis angle representation for rotation:
+-> See code above.
+4. For zero rotations or translations it is possible to omit the option:
+```yaml
 body_ref_config:
-- translation: [0,0,L1]</code></p>
-</li>
-<li>
-<p>Use xyz_rpy coordinates to define Pose:</p>
-<p><code>yaml
+- translation: [0,0,L1]
+```
+5. Use xyz_rpy coordinates to define Pose:
+```yaml
 body_ref_config:
-- xyzrpy: [0, 0, L1, 0, pi/2, 0]</code></p>
-</li>
-<li>
-<p>Use roll pitch yaw (rpy) euler angles to define rotation:</p>
-<p><code>yaml
+- xyzrpy: [0, 0, L1, 0, pi/2, 0]
+```
+6. Use roll pitch yaw (rpy) euler angles to define rotation:
+```yaml
 body_ref_config:
 - rotation:
 rpy: [0, pi/2, 0]
-translation: [0,0,L1]</code></p>
-</li>
-<li>
-<p>Use quaternion [w,x,y,z] to define rotation:</p>
-<p><code>yaml
+translation: [0,0,L1]
+```
+7. Use quaternion [w,x,y,z] to define rotation:
+```yaml
 body_ref_config:
 - rotation:
 Q: [1, 0, 0, 0]
-translation: [0,0,L1]</code></p>
-</li>
-</ol>
-<hr>
+translation: [0,0,L1]
+```
+---
 <pre><code class="yaml">ee:
   rotation:
     axis: [0,0,1]
     angle: 0
   translation: [0,0,0]
 </code></pre>
-<p>End-effector representation w.r.t. last link body frame in the chain as SE(3) transformation matrix. Here you have the same syntax options as for the body reference configuration. <strong>Note</strong> there is no trailing <code>-</code> as there is only one pose to be defined.</p>
-<hr>
+End-effector representation w.r.t. last link body frame in the chain as SE(3) transformation matrix. Here you have the same syntax options as for the body reference configuration. **Note** there is no trailing `-` as there is only one pose to be defined.
+---
 <pre><code class="yaml">mass_inertia:
   - mass: m1
     inertia:
@@ -359,11 +331,9 @@ translation: [0,0,L1]</code></p>
       Izz: Izz2
     com: [0,0,0]
 </code></pre>
-<p>Mass-inertia matrices of all links. For the definition you have the following syntax options:</p>
-<ol>
-<li>
-<p>Write down whole matrix:</p>
-<p><code>yaml
+Mass-inertia matrices of all links. For the definition you have the following syntax options:
+1. Write down whole matrix:
+```yaml
 mass_inertia:
 - [[
 Ixx1,
@@ -399,84 +369,76 @@ m1,
 0,
 0,
 0,
-m1]]</code></p>
-</li>
-<li>
-<p>Define mass, inertia and center of mass (com) separately:</p>
-<p>```yaml
+m1]]
+```
+2. Define mass, inertia and center of mass (com) separately:
+```yaml
 mass_inertia:
 - mass: m1
 inertia:
 [[Ixx1,Ixy1,Ixz1],
 [Ixy1,Iyy1,Iyz1],
 [Ixz1,Iyz1,Izz1]]
-com: [cx1,cy1,cz1]</p>
-<p>```</p>
-</li>
-<li>
-<p>Only define the 6 independent inertia parameters:</p>
-<p>```yaml
+com: [cx1,cy1,cz1]
+```
+3. Only define the 6 independent inertia parameters:
+```yaml
 mass_inertia:
 - mass: m1
 inertia: [Ixx1,Ixy1,Ixz1,Iyy1,Iyz1,Izz1]
-com: [cx1,cy1,cz1]</p>
-<p>```</p>
-</li>
-<li>
-<p>Define only necessary inertia parameters:</p>
-<p>```yaml
+com: [cx1,cy1,cz1]
+```
+4. Define only necessary inertia parameters:
+```yaml
 mass_inertia:
 - mass: m1
 inertia:
 Ixx: Ixx1
 Iyy: Iyy1
 Izz: Izz1
-com: [cx1,cy1,cz1]</p>
-<p>```</p>
-<p>Supports the parameters <code>Ixx</code>, <code>Ixy</code>, <code>Ixz</code>, <code>Iyy</code>, <code>Iyz</code> and <code>Izz</code>. All parameters default to 0.</p>
-</li>
-<li>
-<p>Automatically generate symbols in inertia matrix:</p>
-<p>```yaml
+com: [cx1,cy1,cz1]
+```
+Supports the parameters <code>Ixx</code>, <code>Ixy</code>, <code>Ixz</code>, <code>Iyy</code>, <code>Iyz</code> and <code>Izz</code>. All parameters default to 0.
+5. Automatically generate symbols in inertia matrix:
+```yaml
 mass_inertia:
 - mass: m1
 inertia:
 index: 1
 pointmass: False
-com: [0,0,0]</p>
-<p>```</p>
-<p>Here the parameter index is appended to the names <code>Ixx</code> etc and generates an inertia matrix following the naming scheme used in the examples above.
-With the parameter <code>pointmass: True</code> the resulting inertia matrix looks like this:</p>
-<p><code>yaml
+com: [0,0,0]
+```
+Here the parameter index is appended to the names <code>Ixx</code> etc and generates an inertia matrix following the naming scheme used in the examples above.
+With the parameter `pointmass: True` the resulting inertia matrix looks like this:
+```yaml
 [[I1, 0, 0],
 [ 0,I1, 0],
-[ 0, 0,I1]]</code></p>
-</li>
-</ol>
-<hr>
+[ 0, 0,I1]]
+```
+---
 <pre><code class="yaml">q: [q1,q2]
 qd: [dq1,dq2]
 q2d: [ddq1,ddq2]
 WEE: [0,0,0,0,0,0]
 </code></pre>
-<p>Define symbolic generalized vectors (q, qd, q2d) and the time varying wrench on the end-effector link (WEE). Where the generalized vectors are list of length n and the wrench is a list of length 6 with symbolic values e.g.: <code>[Mx,My,Mz,Fx,Fy,Fz]</code>.</p>
-<h4 id="212-code-generation-using-yaml">2.1.2. Code generation using YAML</h4>
-<p>To start the code generation process use:</p>
+Define symbolic generalized vectors (q, qd, q2d) and the time varying wrench on the end-effector link (WEE). Where the generalized vectors are list of length n and the wrench is a list of length 6 with symbolic values e.g.: <code>\[Mx,My,Mz,Fx,Fy,Fz]</code>.
+#### 2.1.2. Code generation using YAML
+To start the code generation process use:
 <pre><code class="bash">python3 -m skidy [options] path/to/robot.yaml
 </code></pre>
-<p>In the options you have to specify what kind of code (python <code>-p</code>, Matlab <code>-m</code>, C <code>-C</code>, latex <code>-l</code>) you'd like to generate and whether the equations should be simplified <code>-s</code>.</p>
-<p>Use</p>
+In the options you have to specify what kind of code (python `-p`, Matlab `-m`, C `-C`, latex `-l`) you'd like to generate and whether the equations should be simplified `-s`.
+Use
 <pre><code class="bash">python3 -m skidy -h
 </code></pre>
-<p>to get a description of all available options.</p>
-<h3 id="22-python">2.2. Python</h3>
-<p>As for YAML and JSON there is a function to auto-generate a <strong>python template file</strong> which makes it easier to define your own robot.
-To generate your robot template use</p>
+to get a description of all available options.
+### 2.2. Python
+As for YAML and JSON there is a function to auto-generate a **python template file** which makes it easier to define your own robot.
+To generate your robot template use
 <pre><code class="bash">python3 -m skidy --please [options] new_filename.py
 </code></pre>
-<p>or the python function <code>skidy.generate_template_python(path, structure)</code>.</p>
-<p>For [options] the option <code>--structure</code> is highly recommended. There you can define which joint types to use in the template. E.g. use <code>--structure 'rrp'</code> for a robot which has two revolute joints followed by one prismatic joint.</p>
-<p>The command <code>python3 -m skidy --please --structure 'rp' my_robot_template.py</code> creates the following output file:</p>
+or the python function <code>skidy.generate\_template\_python(path, structure)</code>.
+For [options] the option `--structure` is highly recommended. There you can define which joint types to use in the template. E.g. use `--structure 'rrp'` for a robot which has two revolute joints followed by one prismatic joint.
+The command `python3 -m skidy --please --structure 'rp' my_robot_template.py` creates the following output file:
 <pre><code class="python">from skidy import (SymbolicKinDyn,
                    transformation_matrix,
                    mass_matrix_mixed_data,
@@ -510,7 +472,7 @@ support = [[1],
 gravity = sympy.Matrix([0,0,g])
 
 # representation of joint screw coordinates and body reference configurations
-representation = 'spacial' # alternative: 'body_fixed'
+representation = 'spatial' # alternative: 'body_fixed'
 
 # joint screw coordinates (6x1 sympy.Matrix per joint)
 joint_screw_coord = []
@@ -553,7 +515,7 @@ skd.generate_code(python=True, C=False, Matlab=False, latex=False,
                  folder=&quot;./generated_code&quot;, use_global_vars=True,
                  name=&quot;plant&quot;, project=&quot;Project&quot;)
 </code></pre>
-<p>The code explained:</p>
+The code explained:
 <pre><code class="python">from skidy import (SymbolicKinDyn,
                    transformation_matrix,
                    mass_matrix_mixed_data,
@@ -562,23 +524,21 @@ skd.generate_code(python=True, C=False, Matlab=False, latex=False,
                    inertia_matrix,
                    generalized_vectors)
 </code></pre>
-<p>The class <code>SymbolicKinDyn</code> is the main object for calculating the kinematic and dynamic equations of your robot and generate the code.
-Additionally, we import several helper functions for defining the matrices which are useful for the robot definition:</p>
-<ul>
-<li><code>transformation_matrix</code>: Create SE(3) transformation matrix from SO(3) rotation and translation vector.</li>
-<li><code>mass_matrix_mixed_data</code>: Create 6x6 mass-inertia matrix from mass, 3x3 inertia matrix and 3x1 center of mass vector.</li>
-<li><code>joint_screw</code>: create 6x1 joint screw vector from joint axis and vector from origin to joint axis.</li>
-<li><code>SO3Exp</code>: Exponential mapping of SO(3) to generate rotation matrix from rotation angle and rotation axis.</li>
-<li><code>inertia_matrix</code>: generate 3x3 inertia matrix from 6 independent parameters (Ixx, Ixy, &hellip;).</li>
-<li><code>generalized_vectors</code>: generate symbolic generalized vectors q, qd and q2d of predefined length n.</li>
-</ul>
+The class <code>SymbolicKinDyn</code> is the main object for calculating the kinematic and dynamic equations of your robot and generate the code.
+Additionally, we import several helper functions for defining the matrices which are useful for the robot definition:
+- <code>transformation\_matrix</code>: Create SE(3) transformation matrix from SO(3) rotation and translation vector.
+- <code>mass\_matrix\_mixed\_data</code>: Create 6x6 mass-inertia matrix from mass, 3x3 inertia matrix and 3x1 center of mass vector.
+- <code>joint\_screw</code>: create 6x1 joint screw vector from joint axis and vector from origin to joint axis.
+- <code>SO3Exp</code>: Exponential mapping of SO(3) to generate rotation matrix from rotation angle and rotation axis.
+- <code>inertia\_matrix</code>: generate 3x3 inertia matrix from 6 independent parameters (Ixx, Ixy, ...).
+- <code>generalized\_vectors</code>: generate symbolic generalized vectors q, qd and q2d of predefined length n.
 <pre><code class="python">from skidy.symbols import g, pi
 </code></pre>
-<p>The package <code><a title="skidy.symbols" href="symbols.html">skidy.symbols</a></code> includes the most common used symbolic variables, which can be used for defining your robot.</p>
+The package <code><a title="skidy.symbols" href="symbols.html">skidy.symbols</a></code> includes the most common used symbolic variables, which can be used for defining your robot.
 <pre><code class="python">import sympy
 </code></pre>
-<p>The whole library used sympy objects for all symbolic equations etc. Hence, we need <code>sympy</code> to create additional symbolic variables and matrices later.</p>
-<hr>
+The whole library used sympy objects for all symbolic equations etc. Hence, we need <code>sympy</code> to create additional symbolic variables and matrices later.
+---
 <pre><code class="python"># Define symbols:
 m1, m2 = sympy.symbols('m1 m2', real=True, const=True)
 Ixx1, Ixx2 = sympy.symbols('Ixx1 Ixx2', real=True, const=True)
@@ -588,8 +548,8 @@ Iyy1, Iyy2 = sympy.symbols('Iyy1 Iyy2', real=True, const=True)
 Iyz1, Iyz2 = sympy.symbols('Iyz1 Iyz2', real=True, const=True)
 Izz1, Izz2 = sympy.symbols('Izz1 Izz2', real=True, const=True)
 </code></pre>
-<p>Create symbolic variables which can be used in the equations for the robot definition later. The most common symbols are also already present in the <code><a title="skidy.symbols" href="symbols.html">skidy.symbols</a></code> package and may be imported from there instead.</p>
-<hr>
+Create symbolic variables which can be used in the equations for the robot definition later. The most common symbols are also already present in the <code><a title="skidy.symbols" href="symbols.html">skidy.symbols</a></code> package and may be imported from there instead.
+---
 <pre><code class="python"># Define connectivity graph
 parent = [0,
           1]
@@ -600,46 +560,42 @@ child = [[1],
 support = [[1],
            [1,2]]
 </code></pre>
-<p>Connectivity graph of the robot. The parameters are generated to represent a serial robot by default. Modify parameters for tree-like structures. For serial robots these parameters are optional.</p>
-<ul>
-<li><strong>parent</strong>: list of parent links for any joint. Use 0 for World.</li>
-<li><strong>child</strong>: list of lists with child links for any link. Use empty list if no child is present.</li>
-<li><strong>support</strong>: list of lists with all support links beginning with first link including current link for any link.</li>
-</ul>
-<hr>
+Connectivity graph of the robot. The parameters are generated to represent a serial robot by default. Modify parameters for tree-like structures. For serial robots these parameters are optional.
+- **parent**: list of parent links for any joint. Use 0 for World.
+- **child**: list of lists with child links for any link. Use empty list if no child is present.
+- **support**: list of lists with all support links beginning with first link including current link for any link.
+---
 <pre><code class="python"># gravity vector
 gravity = sympy.Matrix([0,0,g])
 </code></pre>
-<p>Gravity vector as <code>sympy.Matrix</code>. Note that we can use symbolic variables here.</p>
-<hr>
+Gravity vector as <code>sympy.Matrix</code>. Note that we can use symbolic variables here.
+---
 <pre><code class="python"># representation of joint screw coordinates and body reference configurations
-representation = 'spacial' # alternative: 'body_fixed'
+representation = 'spatial' # alternative: 'body_fixed'
 </code></pre>
-<p>Define whether the representation of the joint screw coordinates and the body reference configuration is w.r.t. world frame (<code>representation = 'spacial'</code>) or in body fixed coordinates (<code>representation =
-'body_fixed'</code>).</p>
-<hr>
+Define whether the representation of the joint screw coordinates and the body reference configuration is w.r.t. world frame (`representation = 'spatial'`) or in body fixed coordinates (`representation =
+'body_fixed'`).
+---
 <pre><code class="python"># joint screw coordinates (6x1 sympy.Matrix per joint)
 joint_screw_coord = []
 joint_screw_coord.append(joint_screw(axis=[0,0,1], vec=[0,0,0], revolute=True))
 joint_screw_coord.append(joint_screw(axis=[0,0,1], revolute=False))
 </code></pre>
-<p>The joint screw coordinates can be defined eighter using the syntax which is used above, where <code>axis</code> is the joint axis, <code>vec</code> is a vector from the origin to the joint axis and <code>revolute</code> has to be <code>True</code> for revolute joints and <code>False</code> for prismatic joints. Note that prismatic joints don't need the parameter <code>vec</code>.
-Alternatively, you can directly use the 6D joint screw vectors instead:</p>
+The joint screw coordinates can be defined eighter using the syntax which is used above, where <code>axis</code> is the joint axis, <code>vec</code> is a vector from the origin to the joint axis and <code>revolute</code> has to be <code>True</code> for revolute joints and <code>False</code> for prismatic joints. Note that prismatic joints don't need the parameter <code>vec</code>.
+Alternatively, you can directly use the 6D joint screw vectors instead:
 <pre><code class="python">joint_screw_coord = []
 joint_screw_coord.append(sympy.Matrix([0,0,1,0,0,0]))
 joint_screw_coord.append(sympy.Matrix([0,0,0,0,0,1]))
 </code></pre>
-<hr>
+---
 <pre><code class="python"># body reference configurations (4x4 SE3 Pose (sympy.Matrix) per link)
 body_ref_config = []
 body_ref_config.append(transformation_matrix(r=SO3Exp(axis=[0,0,1],angle=0),t=[0,0,0]))
 body_ref_config.append(transformation_matrix(r=SO3Exp(axis=[0,0,1],angle=0),t=[0,0,0]))
 </code></pre>
-<p>The body reference configuration is a list of SE(3) transformation matrices. To define them you have several options:</p>
-<ol>
-<li>
-<p>Write down the whole matrix e.g.:</p>
-<p><code>python
+The body reference configuration is a list of SE(3) transformation matrices. To define them you have several options:
+1. Write down the whole matrix e.g.:
+```python
 body_ref_config.append(
 sympy.Matrix([[sympy.cos(pi/2),-sympy.sin(pi/2),0, 0],
 [sympy.sin(pi/2), sympy.cos(pi/2),0, 0],
@@ -649,12 +605,11 @@ sympy.Matrix([[sympy.cos(pi/2),-sympy.sin(pi/2),0, 0],
 [
 0,
 0,0, 1]])
-)</code></p>
-<p>Note: this example assumes you have defined the symbolic variable <code>L1</code> before.</p>
-</li>
-<li>
-<p>Write rotation and translation separately:</p>
-<p><code>python
+)
+```
+Note: this example assumes you have defined the symbolic variable <code>L1</code> before.
+2. Write rotation and translation separately:
+```python
 body_ref_config.append(
 transformation_matrix(
 r=sympy.Matrix([[1,0,0],
@@ -662,62 +617,53 @@ r=sympy.Matrix([[1,0,0],
 [0,0,1]]),
 t=sympy.Matrix([0,0,L1])
 )
-)</code></p>
-</li>
-<li>
-<p>Use axis angle representation for rotation:
--&gt; See code above.</p>
-</li>
-<li>
-<p>For zero rotations or translations it is possible to omit the option:</p>
-<p><code>python
-body_ref_config.append(transformation_matrix(t=[0,0,0]))</code></p>
-</li>
-<li>
-<p>Use xyz_rpy coordinates to define Pose:</p>
-<p><code>python
-body_ref_config.append(xyz_rpy_to_matrix([0, 0, L1, 0, pi/2, 0]))</code></p>
-<p>Note that you have to import the function using <code>from <a title="skidy" href="#skidy">skidy</a> import xyz_rpy_to_matrix</code>.</p>
-</li>
-<li>
-<p>Use roll pitch yaw (rpy) euler angles to define rotation:</p>
-<p><code>python
+)
+```
+3. Use axis angle representation for rotation:
+-> See code above.
+4. For zero rotations or translations it is possible to omit the option:
+```python
+body_ref_config.append(transformation_matrix(t=[0,0,0]))
+```
+5. Use xyz_rpy coordinates to define Pose:
+```python
+body_ref_config.append(xyz_rpy_to_matrix([0, 0, L1, 0, pi/2, 0]))
+```
+Note that you have to import the function using <code>from <a title="skidy" href="#skidy">skidy</a> import xyz\_rpy\_to\_matrix</code>.
+6. Use roll pitch yaw (rpy) euler angles to define rotation:
+```python
 body_ref_config.append(
 transformation_matrix(
 r=rpy_to_matrix([0, pi/2, 0]),
 t=sympy.Matrix([0,0,L1])
 )
-)</code></p>
-<p>Note that you have to import the function using <code>from <a title="skidy" href="#skidy">skidy</a> import rpy_to_matrix</code>.</p>
-</li>
-<li>
-<p>Use quaternion [w,x,y,z] to define rotation:</p>
-<p><code>python
+)
+```
+Note that you have to import the function using <code>from <a title="skidy" href="#skidy">skidy</a> import rpy\_to\_matrix</code>.
+7. Use quaternion [w,x,y,z] to define rotation:
+```python
 body_ref_config.append(
 transformation_matrix(
 r=quaternion_to_matrix([1,0,0,0]),
 t=sympy.Matrix([0,0,L1])
 )
-)</code></p>
-<p>Note that you have to import the function using <code>from <a title="skidy" href="#skidy">skidy</a> import quaternion_to_matrix</code>.</p>
-</li>
-</ol>
-<hr>
+)
+```
+Note that you have to import the function using <code>from <a title="skidy" href="#skidy">skidy</a> import quaternion\_to\_matrix</code>.
+---
 <pre><code class="python"># end-effector configuration w.r.t. last link body fixed frame in the chain (4x4 SE3 Pose (sympy.Matrix))
 ee = transformation_matrix(r=SO3Exp(axis=[0,0,1],angle=0),t=[0,0,0])
 </code></pre>
-<p>End-effector representation w.r.t. last link body frame in the chain as SE(3) transformation matrix. Here you have the same syntax options as for the body reference configuration.</p>
-<hr>
+End-effector representation w.r.t. last link body frame in the chain as SE(3) transformation matrix. Here you have the same syntax options as for the body reference configuration.
+---
 <pre><code class="python"># mass_inertia parameters (6x6 sympy.Matrix per link)
 Mb = []
 Mb.append(mass_matrix_mixed_data(m1, inertia_matrix(Ixx1,Ixy1,Ixz1,Iyy1,Iyz1,Izz1), sympy.Matrix([0,0,0])))
 Mb.append(mass_matrix_mixed_data(m2, inertia_matrix(Ixx2,Ixy2,Ixz2,Iyy2,Iyz2,Izz2), sympy.Matrix([0,0,0])))
 </code></pre>
-<p>Mass-inertia matrices of all links. For the definition you have the following syntax options:</p>
-<ol>
-<li>
-<p>Write down whole matrix:</p>
-<p><code>python
+Mass-inertia matrices of all links. For the definition you have the following syntax options:
+1. Write down whole matrix:
+```python
 Mb.append(
 sympy.Matrix([[
 Ixx1,
@@ -754,11 +700,10 @@ m1,
 0,
 0,
 m1]])
-)</code></p>
-</li>
-<li>
-<p>Define mass, inertia matrix and center of mass separately:</p>
-<p><code>python
+)
+```
+2. Define mass, inertia matrix and center of mass separately:
+```python
 Mb.append(
 mass_matrix_mixed_data(
 m1,
@@ -767,43 +712,41 @@ sympy.Matrix([[Ixx1,Ixy1,Ixz1],
 [Ixz1,Iyz1,Izz1]]),
 sympy.Matrix([cx1,cy1,cz1])
 )
-)</code></p>
-</li>
-<li>
-<p>Only define the 6 independent inertia parameters:</p>
-<p><code>python
+)
+```
+3. Only define the 6 independent inertia parameters:
+```python
 Mb.append(
 mass_matrix_mixed_data(
 m1,
 inertia_matrix(Ixx1,Ixy1,Ixz1,Iyy1,Iyz1,Izz1),
 sympy.Matrix([cx1,cy1,cz1])
 )
-)</code></p>
-</li>
-<li>
-<p>Automatically generate symbols in inertia matrix:</p>
-<p><code>python
+)
+```
+4. Automatically generate symbols in inertia matrix:
+```python
 Mb.append(
 mass_matrix_mixed_data(
 m1,
 symbolic_inertia_matrix(index=1, pointmass=False),
 sympy.Matrix([cx1,cy1,cz1])
 )
-)</code></p>
-<p>where <code>symbolic_inertia_matrix(index=1, pointmass=False)</code> auto generates the variables <code>Ixx1</code>, <code>Ixy1</code>, etc. and creates a <code>sympy.Matrix</code> from it.
-With the parameter <code>pointmass=True</code> the resulting inertia matrix looks like this instead:</p>
-<p><code>python
+)
+```
+where `symbolic_inertia_matrix(index=1, pointmass=False)` auto generates the variables <code>Ixx1</code>, <code>Ixy1</code>, etc. and creates a <code>sympy.Matrix</code> from it.
+With the parameter `pointmass=True` the resulting inertia matrix looks like this instead:
+```python
 sympy.Matrix([[I1, 0, 0],
 [ 0,I1, 0],
-[ 0, 0,I1]])</code></p>
-<p>Note that you have to import the function using <code>from <a title="skidy" href="#skidy">skidy</a> import symbolic_inertia_matrix</code>.</p>
-</li>
-</ol>
-<hr>
+[ 0, 0,I1]])
+```
+Note that you have to import the function using <code>from <a title="skidy" href="#skidy">skidy</a> import symbolic\_inertia\_matrix</code>.
+---
 <pre><code class="python">q, qd, q2d = generalized_vectors(len(body_ref_config), startindex=1)
 </code></pre>
-<p>Generate the generalized vectors (joint positions <code>q</code>, joint velocities <code>qd</code> and joint accelerations <code>q2d</code>). The symbols are auto generated starting at index <code>startindex</code>. The degrees of freedom in this case are taken from the length of <code>body_ref_config</code>.</p>
-<p>The equivalent code would be:</p>
+Generate the generalized vectors (joint positions <code>q</code>, joint velocities <code>qd</code> and joint accelerations <code>q2d</code>). The symbols are auto generated starting at index <code>startindex</code>. The degrees of freedom in this case are taken from the length of <code>body\_ref\_config</code>.
+The equivalent code would be:
 <pre><code class="python">q1, q2 = sympy.symbols(&quot;q1 d2&quot;, real=True, constant=False)
 dq1, dq2 = sympy.symbols(&quot;dq1 dd2&quot;, real=True, constant=False)
 ddq1, ddq2 = sympy.symbols(&quot;ddq1 ddq2&quot;, real=True, constant=False)
@@ -811,11 +754,11 @@ q = sympy.Matrix([q1,q2])
 qd = sympy.Matrix([dq1,dq2])
 q2d = sympy.Matrix([ddq1,ddq2])
 </code></pre>
-<hr>
+---
 <pre><code class="python">WEE = sympy.zeros(6,1)
 </code></pre>
-<p>Define the time varying wrench on the end-effector link. Should be a (6,1) sympy.Matrix with symbolic variables, e.g.: <code>sympy.Matrix([Mx,My,Mz,Fx,Fy,Fz])</code>.</p>
-<hr>
+Define the time varying wrench on the end-effector link. Should be a (6,1) sympy.Matrix with symbolic variables, e.g.: <code>sympy.Matrix(\[Mx,My,Mz,Fx,Fy,Fz])</code>.
+---
 <pre><code class="python">skd = SymbolicKinDyn(gravity_vector=gravity,
                      ee=ee,
                      body_ref_config=body_ref_config,
@@ -827,64 +770,56 @@ q2d = sympy.Matrix([ddq1,ddq2])
                      support=support,
                      )
 </code></pre>
-<p>Initialize class with all defined parameters.</p>
-<hr>
+Initialize class with all defined parameters.
+---
 <pre><code class="python"># run Calculations
 skd.closed_form_kinematics_body_fixed(q, qd, q2d, simplify_expressions=True)
 skd.closed_form_inv_dyn_body_fixed(q, qd, q2d, WEE, simplify_expressions=True)
 </code></pre>
-<p>Generate forward kinematics and inverse dynamics equations. Both functions share the following arguments:</p>
-<ul>
-<li>simplify_expressions: generated expressions are simplified. Note that the simplification takes a lot of time for robots with more than 2 revolute joints in a chain.</li>
-<li>cse_ex: Use common subexpression elimination to shorten equations. Note that the equations are not human-readable afterwards.</li>
-<li>parallel: use parallel computation.</li>
-</ul>
-<p><code>skd.closed_form_kinematics_body_fixed</code> generates the following equations and saves them as class parameters:</p>
-<ul>
-<li>body_acceleration</li>
-<li>body_acceleration_ee</li>
-<li>body_jacobian_matrix</li>
-<li>body_jacobian_matrix_dot</li>
-<li>body_jacobian_matrix_ee</li>
-<li>body_jacobian_matrix_ee_dot</li>
-<li>body_twist_ee</li>
-<li>forward_kinematics</li>
-<li>hybrid_acceleration</li>
-<li>hybrid_acceleration_ee</li>
-<li>hybrid_jacobian_matrix</li>
-<li>hybrid_jacobian_matrix_dot</li>
-<li>hybrid_jacobian_matrix_ee</li>
-<li>hybrid_jacobian_matrix_ee_dot</li>
-<li>hybrid_twist_ee</li>
-</ul>
-<p>and <code>skd.closed_form_inv_dyn_body_fixed</code> generates the following equations and saves them as class parameters:</p>
-<ul>
-<li>coriolis_centrifugal_matrix</li>
-<li>generalized_mass_inertia_matrix</li>
-<li>gravity_vector</li>
-<li>inverse_dynamics</li>
-</ul>
-<p><code>skd.closed_form_inv_dyn_body_fixed</code> takes the wrench <code>WEE</code> (6x1 sympy.Matrix) (tau,F) on the end-effector link as optional additional argument.</p>
-<hr>
+Generate forward kinematics and inverse dynamics equations. Both functions share the following arguments:
+- simplify_expressions: generated expressions are simplified. Note that the simplification takes a lot of time for robots with more than 2 revolute joints in a chain.
+- cse_ex: Use common subexpression elimination to shorten equations. Note that the equations are not human-readable afterwards.
+- parallel: use parallel computation.
+<code>skd.closed\_form\_kinematics\_body\_fixed</code> generates the following equations and saves them as class parameters:
+- body_acceleration
+- body_acceleration_ee
+- body_jacobian_matrix
+- body_jacobian_matrix_dot
+- body_jacobian_matrix_ee
+- body_jacobian_matrix_ee_dot
+- body_twist_ee
+- forward_kinematics
+- hybrid_acceleration
+- hybrid_acceleration_ee
+- hybrid_jacobian_matrix
+- hybrid_jacobian_matrix_dot
+- hybrid_jacobian_matrix_ee
+- hybrid_jacobian_matrix_ee_dot
+- hybrid_twist_ee
+and <code>skd.closed\_form\_inv\_dyn\_body\_fixed</code> generates the following equations and saves them as class parameters:
+- coriolis_centrifugal_matrix
+- generalized_mass_inertia_matrix
+- gravity_vector
+- inverse_dynamics
+<code>skd.closed\_form\_inv\_dyn\_body\_fixed</code> takes the wrench <code>WEE</code> (6x1 sympy.Matrix) (tau,F) on the end-effector link as optional additional argument.
+---
 <pre><code class="python"># Generate Code
 skd.generate_code(python=True, C=False, Matlab=False, latex=False,
                  folder=&quot;./generated_code&quot;, use_global_vars=True,
                  name=&quot;plant&quot;, project=&quot;Project&quot;)
 </code></pre>
-<p>Generate Python, Matlab, C (C99) and/or LaTeX code from the generated equations.
-Note that this can take time, especially for non-simplified equations and complex robots.</p>
-<h3 id="23-urdf">2.3. URDF</h3>
-<p>URDF files are currently only supported in combination with a python script. But there is a function to generate a template python file, which loads your URDF. In the python file it is necessary to define:</p>
-<ol>
-<li>the URDF path</li>
-<li>the gravity vector</li>
-<li>end-effector configuration w.r.t. last link body fixed frame in the chain</li>
-</ol>
-<p>To generate the python template file use:</p>
+Generate Python, Matlab, C (C99) and/or LaTeX code from the generated equations.
+Note that this can take time, especially for non-simplified equations and complex robots.
+### 2.3. URDF
+URDF files are currently only supported in combination with a python script. But there is a function to generate a template python file, which loads your URDF. In the python file it is necessary to define:
+1. the URDF path
+2. the gravity vector
+3. end-effector configuration w.r.t. last link body fixed frame in the chain
+To generate the python template file use:
 <pre><code class="bash">python -m skidy --please --urdf my_urdf_template.py
 </code></pre>
-<p>or the python function <code>skidy.generate_template_python(path, urdf=True)</code>.</p>
-<p>This generates the following output:</p>
+or the python function `skidy.generate_template_python(path, urdf=True)`.
+This generates the following output:
 <pre><code class="python">from skidy import (SymbolicKinDyn,
                    transformation_matrix,
                    SO3Exp,
@@ -927,51 +862,49 @@ skd.generate_code(python=True, C=False, Matlab=False, latex=False,
                  folder=&quot;./generated_code&quot;, use_global_vars=True,
                  name=&quot;plant&quot;, project=&quot;Project&quot;)
 </code></pre>
-<p>The code explained:</p>
+The code explained:
 <pre><code class="python">from skidy import (SymbolicKinDyn,
                    transformation_matrix,
                    SO3Exp,
                    generalized_vectors)
 </code></pre>
-<p>The class <code>SymbolicKinDyn</code> is the main object for calculating the kinematic and dynamic equations of your robot and generate the code.
-Additionally, we import several helper functions for defining the matrices which are useful for the robot definition:</p>
-<ul>
-<li><code>transformation_matrix</code>: Create SE(3) transformation matrix from SO(3) rotation and translation vector.</li>
-<li><code>SO3Exp</code>: Exponential mapping of SO(3) to generate rotation matrix from rotation angle and rotation axis.</li>
-<li><code>generalized_vectors</code>: generate symbolic generalized vectors q, qd and q2d of predefined length n.</li>
-</ul>
+The class <code>SymbolicKinDyn</code> is the main object for calculating the kinematic and dynamic equations of your robot and generate the code.
+Additionally, we import several helper functions for defining the matrices which are useful for the robot definition:
+- <code>transformation\_matrix</code>: Create SE(3) transformation matrix from SO(3) rotation and translation vector.
+- <code>SO3Exp</code>: Exponential mapping of SO(3) to generate rotation matrix from rotation angle and rotation axis.
+- <code>generalized\_vectors</code>: generate symbolic generalized vectors q, qd and q2d of predefined length n.
 <pre><code class="python">from skidy.symbols import g, pi
 </code></pre>
-<p>The package <code><a title="skidy.symbols" href="symbols.html">skidy.symbols</a></code> includes the most common used symbolic variables, which can be used for defining your robot.</p>
+The package <code><a title="skidy.symbols" href="symbols.html">skidy.symbols</a></code> includes the most common used symbolic variables, which can be used for defining your robot.
 <pre><code class="python">import sympy
 </code></pre>
-<p>The whole library used sympy objects for all symbolic equations etc. Hence, we need <code>sympy</code> to create additional symbolic variables and matrices later.</p>
-<hr>
+The whole library used sympy objects for all symbolic equations etc. Hence, we need <code>sympy</code> to create additional symbolic variables and matrices later.
+---
 <pre><code class="python"># Define symbols:
 lee = sympy.symbols('lee', real=True, const=True)
 </code></pre>
-<p>Create symbolic variables which can be used in the equations for the robot definition later. The most common symbols are also already present in the <code><a title="skidy.symbols" href="symbols.html">skidy.symbols</a></code> package and may be imported from there instead.</p>
-<hr>
+Create symbolic variables which can be used in the equations for the robot definition later. The most common symbols are also already present in the <code><a title="skidy.symbols" href="symbols.html">skidy.symbols</a></code> package and may be imported from there instead.
+---
 <pre><code class="python">urdfpath = '/path/to/robot.urdf' # TODO: change me!
 </code></pre>
-<p>Enter the path to your URDF file here.</p>
-<hr>
+Enter the path to your URDF file here.
+---
 <pre><code class="python"># gravity vector
 gravity = sympy.Matrix([0,0,g])
 </code></pre>
-<p>Gravity vector as <code>sympy.Matrix</code>. Note that we can use symbolic variables here.</p>
-<hr>
+Gravity vector as <code>sympy.Matrix</code>. Note that we can use symbolic variables here.
+---
 <pre><code class="python"># end-effector configuration w.r.t. last link body fixed frame in the chain
 ee = transformation_matrix(r=SO3Exp(axis=[0,0,1],angle=0),t=[0,0,0])
 </code></pre>
-<p>End-effector representation w.r.t. last link body frame in the chain as SE(3) transformation matrix. Look up the chapter <a href="#22-python">Python</a> for all available syntax options.</p>
-<hr>
+End-effector representation w.r.t. last link body frame in the chain as SE(3) transformation matrix. Look up the chapter [Python](#22-python) for all available syntax options.
+---
 <pre><code class="python">skd = SymbolicKinDyn(gravity_vector=gravity,
                      ee=ee,
                      )
 </code></pre>
-<p>Initialize class with the two defined parameters.</p>
-<hr>
+Initialize class with the two defined parameters.
+---
 <pre><code class="python">skd.load_from_urdf(path = urdfpath,
                    symbolic=True, 
                    cse_ex=False, 
@@ -980,85 +913,49 @@ ee = transformation_matrix(r=SO3Exp(axis=[0,0,1],angle=0),t=[0,0,0])
                    max_denominator=8, 
                    )
 </code></pre>
-<p>Load the URDF file. Here you can specify the following options:</p>
-<ol>
-<li><code>symbolic</code>: symbolify values in urdf file (bool).</li>
-<li><code>cse_ex</code>: use common subexpression elimination to shorten equations (bool).</li>
-<li><code>simplify_numbers</code>: round numbers if close to common fractions like 1/2 etc and replace eg 3.1416 by pi (bool).</li>
-<li><code>tolerance</code>: tolerance for simplify numbers.</li>
-<li><code>max_denominator</code>: define max denominator for simplify numbers to avoid simplification to something like 13/153. Use 0 to deactivate.</li>
-</ol>
-<hr>
+Load the URDF file. Here you can specify the following options:
+1. <code>symbolic</code>: symbolify values in urdf file (bool).
+2. <code>cse\_ex</code>: use common subexpression elimination to shorten equations (bool).
+3. <code>simplify\_numbers</code>: round numbers if close to common fractions like 1/2 etc and replace eg 3.1416 by pi (bool).
+4. <code>tolerance</code>: tolerance for simplify numbers.
+5. <code>max\_denominator</code>: define max denominator for simplify numbers to avoid simplification to something like 13/153. Use 0 to deactivate.
+---
 <pre><code class="python">q, qd, q2d = generalized_vectors(len(skd.body_ref_config), startindex=1)
 </code></pre>
-<p>Generate the generalized vectors (joint positions <code>q</code>, joint velocities <code>qd</code> and joint accelerations <code>q2d</code>). The symbols are auto generated starting at index <code>startindex</code>. The degrees of freedom in this case are taken from the length of the parameter <code>skd.body_ref_config</code>, which was generated by the function <code>load_from_urdf</code>.</p>
-<hr>
+Generate the generalized vectors (joint positions <code>q</code>, joint velocities <code>qd</code> and joint accelerations <code>q2d</code>). The symbols are auto generated starting at index <code>startindex</code>. The degrees of freedom in this case are taken from the length of the parameter <code>skd.body\_ref\_config</code>, which was generated by the function <code>load\_from\_urdf</code>.
+---
 <pre><code class="python">WEE = sympy.zeros(6,1)
 </code></pre>
-<p>Define the time varying wrench on the end-effector link. Should be a (6,1) sympy.Matrix with symbolic variables.</p>
-<hr>
+Define the time varying wrench on the end-effector link. Should be a (6,1) sympy.Matrix with symbolic variables.
+---
 <pre><code class="python"># run Calculations
 skd.closed_form_kinematics_body_fixed(q, qd, q2d, simplify_expressions=True)
 skd.closed_form_inv_dyn_body_fixed(q, qd, q2d, WEE, simplify_expressions=True)
 </code></pre>
-<p>Generate forward kinematics and inverse dynamics equations. See chapter <a href="#22-python">Python</a> for more information.</p>
-<hr>
+Generate forward kinematics and inverse dynamics equations. See chapter [Python](#22-python) for more information.
+---
 <pre><code class="python"># Generate Code
 skd.generate_code(python=True, C=False, Matlab=False, latex=False,
                  folder=&quot;./generated_code&quot;, use_global_vars=True,
                  name=&quot;plant&quot;, project=&quot;Project&quot;)
 </code></pre>
-<p>Generate Python, Matlab, C (C99) and/or LaTeX code from the generated equations.
-Note that this can take time, especially for non-simplified equations and complex robots.</p>
-<h2 id="3-unit-testing">3. Unit testing</h2>
-<p>To run the unit tests use:</p>
+Generate Python, Matlab, C (C99) and/or LaTeX code from the generated equations.
+Note that this can take time, especially for non-simplified equations and complex robots.
+## 3. Unit testing
+To run the unit tests use:
 <pre><code class="bash">python3 ./unit_testing/unit_testing.py
 </code></pre>
-<h2 id="4-benchmarking">4. Benchmarking</h2>
-<p>For benchmarking the project the script <code>benchmarking/benchmarking.py</code> was used. This script loads 4 robots with increasing complexity (1 to 4 revolute joint in a chain with planar task space) and takes the execution time of the functions <code>closed_form_kinematics_body_fixed()</code>, <code>closed_form_inv_dyn_body_fixed()</code> and <code>generate_code()</code>. Additionally, the arguments <code>parallel</code>, <code>simplify_expressions</code> and <code>cse_ex</code> have been altered.
-The results are shown in the following table:</p>
-<table>
-<thead>
-<tr>
-<th align="left">arguments</th>
-<th align="center">parallel</th>
-<th align="center">serial</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td align="left">simplify</td>
-<td align="center"><img alt="1 dof: 0.65 s; 2 dof: 2.14 s; 3 dof: 8.77 s; 4 dof: 44.04 s" src="/benchmarking/parallel_with_simplification_without_cse.png"></td>
-<td align="center"><img alt="1 dof: 0.16 s; 2 dof: 2.38 s; 3 dof: 13.06 s; 4 dof: 60.68 s" src="/benchmarking/serial_with_simplification_without_cse.png"></td>
-</tr>
-<tr>
-<td align="left">simplify + cse</td>
-<td align="center"><img alt="1 dof: 0.56 s; 2 dof: 2.22 s; 3 dof: 12.86 s; 4 dof: 84.28 s" src="/benchmarking/parallel_with_simplification_with_cse.png"></td>
-<td align="center"><img alt="1 dof: 0.22 s; 2 dof: 2.78 s; 3 dof: 18.49 s; 4 dof: 113.30 s" src="/benchmarking/serial_with_simplification_with_cse.png"></td>
-</tr>
-<tr>
-<td align="left">no simplify</td>
-<td align="center"><img alt="1 dof: 0.74 s; 2 dof: 2.65 s; 3 dof: 11.29 s; 4 dof: 47.14 s" src="/benchmarking/parallel_without_simplification_without_cse.png"></td>
-<td align="center"><img alt="1 dof: 0.08 s; 2 dof: 1.57 s; 3 dof: 9.51 s; 4 dof: 44.57 s" src="/benchmarking/serial_without_simplification_without_cse.png"></td>
-</tr>
-<tr>
-<td align="left">no simplify + cse</td>
-<td align="center"><img alt="1 dof: 0.80 s; 2 dof: 4.50 s; 3 dof: 29.13 s; 4 dof: 161.01 s" src="/benchmarking/parallel_without_simplification_with_cse.png"></td>
-<td align="center"><img alt="1 dof: 0.08 s; 2 dof: 4.49 s; 3 dof: 37.74 s; 4 dof: 201.11 s" src="/benchmarking/serial_without_simplification_with_cse.png"></td>
-</tr>
-</tbody>
-</table>
-<!-- ## 5. Troubleshooting
-- **`AttributeError: module 'numpy' has no attribute 'int'`**
-This error occurs, if you have installed numpy>=1.24.0. To solve it use
-```bash
-pip -m install --upgrade networkx
-```
-you might see a warning like this
->
-ERROR: pip's dependency resolver does not currently take into account all the packages that are installed. This behaviour is the source of the following dependency conflicts.
-urdfpy 0.0.22 requires networkx==2.2, but you have networkx 3.0 which is incompatible.
-afterwards. This warning can be ignored. -->
+## 4. Benchmarking
+For benchmarking the project the script `benchmarking/benchmarking.py` was used. This script loads 4 robots with increasing complexity (1 to 4 revolute joint in a chain with planar task space) and takes the execution time of the functions <code>closed\_form\_kinematics\_body\_fixed()</code>, <code>closed\_form\_inv\_dyn\_body\_fixed()</code> and <code>generate\_code()</code>. Additionally, the arguments <code>parallel</code>, <code>simplify\_expressions</code> and <code>cse\_ex</code> have been altered.
+The results are shown in the following table:
+arguments | parallel | serial
+:---------|:----------:|:-----------:
+simplify|![1 dof: 0.65 s; 2 dof: 2.14 s; 3 dof: 8.77 s; 4 dof: 44.04 s](/benchmarking/parallel_with_simplification_without_cse.png) | ![1 dof: 0.16 s; 2 dof: 2.38 s; 3 dof: 13.06 s; 4 dof: 60.68 s](/benchmarking/serial_with_simplification_without_cse.png)
+simplify + cse|![1 dof: 0.56 s; 2 dof: 2.22 s; 3 dof: 12.86 s; 4 dof: 84.28 s](/benchmarking/parallel_with_simplification_with_cse.png) |![1 dof: 0.22 s; 2 dof: 2.78 s; 3 dof: 18.49 s; 4 dof: 113.30 s](/benchmarking/serial_with_simplification_with_cse.png)
+no simplify|![1 dof: 0.74 s; 2 dof: 2.65 s; 3 dof: 11.29 s; 4 dof: 47.14 s](/benchmarking/parallel_without_simplification_without_cse.png) | ![1 dof: 0.08 s; 2 dof: 1.57 s; 3 dof: 9.51 s; 4 dof: 44.57 s](/benchmarking/serial_without_simplification_without_cse.png)
+no simplify + cse|![1 dof: 0.80 s; 2 dof: 4.50 s; 3 dof: 29.13 s; 4 dof: 161.01 s](/benchmarking/parallel_without_simplification_with_cse.png) |![1 dof: 0.08 s; 2 dof: 4.49 s; 3 dof: 37.74 s; 4 dof: 201.11 s](/benchmarking/serial_without_simplification_with_cse.png)
+## 5. License
+This work has been released under the BSD 3-Clause License. Details and terms of use are specified in the LICENSE file within this repository. Note that we do not publish third-party software, hence software packages from other developers are released under their very own terms and conditions. If you install third-party software packages along with this repo ensure that you follow each individual license agreement.
 <details class="source">
 <summary>
 <span>Expand source code</span>
@@ -1112,19 +1009,7 @@ __version__ = &#34;0.0.1&#34;</code></pre>
 <div class="toc">
 <ul>
 <li><a href="#skidy-symbolic-kinematics-and-dynamics-generator">skidy - symbolic kinematics and dynamics generator</a><ul>
-<li><a href="#1-install">1. Install</a></li>
-<li><a href="#2-usage">2. Usage</a><ul>
-<li><a href="#21-yaml-and-json">2.1. YAML and JSON</a><ul>
-<li><a href="#211-create-robot-model-as-yaml-file">2.1.1. Create robot model as YAML file</a></li>
-<li><a href="#212-code-generation-using-yaml">2.1.2. Code generation using YAML</a></li>
-</ul>
-</li>
-<li><a href="#22-python">2.2. Python</a></li>
-<li><a href="#23-urdf">2.3. URDF</a></li>
-</ul>
-</li>
-<li><a href="#3-unit-testing">3. Unit testing</a></li>
-<li><a href="#4-benchmarking">4. Benchmarking</a></li>
+<li><a href="#1-installation">1. Installation</a></li>
 </ul>
 </li>
 </ul>
