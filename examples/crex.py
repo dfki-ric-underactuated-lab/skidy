@@ -1,4 +1,4 @@
-from skidy. import SymbolicKinDyn, mass_matrix_mixed_data, inertia_matrix
+from skidy import SymbolicKinDyn, mass_matrix_mixed_data, inertia_matrix, transformation_matrix
 from sympy import symbols, Matrix, Identity
 
 skd = SymbolicKinDyn()
@@ -24,7 +24,7 @@ dh_table = Matrix([[0,0,0,0,base_offset],
 
 skd.dh_to_screw_coord(dh_table)
 re = Matrix([shank,0,0])
-skd.ee = Matrix(Identity(3)).row_join(re).col_join(Matrix([[0,0,0,1]]))
+skd.ee = transformation_matrix(t=re)
 
 skd.Mb = []
 skd.Mb.append(mass_matrix_mixed_data(m1, inertia_matrix(I1xx, I1xy, I1xz, I1yy, I1yz, I1zz),Matrix([c1x,c1y,c1z])))
@@ -40,4 +40,4 @@ T = skd.closed_form_kinematics_body_fixed(q,qd,q2d,simplify_expressions=0)
 
 Q = skd.closed_form_inv_dyn_body_fixed(q,qd,q2d,simplify_expressions=0)
 
-# s.generate_code(folder="./crex_code")
+# s.generate_code(python=True)

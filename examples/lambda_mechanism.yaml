@@ -59,4 +59,7 @@ mass_inertia:
       pointmass: True
     com: [Lc3, 0, 0]
 
-  
+q: [q1,q2,q3]
+qd: [dq1,dq2,dq3]
+q2d: [ddq1,ddq2,ddq3]
+WEE: [0,0,0,0,0,0]

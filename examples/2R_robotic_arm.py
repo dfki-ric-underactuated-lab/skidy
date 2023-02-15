@@ -1,9 +1,6 @@
 from skidy import SymbolicKinDyn, mass_matrix_mixed_data
 from sympy import symbols, Matrix, Identity, init_printing
 
-
-init_printing()
-
 # Declaration of symbolic variables
 q1, q2 = symbols("q1 q2")  # joint positions
 dq1, dq2 = symbols("dq1 dq2")  # joint velocities
@@ -16,18 +13,17 @@ cg1, cg2, g = symbols("cg1 cg2 g", real=1, constant=1)
 L1, L2 = symbols("L1 L2", real=1, constant=1)  # link lengths
 pi = symbols("pi", real=1, constant=1)  # pi
 
-gravity_vector = Matrix([0, g, 0])  # define gravity vector
+# define gravity vector
+gravity_vector = Matrix([0, g, 0])  
 
 # Joint screw coordinates in spatial representation
 joint_screw_coord = []
 e1 = Matrix([0, 0, 1])  # joint axis of revolute joint
 y1 = Matrix([0, 0, 0])  # Vector to joint axis from inertial Frame
-# Joint screw coordinates in spatial representation
 joint_screw_coord.append(Matrix([e1, y1.cross(e1)]))
 
 e2 = Matrix([0, 0, 1])  # joint axis of revolute joint
 y2 = Matrix([L1, 0, 0])  # Vector to joint axis from inertial Frame
-# Joint screw coordinates in spatial representation
 joint_screw_coord.append(Matrix([e2, y2.cross(e2)]))
 
 # # Reference configurations of bodies (i.e. of body-fixed reference frames)
