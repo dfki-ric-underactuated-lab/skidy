@@ -1,6 +1,8 @@
 # skidy - symbolic kinematics and dynamics generator
 
-- [1. Install](#1-install)
+- [1. Installation](#1-installation)
+  - [Install package from source](#install-package-from-source)
+  - [Dependencies](#dependencies)
 - [2. Usage](#2-usage)
   - [2.1. YAML and JSON](#21-yaml-and-json)
     - [2.1.1. Create robot model as YAML file](#211-create-robot-model-as-yaml-file)
@@ -9,12 +11,45 @@
   - [2.3. URDF](#23-urdf)
 - [3. Unit testing](#3-unit-testing)
 - [4. Benchmarking](#4-benchmarking)
+- [5. License](#5-license)
 
 Symbolic kinematics and dynamics model generation using Equations of Motion in closed form.
 
-## 1. Install
+## 1. Installation
 
-The project requires the following packages:
+<!-- To install this package use:
+
+```bash
+python3 -m pip install skidy
+``` -->
+
+### Install package from source
+
+To install the package from source go to the root folder of the package:
+
+```bash
+cd /path/to/project
+```
+
+then use:
+
+```bash
+python3 -m pip install -e .
+```
+
+to install the package in editable mode or:
+
+```bash
+python3 -m pip install .
+```
+
+to install the package uneditable.
+
+**Note:** The `.` is part of the command.  
+
+### Dependencies
+
+The project has the following dependencies:
 
 - sympy (Version >= 1.8)
 
@@ -34,14 +69,6 @@ The project requires the following packages:
     python3 -m pip install urdf_parser_py
     ```
 
-<!-- - urdfpy
-
-    ```bash
-    python3 -m pip install urdfpy
-    ```
-
-    *Note:* If you have installed numpy>=1.24.0 you might need to upgrade the package networkx after installing urdfpy using `python -m pip install --upgrade networkx`. See chapter [Troubleshooting](#5-troubleshooting) for more information. -->
-
 - regex
 
     ```bash
@@ -59,12 +86,6 @@ The project requires the following packages:
     ```bash
     python3 -m pip install pylatex
     ```
-
-To install all dependencies use:
-
-```bash
-python3 setup.py install
-```
 
 For unit testing the following packages are additionally recommended:
 
@@ -86,19 +107,6 @@ For unit testing the following packages are additionally recommended:
     ```bash
     python3 -m pip install cython
     ```
-
-<!-- ## Usage
-
-The script kinematics generator contains one class `SymbolicKinDyn` which contains all needed functions.
-This class has the attributes `gravity_vector`, `ee`, `A`, `B`, `X`, `Y` and `Mb`, which have to be set as described in <https://git.hb.dfki.de/underactuated-robotics/symbolic_kinematics_and_dynamics/-/blob/master/documentation/main.pdf>.
-
-The in this documentation described example of a 2R kinematic chain robot is coded after the `if __name__ == "__main__:"` part in the kinematics_generator.py script.
-
-If you have set all needed parameters (you have to either set `A` and `Y` or `B`, not all of them) the forward kinematics can be calculated with 
-`closed_form_kinematics_body_fixed(q,dq,ddq)`.
-
-The inverse dynamics is calculated using:
-`closed_form_inv_dyn_body_fixed(q,dq,ddq)`. -->
 
 ## 2. Usage
 
@@ -1164,19 +1172,6 @@ simplify + cse|![1 dof: 0.56 s; 2 dof: 2.22 s; 3 dof: 12.86 s; 4 dof: 84.28 s](/
 no simplify|![1 dof: 0.74 s; 2 dof: 2.65 s; 3 dof: 11.29 s; 4 dof: 47.14 s](/benchmarking/parallel_without_simplification_without_cse.png) | ![1 dof: 0.08 s; 2 dof: 1.57 s; 3 dof: 9.51 s; 4 dof: 44.57 s](/benchmarking/serial_without_simplification_without_cse.png)
 no simplify + cse|![1 dof: 0.80 s; 2 dof: 4.50 s; 3 dof: 29.13 s; 4 dof: 161.01 s](/benchmarking/parallel_without_simplification_with_cse.png) |![1 dof: 0.08 s; 2 dof: 4.49 s; 3 dof: 37.74 s; 4 dof: 201.11 s](/benchmarking/serial_without_simplification_with_cse.png)
 
-<!-- ## 5. Troubleshooting
+## 5. License
 
-- **`AttributeError: module 'numpy' has no attribute 'int'`**
-  
-  This error occurs, if you have installed numpy>=1.24.0. To solve it use
-
-  ```bash
-  pip -m install --upgrade networkx
-  ```
-  
-  you might see a warning like this
-
-  >  ERROR: pip's dependency resolver does not currently take into account all the packages that are installed. This behaviour is the source of the following dependency conflicts.
-  urdfpy 0.0.22 requires networkx==2.2, but you have networkx 3.0 which is incompatible.
-  
-  afterwards. This warning can be ignored. -->
+This work has been released under the BSD 3-Clause License. Details and terms of use are specified in the LICENSE file within this repository. Note that we do not publish third-party software, hence software packages from other developers are released under their very own terms and conditions. If you install third-party software packages along with this repo ensure that you follow each individual license agreement.
