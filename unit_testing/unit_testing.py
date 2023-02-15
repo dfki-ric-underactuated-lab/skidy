@@ -2,6 +2,7 @@ import unittest
 import sys
 import os
 import shutil
+import warnings
 from os.path import dirname
 sys.path.append(dirname(dirname(__file__)))
 import skidy
@@ -18,10 +19,12 @@ try:
     from oct2py import octave
 except (ImportError,ModuleNotFoundError):
     octave = None # skip octave tests
+    warnings.warn("Cannot import oct2py. Skip all tests for the generated matlab/octave code.")
 try:
     import cython
 except (ImportError,ModuleNotFoundError):
     cython = None  # skip cython tests
+    warnings.warn("Cannot import cython. Skip all tests for the generated cython code.")
     
 delete_generated_code = True # False deactivates cleanup functions
 
