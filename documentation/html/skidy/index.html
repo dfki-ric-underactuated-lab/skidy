@@ -126,11 +126,11 @@ Using URDF the following three parameters are required:
 #### 2.1.1. Create robot model as YAML file
 There is a function to generate a **template YAML file** in which it is easy to modify the parameters for your robot.
 To generate your robot template use
-<pre><code class="bash">python3 -m skidy --please [options] new_filename.yaml
+<pre><code class="bash">python3 -m skidy --template [options] new_filename.yaml
 </code></pre>
 or the python function <code>skidy.generate\_template\_yaml(path, structure)</code>.
 For [options] the option `--structure` is highly recommended. There you can define which joint types to use in the template. E.g. use `--structure 'rrp'` for a robot which has two revolute joints followed by one prismatic joint.
-The command `python3 -m skidy --please --structure 'rp' my_robot_template.yaml` creates the following output file:
+The command `python3 -m skidy --template --structure 'rp' my_robot_template.yaml` creates the following output file:
 <pre><code class="yaml">---
 parent:
   - 0
@@ -434,11 +434,11 @@ to get a description of all available options.
 ### 2.2. Python
 As for YAML and JSON there is a function to auto-generate a **python template file** which makes it easier to define your own robot.
 To generate your robot template use
-<pre><code class="bash">python3 -m skidy --please [options] new_filename.py
+<pre><code class="bash">python3 -m skidy --template [options] new_filename.py
 </code></pre>
 or the python function <code>skidy.generate\_template\_python(path, structure)</code>.
 For [options] the option `--structure` is highly recommended. There you can define which joint types to use in the template. E.g. use `--structure 'rrp'` for a robot which has two revolute joints followed by one prismatic joint.
-The command `python3 -m skidy --please --structure 'rp' my_robot_template.py` creates the following output file:
+The command `python3 -m skidy --template --structure 'rp' my_robot_template.py` creates the following output file:
 <pre><code class="python">from skidy import (SymbolicKinDyn,
                    transformation_matrix,
                    mass_matrix_mixed_data,
@@ -816,7 +816,7 @@ URDF files are currently only supported in combination with a python script. But
 2. the gravity vector
 3. end-effector configuration w.r.t. last link body fixed frame in the chain
 To generate the python template file use:
-<pre><code class="bash">python -m skidy --please --urdf my_urdf_template.py
+<pre><code class="bash">python -m skidy --template --urdf my_urdf_template.py
 </code></pre>
 or the python function `skidy.generate_template_python(path, urdf=True)`.
 This generates the following output:

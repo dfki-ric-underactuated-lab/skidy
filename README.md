@@ -150,14 +150,14 @@ There is a function to generate a **template YAML file** in which it is easy to 
 To generate your robot template use
 
 ```bash
-python3 -m skidy --please [options] new_filename.yaml
+python3 -m skidy --template [options] new_filename.yaml
 ```
 
 or the python function `skidy.generate_template_yaml(path, structure)`.
 
 For [options] the option `--structure` is highly recommended. There you can define which joint types to use in the template. E.g. use `--structure 'rrp'` for a robot which has two revolute joints followed by one prismatic joint.
 
-The command `python3 -m skidy --please --structure 'rp' my_robot_template.yaml` creates the following output file:
+The command `python3 -m skidy --template --structure 'rp' my_robot_template.yaml` creates the following output file:
 
 ```yaml
 ---
@@ -508,14 +508,14 @@ As for YAML and JSON there is a function to auto-generate a **python template fi
 To generate your robot template use
 
 ```bash
-python3 -m skidy --please [options] new_filename.py
+python3 -m skidy --template [options] new_filename.py
 ```
 
 or the python function `skidy.generate_template_python(path, structure)`.
 
 For [options] the option `--structure` is highly recommended. There you can define which joint types to use in the template. E.g. use `--structure 'rrp'` for a robot which has two revolute joints followed by one prismatic joint.
 
-The command `python3 -m skidy --please --structure 'rp' my_robot_template.py` creates the following output file:
+The command `python3 -m skidy --template --structure 'rp' my_robot_template.py` creates the following output file:
 
 ```python
 from skidy import (SymbolicKinDyn,
@@ -970,7 +970,7 @@ URDF files are currently only supported in combination with a python script. But
 To generate the python template file use:
 
 ```bash
-python -m skidy --please --urdf my_urdf_template.py
+python -m skidy --template --urdf my_urdf_template.py
 ```
 
 or the python function `skidy.generate_template_python(path, urdf=True)`.
