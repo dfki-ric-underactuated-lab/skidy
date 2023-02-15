@@ -16,7 +16,7 @@ support:
 
 gravity: [0,g,0]
 
-representation: spacial
+representation: spatial
 
 joint_screw_coord:
   - type: revolute

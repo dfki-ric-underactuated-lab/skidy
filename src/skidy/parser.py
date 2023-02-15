@@ -87,7 +87,7 @@ def dict_parser(d: dict) -> SymbolicKinDyn:
                                                  "Iyy", "Ixz", "Izz", 
                                                  "q", "qd", "d2d", "WEE"})
     
-    config_representation = d["representation"] if "representation" in d else "spacial"
+    config_representation = d["representation"] if "representation" in d else "spatial"
     
     parent = d["parent"] if "parent" in d else []
     child = d["child"] if "child" in d else []
@@ -281,7 +281,7 @@ def generate_template_yaml(path: str="edit_me.yaml", structure: str = None,
     y.append("gravity: [0,0,g]")
     y.append("")
     
-    y.append("representation: spacial")
+    y.append("representation: spatial")
     y.append("")
     
     y.append("joint_screw_coord:")
@@ -453,7 +453,7 @@ def generate_template_python(path:str="edit_me.py", structure:str=None, dof:int=
     
     if not urdf:
         p.append("# representation of joint screw coordinates and body reference configurations")
-        p.append("representation = 'spacial' # alternative: 'body_fixed'")
+        p.append("representation = 'spatial' # alternative: 'body_fixed'")
         p.append("")
         
         p.append("# joint screw coordinates (6x1 sympy.Matrix per joint)")

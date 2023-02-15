@@ -27,12 +27,12 @@ gravity_vector = Matrix([0, -g, 0])  # define gravity vector
 joint_screw_coord = []
 e1 = Matrix([0, 0, 1])  # joint axis of revolute joint
 y1 = Matrix([0, 0, 0])  # Vector to joint axis from inertial Frame
-# Joint screw coordinates in spacial representation (6,1)
+# Joint screw coordinates in spatial representation (6,1)
 joint_screw_coord.append(Matrix([e1, y1.cross(e1)]))
 
 e2 = Matrix([0, 0, 1])  # joint axis of revolute joint
 y2 = Matrix([0, -L1, 0])  # Vector to joint axis from inertial Frame
-# Joint screw coordinates in spacial representation (6,1)
+# Joint screw coordinates in spatial representation (6,1)
 joint_screw_coord.append(Matrix([e2, y2.cross(e2)]))
 
 
@@ -69,7 +69,7 @@ s = SymbolicKinDyn(gravity_vector=gravity_vector,
                     ee=ee,
                     body_ref_config=body_ref_config,
                     joint_screw_coord=joint_screw_coord,
-                    config_representation="spacial", 
+                    config_representation="spatial", 
                     Mb=Mb)
 s.closed_form_kinematics_body_fixed(q,qd,q2d)
 s.closed_form_inv_dyn_body_fixed(q,qd,q2d)

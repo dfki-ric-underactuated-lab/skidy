@@ -670,14 +670,14 @@ class _AbstractCodeGeneration():
             
 class SymbolicKinDyn(_AbstractCodeGeneration):
     BODY_FIXED = "body_fixed"
-    SPACIAL = "spacial"
+    SPATIAL = "spatial"
     
     def __init__(self, 
                  gravity_vector: MutableDenseMatrix=None, 
                  ee: MutableDenseMatrix=None, 
                  body_ref_config: List[MutableDenseMatrix]=[], 
                  joint_screw_coord: List[MutableDenseMatrix]=[], 
-                 config_representation: str="spacial", 
+                 config_representation: str="spatial", 
                  Mb: List[MutableDenseMatrix]=[], 
                  parent: List[int]=[], 
                  support: List[List[int]]=[], 
@@ -700,21 +700,21 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
                 body fixed frame in the chain. Defaults to None.
             body_ref_config (list of sympy.Matrix, optional): 
                 List of reference configurations of bodies in body-fixed
-                or spacial representation, dependent on selected 
+                or spatial representation, dependent on selected 
                 config_representation. 
                 Leave empty for dH Parameter usage (dhToScrewCoord(...)). 
                 Defaults to [].
             joint_screw_coord (list of sympy.Matrix, optional): 
                 List of joint screw coordinates in body-fixed 
-                or spacial representation, dependent on selected 
+                or spatial representation, dependent on selected 
                 config_representation. 
                 Leave empty for dH Parameter usage (dhToScrewCoord(...)). 
                 Defaults to [].
             config_representation (str, optional): 
-                Use body fixed or spacial representation for reference 
+                Use body fixed or spatial representation for reference 
                 configuration of bodies and joint screw coordinates.
-                Has to be "body_fixed" or "spacial". 
-                Defaults to "spacial".
+                Has to be "body_fixed" or "spatial". 
+                Defaults to "spatial".
             Mb (list of sympy.Matrix, optional): 
                 List of Mass Inertia matrices for all links. Only 
                 necessary for inverse dynamics. Defaults to [].
@@ -753,8 +753,8 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
         self.B = [] # List of reference configurations of bodies in body-fixed representation.
         self.X = [] # List of joint screw coordinates in body-fixed representation.
 
-        self.A = [] # List of reference configurations of bodies in spacial representation.
-        self.Y = [] # List of joint screw coordinates in spacial representation.
+        self.A = [] # List of reference configurations of bodies in spatial representation.
+        self.Y = [] # List of joint screw coordinates in spatial representation.
         
         self.config_representation = config_representation # @property: checks for valid value 
         if body_ref_config != []:
@@ -809,15 +809,15 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
     
     @config_representation.setter
     def config_representation(self, value: str) -> None:
-        if value not in {self.BODY_FIXED, self.SPACIAL}:
-            raise ValueError("config_representation has to be 'body_fixed' or 'spacial'")
+        if value not in {self.BODY_FIXED, self.SPATIAL}:
+            raise ValueError("config_representation has to be 'body_fixed' or 'spatial'")
         self._config_representation = value
     
     @property
     def body_ref_config(self) -> list:
         if self.config_representation == self.BODY_FIXED:
             return self.B
-        elif self.config_representation == self.SPACIAL:
+        elif self.config_representation == self.SPATIAL:
             return self.A
     
     @body_ref_config.setter
@@ -827,21 +827,21 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
             self.n = n
         if self.config_representation == self.BODY_FIXED:
             self.B = value
-        elif self.config_representation == self.SPACIAL:
+        elif self.config_representation == self.SPATIAL:
             self.A = value
     
     @property
     def joint_screw_coord(self) -> list:
         if self.config_representation == self.BODY_FIXED:
             return self.X
-        elif self.config_representation == self.SPACIAL:
+        elif self.config_representation == self.SPATIAL:
             return self.Y
     
     @joint_screw_coord.setter
     def joint_screw_coord(self, value: List[MutableDenseMatrix]) -> None:
         if self.config_representation == self.BODY_FIXED:
             self.X = value
-        elif self.config_representation == self.SPACIAL:
+        elif self.config_representation == self.SPATIAL:
             self.Y = value
     
     def closed_form_kinematics_body_fixed(

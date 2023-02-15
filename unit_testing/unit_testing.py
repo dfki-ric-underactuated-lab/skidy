@@ -39,7 +39,7 @@ def prepare(cls):
     cls.cg1, cls.cg2, cls.g = symbols("cg1 cg2 g", real=1, constant=1)
     cls.L1, cls.L2 = symbols("L1 L2", real=1, constant=1)
     
-    cls.s.config_representation = "spacial"
+    cls.s.config_representation = "spatial"
     
     cls.s.gravity_vector = Matrix([0, cls.g, 0])
 
@@ -48,15 +48,15 @@ def prepare(cls):
     cls.s.joint_screw_coord = []
     e1 = Matrix([0, 0, 1])  # joint axis of revolute joint
     y1 = Matrix([0, 0, 0])  # Vector to joint axis from inertial Frame
-    # Joint screw coordinates in spacial representation
+    # Joint screw coordinates in spatial representation
     cls.s.joint_screw_coord.append(Matrix([e1, y1.cross(e1)]))
 
     e2 = Matrix([0, 0, 1])  # joint axis of revolute joint
     y2 = Matrix([cls.L1, 0, 0])  # Vector to joint axis from inertial Frame
-    # Joint screw coordinates in spacial representation
+    # Joint screw coordinates in spatial representation
     cls.s.joint_screw_coord.append(Matrix([e2, y2.cross(e2)]))
 
-    # Reference configurations of bodies (i.e. of spacial reference frames)
+    # Reference configurations of bodies (i.e. of spatial reference frames)
     r1 = Matrix([0, 0, 0])
     r2 = Matrix([cls.L1, 0, 0])
 

@@ -175,7 +175,7 @@ support:
 
 gravity: [0,0,g]
 
-representation: spacial
+representation: spatial
 
 joint_screw_coord:
   - type: revolute
@@ -264,10 +264,10 @@ Gravity vector.
 ---
 
 ```yaml
-representation: spacial
+representation: spatial
 ```
 
-Define whether the representation of the joint screw coordinates and the body reference configuration is w.r.t. world frame (`representation: spacial`) or in body fixed coordinates (`representation: body_fixed`)
+Define whether the representation of the joint screw coordinates and the body reference configuration is w.r.t. world frame (`representation: spatial`) or in body fixed coordinates (`representation: body_fixed`)
 
 ---
 
@@ -551,7 +551,7 @@ support = [[1],
 gravity = sympy.Matrix([0,0,g])
 
 # representation of joint screw coordinates and body reference configurations
-representation = 'spacial' # alternative: 'body_fixed'
+representation = 'spatial' # alternative: 'body_fixed'
 
 # joint screw coordinates (6x1 sympy.Matrix per joint)
 joint_screw_coord = []
@@ -677,10 +677,10 @@ Gravity vector as `sympy.Matrix`. Note that we can use symbolic variables here.
 
 ```python
 # representation of joint screw coordinates and body reference configurations
-representation = 'spacial' # alternative: 'body_fixed'
+representation = 'spatial' # alternative: 'body_fixed'
 ```
 
-Define whether the representation of the joint screw coordinates and the body reference configuration is w.r.t. world frame (`representation = 'spacial'`) or in body fixed coordinates (`representation =  'body_fixed'`).
+Define whether the representation of the joint screw coordinates and the body reference configuration is w.r.t. world frame (`representation = 'spatial'`) or in body fixed coordinates (`representation =  'body_fixed'`).
 
 ---
 

@@ -137,7 +137,7 @@ def SE3adMatrix(X: MutableDenseMatrix) -> MutableDenseMatrix:
         - also known as spatial cross product in the literature.
 
     Args:
-        X (sympy.Matrix): (6x1) spacial vector.
+        X (sympy.Matrix): (6x1) spatial vector.
 
     Returns:
         sympy.Matrix: (6x6) adjoint matrix
@@ -154,7 +154,7 @@ def SE3Exp(XX: MutableDenseMatrix, t: Union[float, Expr]) -> MutableDenseMatrix:
     """compute exponential mapping for SE(3).
 
     Args:
-        XX ([type]): (6,1) spacial vector.
+        XX ([type]): (6,1) spatial vector.
         t (sympy.Expr): rotation angle.
 
     Returns:

@@ -16,23 +16,23 @@ g, L1, L2, Ixx1, Ixy1, Ixz1, Iyy1, Iyz1, Izz1, Ixx2, Ixy2, Ixz2, Iyy2, Iyz2, Izz
 skd.gravity_vector = Matrix([-g, 0, 0])
 
 # Joint screw coordinates in spatial representation
-# define config_representation to be spacial
-skd.config_representation = skd.SPACIAL
+# define config_representation to be spatial
+skd.config_representation = skd.SPATIAL
 
 skd.joint_screw_coord = []
 skd.joint_screw_coord.append(Matrix([0, 0, 0, -1, 0, 0])) # prismatic joint
 
 e1 = Matrix([0, 0, 1])  # joint axis of revolute joint
 y1 = Matrix([0, 0, 0])  # Vector to joint axis from inertial Frame
-# Joint screw coordinates in spacial representation
+# Joint screw coordinates in spatial representation
 skd.joint_screw_coord.append(Matrix([e1, y1.cross(e1)])) # revolute joint 1
 
 e2 = Matrix([0, 0, 1])  # joint axis of revolute joint
 y2 = Matrix([L1, 0, 0])  # Vector to joint axis from inertial Frame
-# Joint screw coordinates in spacial representation
+# Joint screw coordinates in spatial representation
 skd.joint_screw_coord.append(Matrix([e2, y2.cross(e2)])) # revolute joint 2
 
-# Reference configurations of bodies (i.e. of spacial frames)
+# Reference configurations of bodies (i.e. of spatial frames)
 r0 = Matrix([0, 0, 0])
 r1 = Matrix([0, 0, 0])
 r2 = Matrix([L1, 0, 0])

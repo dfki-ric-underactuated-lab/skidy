@@ -23,7 +23,7 @@ gravity_vector = Matrix([0, -g, 0])  # define gravity vector
 joint_screw_coord = []
 e1 = Matrix([0, 0, 1])  # joint axis of revolute joint
 y1 = Matrix([0, 0, 0])  # Vector to joint axis from inertial Frame
-# Joint screw coordinates in spacial representation (6,1)
+# Joint screw coordinates in spatial representation (6,1)
 joint_screw_coord.append(Matrix([e1, y1.cross(e1)]))
 
 
