@@ -96,7 +96,7 @@ For unit testing the following packages are additionally recommended:
     ```
 
     This requires a working octave installation on your system:
-    Install on ubuntu with:
+    Install on Ubuntu with:
 
     ```bash
     sudo apt install octave
@@ -281,7 +281,7 @@ joint_screw_coord:
     axis: [0,0,1]
 ```
 
-The joint screw coordinates can be defined eighter using the syntax which is used above, where `type` is the joint type (`revolute` or `prismatic`), `axis` is the joint axis and `vec` is a vector from the origin to the joint axis.
+The joint screw coordinates can be defined either using the syntax which is used above, where `type` is the joint type (`revolute` or `prismatic`), `axis` is the joint axis and `vec` is a vector from the origin to the joint axis.
 Alternatively, you can directly use the 6D joint screw vectors instead:
 
 ```yaml
@@ -464,7 +464,7 @@ Mass-inertia matrices of all links. For the definition you have the following sy
 
     ```
 
-    Here the parameter index is appended to the names `Ixx` etc and generates an inertia matrix following the naming scheme used in the examples above.
+    Here the parameter index is appended to the names `Ixx` etc. and generates an inertia matrix following the naming scheme used in the examples above.
     With the parameter `pointmass: True` the resulting inertia matrix looks like this:
 
     ```yaml
@@ -691,7 +691,7 @@ joint_screw_coord.append(joint_screw(axis=[0,0,1], vec=[0,0,0], revolute=True))
 joint_screw_coord.append(joint_screw(axis=[0,0,1], revolute=False))
 ```
 
-The joint screw coordinates can be defined eighter using the syntax which is used above, where `axis` is the joint axis, `vec` is a vector from the origin to the joint axis and `revolute` has to be `True` for revolute joints and `False` for prismatic joints. Note that prismatic joints don't need the parameter `vec`.
+The joint screw coordinates can be defined either using the syntax which is used above, where `axis` is the joint axis, `vec` is a vector from the origin to the joint axis and `revolute` has to be `True` for revolute joints and `False` for prismatic joints. Note that prismatic joints don't need the parameter `vec`.
 Alternatively, you can directly use the 6D joint screw vectors instead:
 
 ```python
