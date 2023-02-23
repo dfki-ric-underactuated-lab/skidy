@@ -1,0 +1,47 @@
+---
+parent:
+  - 0
+  - 1
+
+child:
+  - [1]
+  - []
+
+support:
+  - [1]
+  - [1,2]
+
+gravity: [0,-g,0]
+
+representation: spatial
+
+joint_screw_coord:
+  - type: revolute
+    axis: [0,0,1]
+    vec: [0,0,0]
+
+  - type: revolute
+    axis: [0,0,1]
+    vec: [0,-L1,0]
+
+body_ref_config:
+  - translation: [0,0,0]
+
+  - translation: [0,-L1,0]
+
+ee:
+  translation: [0,-L2,0]
+
+mass_inertia:
+  - mass: m1
+    inertia: m1*L1**2
+    com: [0,-L1,0]
+
+  - mass: m2
+    inertia: m2*L2**2
+    com: [0,-L2,0]
+
+q: [q1,q2]
+qd: [dq1,dq2]
+q2d: [ddq1,ddq2]
+WEE: [0,0,0,0,0,0]

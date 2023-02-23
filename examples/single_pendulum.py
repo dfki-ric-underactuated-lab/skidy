@@ -1,61 +1,62 @@
-from sympy import symbols, Matrix, Identity
-from skidy import SymbolicKinDyn, mass_matrix_mixed_data, transformation_matrix
+from skidy import (SymbolicKinDyn,
+                   transformation_matrix,
+                   mass_matrix_mixed_data,
+                   joint_screw,
+                   inertia_matrix,
+                   SO3Exp,
+                   generalized_vectors)
+from skidy.symbols import g, L1, m1
+import sympy
 
+# Define connectivity graph
+parent = [0]
 
-# Declaration of symbolic variables
-q1 = symbols("q1")  # joint positions
-dq1 = symbols("dq1")  # joint velocities
-ddq1 = symbols("ddq1")  # joint accelerations
+child = [[]]
 
-# mass and inertia values
-m1 = symbols("m1", real=1, constant=1)
+support = [[1]]
 
-# gravity
-g = symbols("g", real=1, constant=1)
-L1 = symbols("L1", real=1, constant=1)  # link lengths
-pi = symbols("pi", real=1, constant=1)  # pi
+# gravity vector
+gravity = sympy.Matrix([0,-g,0])
 
+# representation of joint screw coordinates and body reference configurations
+representation = 'body_fixed'
 
-gravity_vector = Matrix([0, -g, 0])  # define gravity vector
-
-# Joint screw coordinates in spatial representation
-
+# joint screw coordinates (6x1 sympy.Matrix per joint)
 joint_screw_coord = []
-e1 = Matrix([0, 0, 1])  # joint axis of revolute joint
-y1 = Matrix([0, 0, 0])  # Vector to joint axis from inertial Frame
-# Joint screw coordinates in spatial representation (6,1)
-joint_screw_coord.append(Matrix([e1, y1.cross(e1)]))
+joint_screw_coord.append(joint_screw(axis=[0,0,1], vec=[0,0,0], revolute=True))
 
-
-# Reference configurations of bodies (i.e. of body-fixed reference frames)
-r1 = Matrix([0, 0, 0])
-
+# body reference configurations (4x4 SE3 Pose (sympy.Matrix) per link)
 body_ref_config = []
-body_ref_config.append(transformation_matrix(t=r1)) # no rotation, just translation
+body_ref_config.append(transformation_matrix(r=SO3Exp(axis=[0,0,1],angle=0),t=[0,0,0]))
 
-# End-effector configuration wrt last link body fixed frame in the chain
-re = Matrix([0, -L1, 0])
-ee = transformation_matrix(t=re)
+# end-effector configuration w.r.t. last link body fixed frame in the chain (4x4 SE3 Pose (sympy.Matrix))
+ee = transformation_matrix(r=SO3Exp(axis=[0,0,1],angle=0),t=[0,-L1,0])
 
-
-# Mass-Inertia parameters
-cg1 = Matrix([0, -L1, 0]).T
+# mass_inertia parameters (6x6 sympy.Matrix per link)
 I1 = m1*L1**2
 
 Mb = []
-Mb.append(mass_matrix_mixed_data(m1, I1*Identity(3), cg1))
+Mb.append(mass_matrix_mixed_data(m1, I1*sympy.Identity(3) , sympy.Matrix([0,-L1,0])))
 
-# Declaring generalized vectors
-q = Matrix([q1])
-qd = Matrix([dq1])
-q2d = Matrix([ddq1])
+q, qd, q2d = generalized_vectors(len(body_ref_config), startindex=1)
+WEE = sympy.zeros(6,1)
 
-s = SymbolicKinDyn(gravity_vector=gravity_vector, 
-                    ee=ee,
-                    body_ref_config=body_ref_config,
-                    joint_screw_coord=joint_screw_coord,
-                    config_representation="body_fixed", 
-                    Mb=Mb)
-s.closed_form_kinematics_body_fixed(q,qd,q2d)
-s.closed_form_inv_dyn_body_fixed(q,qd,q2d)
-s.generate_code(python=True, C=False, Matlab=False, latex=False,name="SinglePendulumPlant",project="SinglePendulum")
+skd = SymbolicKinDyn(gravity_vector=gravity,
+                     ee=ee,
+                     body_ref_config=body_ref_config,
+                     joint_screw_coord=joint_screw_coord,
+                     config_representation=representation,
+                     Mb=Mb,
+                     parent=parent,
+                     child=child,
+                     support=support,
+                     )
+
+# run Calculations
+skd.closed_form_kinematics_body_fixed(q, qd, q2d, simplify_expressions=True)
+skd.closed_form_inv_dyn_body_fixed(q, qd, q2d, WEE, simplify_expressions=True)
+
+# Generate Code
+skd.generate_code(python=True, C=False, Matlab=False, latex=True,
+                 folder="./generated_code", use_global_vars=True,
+                 name="SinglePendulumPlant", project="SinglePendulum")
