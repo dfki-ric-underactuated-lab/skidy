@@ -2121,7 +2121,7 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
             return ex
         if ex.is_rational:
             try:
-                d = ex.denominator()
+                d = ex.denominator
                 if d > max_denominator:
                     return num
             except ValueError:
