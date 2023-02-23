@@ -23,7 +23,7 @@ def main() -> None:
     parser.add_argument("-p", "--python", action="store_true", help="generate python code")
     parser.add_argument("-C","--C", action="store_true", help="generate C code")
     parser.add_argument("-m","--matlab", action="store_true", help="generate Matlab/Octave code")
-    parser.add_argument("-l, --latex", action="store_true", help="generate LaTeX code and pdf")
+    parser.add_argument("-l","--latex", action="store_true", help="generate LaTeX code and pdf")
     parser.add_argument("--cython", action="store_true", help="generate Cython code")
     parser.add_argument("--no-kinematics", action="store_true", help="skip generation of kinematics equations.")
     parser.add_argument("--no-dynamics", action="store_true", help="skip generation of dynamics equations.")
@@ -37,7 +37,7 @@ def main() -> None:
 
     # options for template generation
     generate_template = parser.add_argument_group("Options for template Generation (available formats: yaml, json, python)")
-    generate_template.add_argument("--template", "--please", action="store_true", help="store template yaml or json file to edit instead of analyzing existing robot. Format is chosen by extension of filename")
+    generate_template.add_argument("-T","--template", "--please", action="store_true", help="store template yaml or json file to edit instead of analyzing existing robot. Format is chosen by extension of filename")
     generate_template.add_argument("-S", "--structure", type=str, help="structure of robot template: String containing only 'r' and 'p' of joint order. E.g.: Use 'prr' for a robot which has 1 prismatic joint followed by 2 revolute joints.")
     generate_template.add_argument("-d", "--dof", type=int, default=0, help="degrees of freedom. Is usually calculated by length of 'structure'.")
     generate_template.add_argument("--urdf",action="store_true", help="use urdf in generated python file")
@@ -86,7 +86,7 @@ def main() -> None:
         if not os.path.exists(path) or not os.path.isfile(path):
             raise ValueError(f"{path} is no existing file.")
         
-        if not args.python and not args.C and not args.matlab:
+        if not args.python and not args.C and not args.matlab and not args.latex and not args.cython:
             raise ValueError("Please provide at least one programming language in which I should generate code.")
         
         if ext in {".yaml",".YAML","yml"}:
@@ -113,7 +113,7 @@ def main() -> None:
         if not args.no_dynamics:
             skd.closed_form_inv_dyn_body_fixed(simplify_expressions=args.simplify, cse_ex=args.cse, parallel=args.serial)
     
-        skd.generate_code(python=args.python, C=args.C, matlab=args.matlab, cython=args.cython, latex=args.latex, folder=args.folder, use_global_vars=True, name=args.name, project=args.project)
+        skd.generate_code(python=args.python, C=args.C, Matlab=args.matlab, cython=args.cython, latex=args.latex, folder=args.folder, use_global_vars=True, name=args.name, project=args.project)
 
 
 if __name__ == "__main__":

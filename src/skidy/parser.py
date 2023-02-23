@@ -85,7 +85,8 @@ def dict_parser(d: dict) -> SymbolicKinDyn:
     d = parse_hierarchical_expr(d, include_keys={"mass", "index", 
                                                  "Ixx", "Ixy", "Ixz", 
                                                  "Iyy", "Ixz", "Izz", 
-                                                 "q", "qd", "d2d", "WEE"})
+                                                 "q", "qd", "d2d", "WEE",
+                                                 "inertia"})
     
     config_representation = d["representation"] if "representation" in d else "spatial"
     
@@ -216,7 +217,14 @@ def dict_parser(d: dict) -> SymbolicKinDyn:
                                 )
                             )
                     else:
-                        raise ValueError(f"Inertia {mb['inertia']} not supported.")
+                        Mb.append(
+                            mass_matrix_mixed_data(
+                                mb["mass"], 
+                                mb["inertia"]*Identity(3),
+                                Matrix(mb["com"])
+                                )
+                            )
+                        # raise ValueError(f"Inertia {mb['inertia']} not supported.")
             else:
                 raise ValueError("Unable to process mass_inertia.")
     
@@ -278,7 +286,7 @@ def generate_template_yaml(path: str="edit_me.yaml", structure: str = None,
             y.append(f"  - [{','.join([str(j) for j in range(1,i+2)])}]")
         y.append("")
         
-    y.append("gravity: [0,0,g]")
+    y.append("gravity: [0,0,-g]")
     y.append("")
     
     y.append("representation: spatial")
@@ -448,7 +456,7 @@ def generate_template_python(path:str="edit_me.py", structure:str=None, dof:int=
         p.append("")
     
     p.append("# gravity vector")
-    p.append("gravity = sympy.Matrix([0,0,g])")
+    p.append("gravity = sympy.Matrix([0,0,-g])")
     p.append("")
     
     if not urdf:

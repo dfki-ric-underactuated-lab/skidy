@@ -447,12 +447,20 @@ Mass-inertia matrices of all links. For the definition you have the following sy
           Iyy: Iyy1
           Izz: Izz1
         com: [cx1,cy1,cz1]
-
     ```
 
     Supports the parameters `Ixx`, `Ixy`, `Ixz`, `Iyy`, `Iyz` and `Izz`. All parameters default to 0.
 
-5. Automatically generate symbols in inertia matrix:
+5. Define only one value which is internally multiplied by an identity matrix:
+
+    ```yaml
+    mass_inertia:
+      - mass: m1
+        inertia: m1*L1**2
+        com: [cx1,cy1,cz1]
+    ```
+
+6. Automatically generate symbols in inertia matrix:
 
     ```yaml
     mass_inertia:
