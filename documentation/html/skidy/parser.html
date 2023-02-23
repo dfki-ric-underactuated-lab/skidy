@@ -113,7 +113,8 @@ def dict_parser(d: dict) -&gt; SymbolicKinDyn:
     d = parse_hierarchical_expr(d, include_keys={&#34;mass&#34;, &#34;index&#34;, 
                                                  &#34;Ixx&#34;, &#34;Ixy&#34;, &#34;Ixz&#34;, 
                                                  &#34;Iyy&#34;, &#34;Ixz&#34;, &#34;Izz&#34;, 
-                                                 &#34;q&#34;, &#34;qd&#34;, &#34;d2d&#34;, &#34;WEE&#34;})
+                                                 &#34;q&#34;, &#34;qd&#34;, &#34;d2d&#34;, &#34;WEE&#34;,
+                                                 &#34;inertia&#34;})
     
     config_representation = d[&#34;representation&#34;] if &#34;representation&#34; in d else &#34;spatial&#34;
     
@@ -244,7 +245,14 @@ def dict_parser(d: dict) -&gt; SymbolicKinDyn:
                                 )
                             )
                     else:
-                        raise ValueError(f&#34;Inertia {mb[&#39;inertia&#39;]} not supported.&#34;)
+                        Mb.append(
+                            mass_matrix_mixed_data(
+                                mb[&#34;mass&#34;], 
+                                mb[&#34;inertia&#34;]*Identity(3),
+                                Matrix(mb[&#34;com&#34;])
+                                )
+                            )
+                        # raise ValueError(f&#34;Inertia {mb[&#39;inertia&#39;]} not supported.&#34;)
             else:
                 raise ValueError(&#34;Unable to process mass_inertia.&#34;)
     
@@ -306,7 +314,7 @@ def generate_template_yaml(path: str=&#34;edit_me.yaml&#34;, structure: str = No
             y.append(f&#34;  - [{&#39;,&#39;.join([str(j) for j in range(1,i+2)])}]&#34;)
         y.append(&#34;&#34;)
         
-    y.append(&#34;gravity: [0,0,g]&#34;)
+    y.append(&#34;gravity: [0,0,-g]&#34;)
     y.append(&#34;&#34;)
     
     y.append(&#34;representation: spatial&#34;)
@@ -476,7 +484,7 @@ def generate_template_python(path:str=&#34;edit_me.py&#34;, structure:str=None, 
         p.append(&#34;&#34;)
     
     p.append(&#34;# gravity vector&#34;)
-    p.append(&#34;gravity = sympy.Matrix([0,0,g])&#34;)
+    p.append(&#34;gravity = sympy.Matrix([0,0,-g])&#34;)
     p.append(&#34;&#34;)
     
     if not urdf:
@@ -646,7 +654,8 @@ def robot_from_urdf(path: str, symbolic: bool=True, cse_ex: bool=False,
     d = parse_hierarchical_expr(d, include_keys={&#34;mass&#34;, &#34;index&#34;, 
                                                  &#34;Ixx&#34;, &#34;Ixy&#34;, &#34;Ixz&#34;, 
                                                  &#34;Iyy&#34;, &#34;Ixz&#34;, &#34;Izz&#34;, 
-                                                 &#34;q&#34;, &#34;qd&#34;, &#34;d2d&#34;, &#34;WEE&#34;})
+                                                 &#34;q&#34;, &#34;qd&#34;, &#34;d2d&#34;, &#34;WEE&#34;,
+                                                 &#34;inertia&#34;})
     
     config_representation = d[&#34;representation&#34;] if &#34;representation&#34; in d else &#34;spatial&#34;
     
@@ -777,7 +786,14 @@ def robot_from_urdf(path: str, symbolic: bool=True, cse_ex: bool=False,
                                 )
                             )
                     else:
-                        raise ValueError(f&#34;Inertia {mb[&#39;inertia&#39;]} not supported.&#34;)
+                        Mb.append(
+                            mass_matrix_mixed_data(
+                                mb[&#34;mass&#34;], 
+                                mb[&#34;inertia&#34;]*Identity(3),
+                                Matrix(mb[&#34;com&#34;])
+                                )
+                            )
+                        # raise ValueError(f&#34;Inertia {mb[&#39;inertia&#39;]} not supported.&#34;)
             else:
                 raise ValueError(&#34;Unable to process mass_inertia.&#34;)
     
@@ -955,7 +971,7 @@ in yaml file. Defaults to True.</dd>
         p.append(&#34;&#34;)
     
     p.append(&#34;# gravity vector&#34;)
-    p.append(&#34;gravity = sympy.Matrix([0,0,g])&#34;)
+    p.append(&#34;gravity = sympy.Matrix([0,0,-g])&#34;)
     p.append(&#34;&#34;)
     
     if not urdf:
@@ -1121,7 +1137,7 @@ in yaml file. Defaults to True.</dd>
             y.append(f&#34;  - [{&#39;,&#39;.join([str(j) for j in range(1,i+2)])}]&#34;)
         y.append(&#34;&#34;)
         
-    y.append(&#34;gravity: [0,0,g]&#34;)
+    y.append(&#34;gravity: [0,0,-g]&#34;)
     y.append(&#34;&#34;)
     
     y.append(&#34;representation: spatial&#34;)
