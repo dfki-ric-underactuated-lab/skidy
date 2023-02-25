@@ -29,6 +29,4 @@ q2d = Matrix([ddq0, ddq1, ddq2])
 F = s.closed_form_kinematics_body_fixed(q, qd, q2d, simplify_expressions=0,cse_ex=1)
 # Q = s.closed_form_inv_dyn_body_fixed(q,qd,q2d, simplify_expressions=0)
 
-print(F)
-s.generate_code(python=0,C=1,Matlab=0,name="hlurdfcse")
-# print(Q)
+s.generate_code(python=1,C=0,Matlab=0,name="HoppingLeg")
