@@ -68,7 +68,7 @@ qd = Matrix([dq1,dq2,dq3])
 q2d = Matrix([ddq1,ddq2,ddq3])
 
 s = skd(gravity_vector=gravity_vector,ee=ee,Mb=Mb,parent=parent,support=support,child=child,A=A,Y=Y)
-print(s.closed_form_kinematics_body_fixed(q,qd,q2d, simplify_expressions=True))
-print(s.closed_form_inv_dyn_body_fixed(q,qd,q2d,simplify_expressions=True))
+print(s.closed_form_kinematics_body_fixed(q,qd,q2d, simplify=True))
+print(s.closed_form_inv_dyn_body_fixed(q,qd,q2d,simplify=True))
 s.generate_code(python=True, C=True, Matlab=True,
                 use_global_vars=True, name="lambdaMechanism", project="LambdaMechanism")

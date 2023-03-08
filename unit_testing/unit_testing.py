@@ -970,16 +970,16 @@ class TestGeneratedPythonCode(AbstractGeneratedCodeTests,unittest.TestCase):
         prepare(cls)
         
         simplify_ex=True # necessary due to attributes in function calls
-        cse_ex=random.choice([True, False])
+        cse=random.choice([True, False])
         parallel=random.choice([True, False])
                 
         
         cls.s.closed_form_kinematics_body_fixed(
             q = cls.q, qd=cls.qd,q2d=cls.q2d,
-            simplify_expressions=simplify_ex,cse_ex=cse_ex,parallel=parallel)
+            simplify=simplify_ex,cse=cse,parallel=parallel)
         cls.s.closed_form_inv_dyn_body_fixed(
             q=cls.q, qd=cls.qd, q2d=cls.q2d, WEE=zeros(6,1),
-            simplify_expressions=simplify_ex,cse_ex=cse_ex,parallel=parallel)
+            simplify=simplify_ex,cse=cse,parallel=parallel)
         
         folder = os.path.join(dirname(__file__),"generated_code")
         cls.folder = folder
@@ -1015,16 +1015,16 @@ class TestGeneratedCythonCode(AbstractGeneratedCodeTests,unittest.TestCase):
         prepare(cls)
         
         simplify_ex=True # necessary due to attributes in function calls
-        cse_ex=random.choice([True, False])
+        cse=random.choice([True, False])
         parallel=random.choice([True, False])
                 
         
         cls.s.closed_form_kinematics_body_fixed(
             q = cls.q, qd=cls.qd,q2d=cls.q2d,
-            simplify_expressions=simplify_ex,cse_ex=cse_ex,parallel=parallel)
+            simplify=simplify_ex,cse=cse,parallel=parallel)
         cls.s.closed_form_inv_dyn_body_fixed(
             q=cls.q, qd=cls.qd, q2d=cls.q2d, WEE=zeros(6,1),
-            simplify_expressions=simplify_ex,cse_ex=cse_ex,parallel=parallel)
+            simplify=simplify_ex,cse=cse,parallel=parallel)
         
         folder = os.path.join(dirname(__file__),"generated_code")
         cls.folder = folder
@@ -1062,16 +1062,16 @@ class TestGeneratedMatlabCode(AbstractGeneratedCodeTests,unittest.TestCase):
         prepare(cls)
         
         simplify_ex=True # necessary due to attributes in function calls
-        cse_ex=random.choice([True, False])
+        cse=random.choice([True, False])
         parallel=random.choice([True, False])
                 
         
         cls.s.closed_form_kinematics_body_fixed(
             q = cls.q, qd=cls.qd,q2d=cls.q2d,
-            simplify_expressions=simplify_ex,cse_ex=cse_ex,parallel=parallel)
+            simplify=simplify_ex,cse=cse,parallel=parallel)
         cls.s.closed_form_inv_dyn_body_fixed(
             q=cls.q, qd=cls.qd, q2d=cls.q2d, WEE=zeros(6,1),
-            simplify_expressions=simplify_ex,cse_ex=cse_ex,parallel=parallel)
+            simplify=simplify_ex,cse=cse,parallel=parallel)
         
         folder = os.path.join(dirname(__file__),"generated_code")
         cls.folder = folder

@@ -18,7 +18,7 @@ s.gravity_vector = Matrix([0,0,g])
 re = Matrix([0, 0, L2])
 s.ee = Matrix(Identity(3)).row_join(re).col_join(Matrix([0, 0, 0, 1]).T)
 
-s.load_from_urdf(os.path.join(os.path.dirname(__file__),"urdf/hopping_leg.urdf"),symbolic=1, simplify_numbers=1, cse_ex=1)
+s.load_from_urdf(os.path.join(os.path.dirname(__file__),"urdf/hopping_leg.urdf"),symbolic=1, simplify_numbers=1, cse=1)
 
 
 q = Matrix([q0,q1, q2])
@@ -26,7 +26,7 @@ qd = Matrix([dq0, dq1, dq2])
 q2d = Matrix([ddq0, ddq1, ddq2])
 
 # Kinematics
-F = s.closed_form_kinematics_body_fixed(q, qd, q2d, simplify_expressions=0,cse_ex=1)
-# Q = s.closed_form_inv_dyn_body_fixed(q,qd,q2d, simplify_expressions=0)
+F = s.closed_form_kinematics_body_fixed(q, qd, q2d, simplify=0,cse=1)
+# Q = s.closed_form_inv_dyn_body_fixed(q,qd,q2d, simplify=0)
 
 s.generate_code(python=1,C=0,Matlab=0,name="HoppingLeg")

@@ -96,7 +96,7 @@ def main() -> None:
             skd = robot_from_json(path)
         
         # elif ext in {".urdf"}:
-        #     skd = robot_from_urdf(path,cse_ex=args.cse) # TODO: add options
+        #     skd = robot_from_urdf(path,cse=args.cse) # TODO: add options
         #     # TODO: deal with ee
 
         elif ext == ".py":
@@ -109,9 +109,9 @@ def main() -> None:
             raise ValueError("File extension not recognized.")
         
         if not args.no_kinematics:
-            skd.closed_form_kinematics_body_fixed(simplify_expressions=args.simplify, cse_ex=args.cse, parallel=args.serial)
+            skd.closed_form_kinematics_body_fixed(simplify=args.simplify, cse=args.cse, parallel=args.serial)
         if not args.no_dynamics:
-            skd.closed_form_inv_dyn_body_fixed(simplify_expressions=args.simplify, cse_ex=args.cse, parallel=args.serial)
+            skd.closed_form_inv_dyn_body_fixed(simplify=args.simplify, cse=args.cse, parallel=args.serial)
     
         skd.generate_code(python=args.python, C=args.C, Matlab=args.matlab, cython=args.cython, latex=args.latex, folder=args.folder, use_global_vars=True, name=args.name, project=args.project)
 

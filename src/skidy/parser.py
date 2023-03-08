@@ -516,7 +516,7 @@ def generate_template_python(path:str="edit_me.py", structure:str=None, dof:int=
     if urdf:
         p.append("skd.load_from_urdf(path = urdfpath,")
         p.append("                   symbolic=True, # symbolify equations? (eg. use Ixx instead of numeric value)")
-        p.append("                   cse_ex=False, # use common subexpression elimination? ")
+        p.append("                   cse=False, # use common subexpression elimination? ")
         p.append("                   simplify_numbers=True, # round numbers if close to common fractions like 1/2 etc and replace eg 3.1416 by pi?")
         p.append("                   tolerance=0.0001, # tolerance for simplify numbers")
         p.append("                   max_denominator=8, # define max denominator for simplify numbers to avoid simplification to something like 13/153")
@@ -528,8 +528,8 @@ def generate_template_python(path:str="edit_me.py", structure:str=None, dof:int=
         p.append("")
     
     p.append("# run Calculations")
-    p.append("skd.closed_form_kinematics_body_fixed(q, qd, q2d, simplify_expressions=True)")
-    p.append("skd.closed_form_inv_dyn_body_fixed(q, qd, q2d, WEE, simplify_expressions=True)")
+    p.append("skd.closed_form_kinematics_body_fixed(q, qd, q2d, simplify=True)")
+    p.append("skd.closed_form_inv_dyn_body_fixed(q, qd, q2d, WEE, simplify=True)")
     p.append("")
     
     p.append("# Generate Code")
@@ -547,7 +547,7 @@ def generate_template_python(path:str="edit_me.py", structure:str=None, dof:int=
         f.write("\n".join(p))
 
 
-def robot_from_urdf(path: str, symbolic: bool=True, cse_ex: bool=False, 
+def robot_from_urdf(path: str, symbolic: bool=True, cse: bool=False, 
                     simplify_numbers: bool=True, tolerance: float=0.0001, 
                     max_denominator: int=9) -> SymbolicKinDyn:
     """Load robot from urdf.
@@ -557,7 +557,7 @@ def robot_from_urdf(path: str, symbolic: bool=True, cse_ex: bool=False,
             symbolic (bool, optional): 
                 generate symbols for numeric values. 
                 Defaults to True.
-            cse_ex (bool, optional): 
+            cse (bool, optional): 
                 use common subexpression elimination. Defaults to False.
             simplify_numbers (bool, optional): 
                 Use eg. pi/2 instead of 1.5708. Defaults to True.
@@ -576,7 +576,7 @@ def robot_from_urdf(path: str, symbolic: bool=True, cse_ex: bool=False,
     """            
     skd = SymbolicKinDyn()
     skd.load_from_urdf(path, symbolic, simplify_numbers, 
-                       cse_ex, tolerance, max_denominator)
+                       cse, tolerance, max_denominator)
     return skd
 
 

@@ -514,8 +514,8 @@ skd = SymbolicKinDyn(gravity_vector=gravity,
                      )
 
 # run Calculations
-skd.closed_form_kinematics_body_fixed(q, qd, q2d, simplify_expressions=True)
-skd.closed_form_inv_dyn_body_fixed(q, qd, q2d, WEE, simplify_expressions=True)
+skd.closed_form_kinematics_body_fixed(q, qd, q2d, simplify=True)
+skd.closed_form_inv_dyn_body_fixed(q, qd, q2d, WEE, simplify=True)
 
 # Generate Code
 skd.generate_code(python=True, C=False, Matlab=False, latex=False,
@@ -780,12 +780,12 @@ Define the time varying wrench on the end-effector link. Should be a (6,1) sympy
 Initialize class with all defined parameters.
 ---
 <pre><code class="python"># run Calculations
-skd.closed_form_kinematics_body_fixed(q, qd, q2d, simplify_expressions=True)
-skd.closed_form_inv_dyn_body_fixed(q, qd, q2d, WEE, simplify_expressions=True)
+skd.closed_form_kinematics_body_fixed(q, qd, q2d, simplify=True)
+skd.closed_form_inv_dyn_body_fixed(q, qd, q2d, WEE, simplify=True)
 </code></pre>
 Generate forward kinematics and inverse dynamics equations. Both functions share the following arguments:
-- simplify_expressions: generated expressions are simplified. Note that the simplification takes a lot of time for robots with more than 2 revolute joints in a chain.
-- cse_ex: Use common subexpression elimination to shorten equations. Note that the equations are not human-readable afterwards.
+- simplify: generated expressions are simplified. Note that the simplification takes a lot of time for robots with more than 2 revolute joints in a chain.
+- cse: Use common subexpression elimination to shorten equations. Note that the equations are not human-readable afterwards.
 - parallel: use parallel computation.
 <code>skd.closed\_form\_kinematics\_body\_fixed</code> generates the following equations and saves them as class parameters:
 - body_acceleration
@@ -851,7 +851,7 @@ skd = SymbolicKinDyn(gravity_vector=gravity,
 
 skd.load_from_urdf(path = urdfpath,
                    symbolic=True, 
-                   cse_ex=False, 
+                   cse=False, 
                    simplify_numbers=True,  
                    tolerance=0.0001, 
                    max_denominator=8, 
@@ -861,8 +861,8 @@ q, qd, q2d = generalized_vectors(len(skd.body_ref_config), startindex=1)
 WEE = sympy.zeros(6,1)
 
 # run Calculations
-skd.closed_form_kinematics_body_fixed(q, qd, q2d, simplify_expressions=True)
-skd.closed_form_inv_dyn_body_fixed(q, qd, q2d, WEE, simplify_expressions=True)
+skd.closed_form_kinematics_body_fixed(q, qd, q2d, simplify=True)
+skd.closed_form_inv_dyn_body_fixed(q, qd, q2d, WEE, simplify=True)
 
 # Generate Code
 skd.generate_code(python=True, C=False, Matlab=False, latex=False,
@@ -914,7 +914,7 @@ Initialize class with the two defined parameters.
 ---
 <pre><code class="python">skd.load_from_urdf(path = urdfpath,
                    symbolic=True, 
-                   cse_ex=False, 
+                   cse=False, 
                    simplify_numbers=True,  
                    tolerance=0.0001, 
                    max_denominator=8, 
@@ -922,7 +922,7 @@ Initialize class with the two defined parameters.
 </code></pre>
 Load the URDF file. Here you can specify the following options:
 1. <code>symbolic</code>: symbolify values in urdf file (bool).
-2. <code>cse\_ex</code>: use common subexpression elimination to shorten equations (bool).
+2. <code>cse</code>: use common subexpression elimination to shorten equations (bool).
 3. <code>simplify\_numbers</code>: round numbers if close to common fractions like 1/2 etc and replace eg 3.1416 by pi (bool).
 4. <code>tolerance</code>: tolerance for simplify numbers.
 5. <code>max\_denominator</code>: define max denominator for simplify numbers to avoid simplification to something like 13/153. Use 0 to deactivate.
@@ -936,8 +936,8 @@ Generate the generalized vectors (joint positions <code>q</code>, joint velociti
 Define the time varying wrench on the end-effector link. Should be a (6,1) sympy.Matrix with symbolic variables.
 ---
 <pre><code class="python"># run Calculations
-skd.closed_form_kinematics_body_fixed(q, qd, q2d, simplify_expressions=True)
-skd.closed_form_inv_dyn_body_fixed(q, qd, q2d, WEE, simplify_expressions=True)
+skd.closed_form_kinematics_body_fixed(q, qd, q2d, simplify=True)
+skd.closed_form_inv_dyn_body_fixed(q, qd, q2d, WEE, simplify=True)
 </code></pre>
 Generate forward kinematics and inverse dynamics equations. See chapter [Python](#22-python) for more information.
 ---
@@ -953,7 +953,7 @@ To run the unit tests use:
 <pre><code class="bash">python3 ./unit_testing/unit_testing.py
 </code></pre>
 ## 4. Benchmarking
-For benchmarking the project the script `benchmarking/benchmarking.py` was used. This script loads 4 robots with increasing complexity (1 to 4 revolute joint in a chain with planar task space) and takes the execution time of the functions <code>closed\_form\_kinematics\_body\_fixed()</code>, <code>closed\_form\_inv\_dyn\_body\_fixed()</code> and <code>generate\_code()</code>. Additionally, the arguments <code>parallel</code>, <code>simplify\_expressions</code> and <code>cse\_ex</code> have been altered.
+For benchmarking the project the script `benchmarking/benchmarking.py` was used. This script loads 4 robots with increasing complexity (1 to 4 revolute joint in a chain with planar task space) and takes the execution time of the functions <code>closed\_form\_kinematics\_body\_fixed()</code>, <code>closed\_form\_inv\_dyn\_body\_fixed()</code> and <code>generate\_code()</code>. Additionally, the arguments <code>parallel</code>, <code>simplify</code> and <code>cse</code> have been altered.
 The results are shown in the following table:
 arguments | parallel | serial
 :---------|:----------:|:-----------:

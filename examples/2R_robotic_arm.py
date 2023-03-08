@@ -81,7 +81,7 @@ s = SymbolicKinDyn(gravity_vector=gravity_vector,
 # Kinematics
 F = s.closed_form_kinematics_body_fixed(q, qd, q2d, True)
 Q = s.closed_form_inv_dyn_body_fixed(
-    q, qd, q2d, simplify_expressions=True)
+    q, qd, q2d, simplify=True)
 
 s.generate_code(python=True, C=True, Matlab=True,
                 use_global_vars=True, name="R2_plant", project="Project")
