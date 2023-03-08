@@ -37,4 +37,6 @@ mass_inertia:
 q: [q1]
 qd: [dq1]
 q2d: [ddq1]
+q3d: [dddq1]
+q4d: [ddddq1]
 WEE: [0,0,0,0,0,0]

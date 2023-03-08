@@ -1501,7 +1501,7 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
         if q3d is not None:        
             # First time derivative of Block diagonal matrix a (6n x 6n)
             ad = zeros(6*self.n, 6*self.n)
-            for i in self.n:
+            for i in range(self.n):
                 ad[i*6:i*6+6, i*6:i*6+6] = q2d[i] * SE3adMatrix(self.X[i])
 
             # Third order Forward Kinematics
@@ -1510,8 +1510,8 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
             #  First time derivative of Block diagonal matrix b (6n x 6n) 
             # used in Coriolis matrix
             bd = zeros(6*self.n, 6*self.n)
-            for i in self.n:
-                bd[i*6:i*6+6, i*6:i*6+6] = SE3adMatrix(Vd[i*6:i*6+6])
+            for i in range(self.n):
+                bd[i*6:i*6+6, i*6:i*6+6] = SE3adMatrix(Matrix(Vd[i*6:i*6+6]))
             
             # First time derivative of Mass inertia matrix in joint space (n x n)
             Mbd = -Mb*A*a - (Mb*A*a).T
@@ -1538,7 +1538,7 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
             
             # First time derivative of External Wrench
             Wdext = zeros(6*self.n,1)
-            Wdext[-6:] = WDEE
+            Wdext[-6:,0] = WDEE
             Qdext = J.T*(Wdext - (A*a).T * Wext)
             
             # Qd = M*q3d + (Md + C)*q2d + Cd*qd  # without gravity 
@@ -1557,14 +1557,14 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
         if q3d is not None and q4d is not None:        
             # Second time derivative of Block diagonal matrix a (6n x 6n)
             a2d = zeros(6*self.n, 6*self.n)
-            for i in self.n:
+            for i in range(self.n):
                 a2d[i*6:i*6+6, i*6:i*6+6] = SE3adMatrix(self.X[i]) * q3d[i]
                 
             # Second time derivative of Block diagonal matrix b (6n x 6n) 
             # used in Coriolis matrix
             b2d = zeros(6*self.n, 6*self.n)
-            for i in self.n:
-                b2d[i*6:i*6+6, i*6:i*6+6] = SE3adMatrix(V2d[i*6:i*6+6])
+            for i in range(self.n):
+                b2d[i*6:i*6+6, i*6:i*6+6] = SE3adMatrix(Matrix(V2d[i*6:i*6+6]))
                 
             # Second time derivative of Mass inertia matrix in joint space (n x n)
             Mb2d = (- Mb*A*ad - (Mb*A*ad).T + 2*Mb*A*a*A*a + 2*(Mb*A*a*A*a).T 
@@ -1597,7 +1597,7 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
 
             # Second time derivative of External Wrench
             W2dext = zeros(6*self.n,1)
-            W2dext[-6:] = W2DEE
+            W2dext[-6:,0] = W2DEE
             Q2dext = J.T*(W2dext - 2*(A*a).T*Wdext + (2*(A*a*A*a).T - (A*ad).T - (A*a*a).T)*Wext)
             
             # Second time derivative of generalized forces
@@ -2153,7 +2153,7 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
         if q3d is not None:
             # First time derivative of Block diagonal matrix a (6n x 6n)
             ad = zeros(6*self.n, 6*self.n)
-            for i in self.n:
+            for i in range(self.n):
                 ad[i*6:i*6+6, i*6:i*6+6] = q2d[i] * SE3adMatrix(self.X[i])
 
             # Third order Forward Kinematics
@@ -2166,8 +2166,8 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
             def _bd():
                 nonlocal self
                 bd = zeros(6*self.n, 6*self.n)
-                for i in self.n:
-                    bd[i*6:i*6+6, i*6:i*6+6] = SE3adMatrix(self._get_value(&#34;Vd&#34;)[i*6:i*6+6])
+                for i in range(self.n):
+                    bd[i*6:i*6+6, i*6:i*6+6] = SE3adMatrix(Matrix(self._get_value(&#34;Vd&#34;)[i*6:i*6+6]))
                 return bd
             self._set_value_as_process(&#34;bd&#34;, _bd)
             
@@ -2205,7 +2205,7 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
             
             # First time derivative of External Wrench
             Wdext = zeros(6*self.n,1)
-            Wdext[-6:] = WDEE
+            Wdext[-6:,0] = WDEE
             self._set_value_as_process(
                 &#34;Qdext&#34;,
                 lambda: self._get_value(&#34;J&#34;).T*(Wdext - (A*a).T * Wext))
@@ -2226,7 +2226,7 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
         if q3d is not None and q4d is not None:        
             # Second time derivative of Block diagonal matrix a (6n x 6n)
             a2d = zeros(6*self.n, 6*self.n)
-            for i in self.n:
+            for i in range(self.n):
                 a2d[i*6:i*6+6, i*6:i*6+6] = SE3adMatrix(self.X[i]) * q3d[i]
                 
             # Second time derivative of Block diagonal matrix b (6n x 6n) 
@@ -2234,9 +2234,9 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
             def _b2d():
                 nonlocal self
                 b2d = zeros(6*self.n, 6*self.n)
-                for i in self.n:
+                for i in range(self.n):
                     b2d[i*6:i*6+6, i*6:i*6+6] = SE3adMatrix(
-                        self._get_value(&#34;V2d&#34;)[i*6:i*6+6])
+                        Matrix(self._get_value(&#34;V2d&#34;)[i*6:i*6+6]))
                 return b2d
             self._set_value_as_process(&#34;b2d&#34;, _b2d)
                 
@@ -2289,7 +2289,7 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
 
             # Second time derivative of External Wrench
             W2dext = zeros(6*self.n,1)
-            W2dext[-6:] = W2DEE
+            W2dext[-6:,0] = W2DEE
             self._set_value_as_process(
                 &#34;Q2dext&#34;,
                 lambda: self._get_value(&#34;J&#34;).T
@@ -4051,7 +4051,7 @@ Defaults to zeros(6, 1).</dd>
         if q3d is not None:        
             # First time derivative of Block diagonal matrix a (6n x 6n)
             ad = zeros(6*self.n, 6*self.n)
-            for i in self.n:
+            for i in range(self.n):
                 ad[i*6:i*6+6, i*6:i*6+6] = q2d[i] * SE3adMatrix(self.X[i])
 
             # Third order Forward Kinematics
@@ -4060,8 +4060,8 @@ Defaults to zeros(6, 1).</dd>
             #  First time derivative of Block diagonal matrix b (6n x 6n) 
             # used in Coriolis matrix
             bd = zeros(6*self.n, 6*self.n)
-            for i in self.n:
-                bd[i*6:i*6+6, i*6:i*6+6] = SE3adMatrix(Vd[i*6:i*6+6])
+            for i in range(self.n):
+                bd[i*6:i*6+6, i*6:i*6+6] = SE3adMatrix(Matrix(Vd[i*6:i*6+6]))
             
             # First time derivative of Mass inertia matrix in joint space (n x n)
             Mbd = -Mb*A*a - (Mb*A*a).T
@@ -4088,7 +4088,7 @@ Defaults to zeros(6, 1).</dd>
             
             # First time derivative of External Wrench
             Wdext = zeros(6*self.n,1)
-            Wdext[-6:] = WDEE
+            Wdext[-6:,0] = WDEE
             Qdext = J.T*(Wdext - (A*a).T * Wext)
             
             # Qd = M*q3d + (Md + C)*q2d + Cd*qd  # without gravity 
@@ -4107,14 +4107,14 @@ Defaults to zeros(6, 1).</dd>
         if q3d is not None and q4d is not None:        
             # Second time derivative of Block diagonal matrix a (6n x 6n)
             a2d = zeros(6*self.n, 6*self.n)
-            for i in self.n:
+            for i in range(self.n):
                 a2d[i*6:i*6+6, i*6:i*6+6] = SE3adMatrix(self.X[i]) * q3d[i]
                 
             # Second time derivative of Block diagonal matrix b (6n x 6n) 
             # used in Coriolis matrix
             b2d = zeros(6*self.n, 6*self.n)
-            for i in self.n:
-                b2d[i*6:i*6+6, i*6:i*6+6] = SE3adMatrix(V2d[i*6:i*6+6])
+            for i in range(self.n):
+                b2d[i*6:i*6+6, i*6:i*6+6] = SE3adMatrix(Matrix(V2d[i*6:i*6+6]))
                 
             # Second time derivative of Mass inertia matrix in joint space (n x n)
             Mb2d = (- Mb*A*ad - (Mb*A*ad).T + 2*Mb*A*a*A*a + 2*(Mb*A*a*A*a).T 
@@ -4147,7 +4147,7 @@ Defaults to zeros(6, 1).</dd>
 
             # Second time derivative of External Wrench
             W2dext = zeros(6*self.n,1)
-            W2dext[-6:] = W2DEE
+            W2dext[-6:,0] = W2DEE
             Q2dext = J.T*(W2dext - 2*(A*a).T*Wdext + (2*(A*a*A*a).T - (A*ad).T - (A*a*a).T)*Wext)
             
             # Second time derivative of generalized forces
@@ -4703,7 +4703,7 @@ Defaults to zeros(6, 1).</dd>
         if q3d is not None:
             # First time derivative of Block diagonal matrix a (6n x 6n)
             ad = zeros(6*self.n, 6*self.n)
-            for i in self.n:
+            for i in range(self.n):
                 ad[i*6:i*6+6, i*6:i*6+6] = q2d[i] * SE3adMatrix(self.X[i])
 
             # Third order Forward Kinematics
@@ -4716,8 +4716,8 @@ Defaults to zeros(6, 1).</dd>
             def _bd():
                 nonlocal self
                 bd = zeros(6*self.n, 6*self.n)
-                for i in self.n:
-                    bd[i*6:i*6+6, i*6:i*6+6] = SE3adMatrix(self._get_value(&#34;Vd&#34;)[i*6:i*6+6])
+                for i in range(self.n):
+                    bd[i*6:i*6+6, i*6:i*6+6] = SE3adMatrix(Matrix(self._get_value(&#34;Vd&#34;)[i*6:i*6+6]))
                 return bd
             self._set_value_as_process(&#34;bd&#34;, _bd)
             
@@ -4755,7 +4755,7 @@ Defaults to zeros(6, 1).</dd>
             
             # First time derivative of External Wrench
             Wdext = zeros(6*self.n,1)
-            Wdext[-6:] = WDEE
+            Wdext[-6:,0] = WDEE
             self._set_value_as_process(
                 &#34;Qdext&#34;,
                 lambda: self._get_value(&#34;J&#34;).T*(Wdext - (A*a).T * Wext))
@@ -4776,7 +4776,7 @@ Defaults to zeros(6, 1).</dd>
         if q3d is not None and q4d is not None:        
             # Second time derivative of Block diagonal matrix a (6n x 6n)
             a2d = zeros(6*self.n, 6*self.n)
-            for i in self.n:
+            for i in range(self.n):
                 a2d[i*6:i*6+6, i*6:i*6+6] = SE3adMatrix(self.X[i]) * q3d[i]
                 
             # Second time derivative of Block diagonal matrix b (6n x 6n) 
@@ -4784,9 +4784,9 @@ Defaults to zeros(6, 1).</dd>
             def _b2d():
                 nonlocal self
                 b2d = zeros(6*self.n, 6*self.n)
-                for i in self.n:
+                for i in range(self.n):
                     b2d[i*6:i*6+6, i*6:i*6+6] = SE3adMatrix(
-                        self._get_value(&#34;V2d&#34;)[i*6:i*6+6])
+                        Matrix(self._get_value(&#34;V2d&#34;)[i*6:i*6+6]))
                 return b2d
             self._set_value_as_process(&#34;b2d&#34;, _b2d)
                 
@@ -4839,7 +4839,7 @@ Defaults to zeros(6, 1).</dd>
 
             # Second time derivative of External Wrench
             W2dext = zeros(6*self.n,1)
-            W2dext[-6:] = W2DEE
+            W2dext[-6:,0] = W2DEE
             self._set_value_as_process(
                 &#34;Q2dext&#34;,
                 lambda: self._get_value(&#34;J&#34;).T
