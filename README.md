@@ -491,6 +491,18 @@ WEE: [0,0,0,0,0,0]
 ```
 
 Define symbolic generalized vectors (q, qd, q2d) and the time varying wrench on the end-effector link (WEE). Where the generalized vectors are list of length n and the wrench is a list of length 6 with symbolic values e.g.: `[Mx,My,Mz,Fx,Fy,Fz]`.
+Add jerk and jounce here, to activate the calculation of the 1st and 2nd order derivatives of the Equation of Motion. Optionally, you can define the time derivatives of the external wrench `WDEE` and `W2DEE` here too. E.g.:
+
+```yaml
+q: [q1,q2]
+qd: [dq1,dq2]
+q2d: [ddq1,ddq2]
+q3d: [dddq1,dddq2]
+q4d: [ddddq1,ddddq2]
+WEE: [Mx,My,Mz,Fx,Fy,Fz]
+WDEE: [dMx,dMy,dMz,dFx,dFy,dFz]
+W2DEE: [ddMx,ddMy,ddMz,ddFx,ddFy,ddFz]
+```
 
 #### 2.1.2. Code generation using YAML
 
@@ -889,6 +901,12 @@ qd = sympy.Matrix([dq1,dq2])
 q2d = sympy.Matrix([ddq1,ddq2])
 ```
 
+To generate jerk and jounce as well, use:
+
+```python
+q, qd, q2d, q3d, q4d = generalized_vectors(len(body_ref_config), startindex=1, derivatives=True)
+```
+
 ---
 
 ```python
@@ -896,6 +914,14 @@ WEE = sympy.zeros(6,1)
 ```
 
 Define the time varying wrench on the end-effector link. Should be a (6,1) sympy.Matrix with symbolic variables, e.g.: `sympy.Matrix([Mx,My,Mz,Fx,Fy,Fz])`.
+
+Optionally, you can define the time derivatives `WDEE` and `W2DEE` here too. E.g.:
+
+```python
+WEE = sympy.Matrix([Mx,My,Mz,Fx,Fy,Fz])
+WDEE = sympy.Matrix([dMx,dMy,dMz,dFx,dFy,dFz])
+W2DEE = sympy.Matrix([ddMx,ddMy,ddMz,ddFx,ddFy,ddFz])
+```
 
 ---
 
@@ -953,7 +979,24 @@ and `skd.closed_form_inv_dyn_body_fixed` generates the following equations and s
 - gravity_vector
 - inverse_dynamics
 
-`skd.closed_form_inv_dyn_body_fixed` takes the wrench `WEE` (6x1 sympy.Matrix) (tau,F) on the end-effector link as optional additional argument.
+with provided generalized jerk and jounce vectors, `skd.closed_form_inv_dyn_body_fixed` additionally generates the following derivatives of the equation of motion:
+
+- coriolis_centrifugal_matrix_dot
+- generalized_mass_inertia_matrix_dot
+- gravity_vector_dot
+- inverse_dynamics_dot
+- coriolis_centrifugal_matrix_ddot
+- generalized_mass_inertia_matrix_ddot
+- gravity_vector_ddot
+- inverse_dynamics_ddot
+
+`skd.closed_form_inv_dyn_body_fixed` takes the wrench `WEE` (6x1 sympy.Matrix) (tau,F) on the end-effector link and its time derivatives `WDEE` and `W2DEE` as optional additional arguments.
+
+To calculate the 1st and 2nd order time derivative of the EOM use e.g.:
+
+```python
+skd.closed_form_inv_dyn_body_fixed(q, qd, q2d, q3d, q4d, WEE, WDEE, W2DEE, simplify=True)
+```
 
 ---
 
