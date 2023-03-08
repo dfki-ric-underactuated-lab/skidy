@@ -1,3 +1,15 @@
+"""symbols:
+Collection of sympy symbols to import directly. 
+Contains all latin and greek letters, as well as some common used letters
+with indices between 0 and 10.
+
+Usage:
+    To use the defined symbols use e.g.:
+    
+    `from skidy.symbols import m1, l1, Ixx1, Iyy1,  Izz1`
+
+"""
+
 from sympy.abc import *
 
 q0, q1, q2, q3, q4, q5, q6, q7, q8, q9, q10 = symbols("q0, q1, q2, q3, q4, q5, q6, q7, q8, q9, q10", real=1, constant = 0)
@@ -19,6 +31,10 @@ L0, L1, L2, L3, L4, L5, L6, L7, L8, L9, L10 = symbols("L0, L1, L2, L3, L4, L5, L
 x0, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10 = symbols("x0, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10", real=1, constant = 1)
 y0, y1, y2, y3, y4, y5, y6, y7, y8, y9, y10 = symbols("y0, y1, y2, y3, y4, y5, y6, y7, y8, y9, y10", real=1, constant = 1)
 z0, z1, z2, z3, z4, z5, z6, z7, z8, z9, z10 = symbols("z0, z1, z2, z3, z4, z5, z6, z7, z8, z9, z10", real=1, constant = 1)
+
+X0, X1, X2, X3, X4, X5, X6, X7, X8, X9, X10 = symbols("X0, X1, X2, X3, X4, X5, X6, X7, X8, X9, X10", real=1, constant = 1)
+Y0, Y1, Y2, Y3, Y4, Y5, Y6, Y7, Y8, Y9, Y10 = symbols("Y0, Y1, Y2, Y3, Y4, Y5, Y6, Y7, Y8, Y9, Y10", real=1, constant = 1)
+Z0, Z1, Z2, Z3, Z4, Z5, Z6, Z7, Z8, Z9, Z10 = symbols("Z0, Z1, Z2, Z3, Z4, Z5, Z6, Z7, Z8, Z9, Z10", real=1, constant = 1)
 
 I0, I1, I2, I3, I4, I5, I6, I7, I8, I9, I10 = symbols("I0, I1, I2, I3, I4, I5, I6, I7, I8, I9, I10", real=1, constant = 1)
 i0, i1, i2, i3, i4, i5, i6, i7, i8, i9, i10 = symbols("i0, i1, i2, i3, i4, i5, i6, i7, i8, i9, i10", real=1, constant = 1)
