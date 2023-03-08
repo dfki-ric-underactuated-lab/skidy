@@ -595,7 +595,7 @@ skd = SymbolicKinDyn(gravity_vector=gravity,
 
 # run Calculations
 skd.closed_form_kinematics_body_fixed(q, qd, q2d, simplify=True)
-skd.closed_form_inv_dyn_body_fixed(q, qd, q2d, WEE, simplify=True)
+skd.closed_form_inv_dyn_body_fixed(q, qd, q2d, WEE=WEE, simplify=True)
 
 # Generate Code
 skd.generate_code(python=True, C=False, Matlab=False, latex=False,
@@ -919,7 +919,7 @@ Initialize class with all defined parameters.
 ```python
 # run Calculations
 skd.closed_form_kinematics_body_fixed(q, qd, q2d, simplify=True)
-skd.closed_form_inv_dyn_body_fixed(q, qd, q2d, WEE, simplify=True)
+skd.closed_form_inv_dyn_body_fixed(q, qd, q2d, WEE=WEE, simplify=True)
 ```
 
 Generate forward kinematics and inverse dynamics equations. Both functions share the following arguments:
@@ -1021,7 +1021,7 @@ WEE = sympy.zeros(6,1)
 
 # run Calculations
 skd.closed_form_kinematics_body_fixed(q, qd, q2d, simplify=True)
-skd.closed_form_inv_dyn_body_fixed(q, qd, q2d, WEE, simplify=True)
+skd.closed_form_inv_dyn_body_fixed(q, qd, q2d, WEE=WEE, simplify=True)
 
 # Generate Code
 skd.generate_code(python=True, C=False, Matlab=False, latex=False,
@@ -1143,7 +1143,7 @@ Define the time varying wrench on the end-effector link. Should be a (6,1) sympy
 ```python
 # run Calculations
 skd.closed_form_kinematics_body_fixed(q, qd, q2d, simplify=True)
-skd.closed_form_inv_dyn_body_fixed(q, qd, q2d, WEE, simplify=True)
+skd.closed_form_inv_dyn_body_fixed(q, qd, q2d, WEE=WEE, simplify=True)
 ```
 
 Generate forward kinematics and inverse dynamics equations. See chapter [Python](#22-python) for more information.

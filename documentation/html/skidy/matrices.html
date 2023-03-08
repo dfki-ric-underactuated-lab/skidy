@@ -31,33 +31,47 @@ from typing import Union, List, Tuple
 import numpy as np
 
 def generalized_vectors(
-    DOF: int, startindex: int=0
+    DOF: int, startindex: int=0, derivatives: bool= False
     ) -&gt; Tuple[MutableDenseMatrix, MutableDenseMatrix, MutableDenseMatrix]:
-    &#34;&#34;&#34;Generate symbolic generalized vectors q, qd and q2d.
+    &#34;&#34;&#34;Generate symbolic generalized vectors q, qd and q2d and optional
+    q3d and q4d.
     
     The symbols are named as follows:
         
         q0, q1, ....., qi for joint positions.
         dq0, dq1, ....., dqi for joint velocities.
         ddq0, ddq1, ....., ddqi for joint accelerations.
+        dddq0, dddq1, ....., dddqi for joint jerks.
+        ddddq0, ddddq1, ....., ddddqi for joint jounces.
+        
 
     Args:
         DOF (int): Degrees of freedom.
-        startindex (int): Index of first joint. Defaults to 0.
+        startindex (int, optional): Index of first joint. Defaults to 0.
+        derivatives (bool, optional): return jerks and jounces too. 
+            Defaults to False. 
 
     Returns:
-        tuple(sympy.Matrix,sympy.Matrix,sympy.Matrix): 
-            Generalized vectors.
+        tuple(sympy.Matrix): 
+            Generalized vectors: (q,dq,d2q) if derivative == False
+            else: (q,dq,d2q,q3d,q4d) 
     &#34;&#34;&#34;
     if DOF &gt; 1:
         q = Matrix(symbols(&#34; &#34;.join(f&#34;q{i}&#34; for i in range(startindex,startindex+DOF))))
         qd = Matrix(symbols(&#34; &#34;.join(f&#34;dq{i}&#34; for i in range(startindex,startindex+DOF))))
         q2d = Matrix(symbols(&#34; &#34;.join(f&#34;ddq{i}&#34; for i in range(startindex,startindex+DOF))))
+        q3d = Matrix(symbols(&#34; &#34;.join(f&#34;dddq{i}&#34; for i in range(startindex,startindex+DOF))))
+        q4d = Matrix(symbols(&#34; &#34;.join(f&#34;ddddq{i}&#34; for i in range(startindex,startindex+DOF))))
     else:
         q = Matrix([symbols(&#34; &#34;.join(f&#34;q{i}&#34; for i in range(startindex,startindex+DOF)))])
         qd = Matrix([symbols(&#34; &#34;.join(f&#34;dq{i}&#34; for i in range(startindex,startindex+DOF)))])
         q2d = Matrix([symbols(&#34; &#34;.join(f&#34;ddq{i}&#34; for i in range(startindex,startindex+DOF)))])
-    return q, qd, q2d
+        q3d = Matrix([symbols(&#34; &#34;.join(f&#34;dddq{i}&#34; for i in range(startindex,startindex+DOF)))])
+        q4d = Matrix([symbols(&#34; &#34;.join(f&#34;ddddq{i}&#34; for i in range(startindex,startindex+DOF)))])
+    if derivatives:
+        return q, qd, q2d, q3d, q4d
+    else: 
+        return q, qd, q2d
 
 def joint_screw(axis: list, vec: list=[0,0,0], revolute: bool=True) -&gt; MutableDenseMatrix:
     &#34;&#34;&#34;Get joint screw coordinates from joint axis and vector to joint.
@@ -724,57 +738,82 @@ sympy.Matrix: (6x6) Adjoint matrix</p></div>
 </details>
 </dd>
 <dt id="skidy.matrices.generalized_vectors"><code class="name flex">
-<span>def <span class="ident">generalized_vectors</span></span>(<span>DOF: int, startindex: int = 0) ‑> Tuple[sympy.matrices.dense.MutableDenseMatrix, sympy.matrices.dense.MutableDenseMatrix, sympy.matrices.dense.MutableDenseMatrix]</span>
+<span>def <span class="ident">generalized_vectors</span></span>(<span>DOF: int, startindex: int = 0, derivatives: bool = False) ‑> Tuple[sympy.matrices.dense.MutableDenseMatrix, sympy.matrices.dense.MutableDenseMatrix, sympy.matrices.dense.MutableDenseMatrix]</span>
 </code></dt>
 <dd>
-<div class="desc"><p>Generate symbolic generalized vectors q, qd and q2d.</p>
+<div class="desc"><p>Generate symbolic generalized vectors q, qd and q2d and optional
+q3d and q4d.</p>
 <p>The symbols are named as follows:</p>
 <pre><code>q0, q1, ....., qi for joint positions.
 dq0, dq1, ....., dqi for joint velocities.
 ddq0, ddq1, ....., ddqi for joint accelerations.
+dddq0, dddq1, ....., dddqi for joint jerks.
+ddddq0, ddddq1, ....., ddddqi for joint jounces.
 </code></pre>
 <h2 id="args">Args</h2>
 <dl>
 <dt><strong><code>DOF</code></strong> :&ensp;<code>int</code></dt>
 <dd>Degrees of freedom.</dd>
-<dt><strong><code>startindex</code></strong> :&ensp;<code>int</code></dt>
+<dt><strong><code>startindex</code></strong> :&ensp;<code>int</code>, optional</dt>
 <dd>Index of first joint. Defaults to 0.</dd>
+<dt><strong><code>derivatives</code></strong> :&ensp;<code>bool</code>, optional</dt>
+<dd>return jerks and jounces too.
+Defaults to False. </dd>
 </dl>
 <h2 id="returns">Returns</h2>
-<p>tuple(sympy.Matrix,sympy.Matrix,sympy.Matrix):
-Generalized vectors.</p></div>
+<dl>
+<dt>tuple(sympy.Matrix):</dt>
+<dt><code>
+Generalized vectors</code></dt>
+<dd>(q,dq,d2q) if derivative == False
+else: (q,dq,d2q,q3d,q4d)</dd>
+</dl></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">def generalized_vectors(
-    DOF: int, startindex: int=0
+    DOF: int, startindex: int=0, derivatives: bool= False
     ) -&gt; Tuple[MutableDenseMatrix, MutableDenseMatrix, MutableDenseMatrix]:
-    &#34;&#34;&#34;Generate symbolic generalized vectors q, qd and q2d.
+    &#34;&#34;&#34;Generate symbolic generalized vectors q, qd and q2d and optional
+    q3d and q4d.
     
     The symbols are named as follows:
         
         q0, q1, ....., qi for joint positions.
         dq0, dq1, ....., dqi for joint velocities.
         ddq0, ddq1, ....., ddqi for joint accelerations.
+        dddq0, dddq1, ....., dddqi for joint jerks.
+        ddddq0, ddddq1, ....., ddddqi for joint jounces.
+        
 
     Args:
         DOF (int): Degrees of freedom.
-        startindex (int): Index of first joint. Defaults to 0.
+        startindex (int, optional): Index of first joint. Defaults to 0.
+        derivatives (bool, optional): return jerks and jounces too. 
+            Defaults to False. 
 
     Returns:
-        tuple(sympy.Matrix,sympy.Matrix,sympy.Matrix): 
-            Generalized vectors.
+        tuple(sympy.Matrix): 
+            Generalized vectors: (q,dq,d2q) if derivative == False
+            else: (q,dq,d2q,q3d,q4d) 
     &#34;&#34;&#34;
     if DOF &gt; 1:
         q = Matrix(symbols(&#34; &#34;.join(f&#34;q{i}&#34; for i in range(startindex,startindex+DOF))))
         qd = Matrix(symbols(&#34; &#34;.join(f&#34;dq{i}&#34; for i in range(startindex,startindex+DOF))))
         q2d = Matrix(symbols(&#34; &#34;.join(f&#34;ddq{i}&#34; for i in range(startindex,startindex+DOF))))
+        q3d = Matrix(symbols(&#34; &#34;.join(f&#34;dddq{i}&#34; for i in range(startindex,startindex+DOF))))
+        q4d = Matrix(symbols(&#34; &#34;.join(f&#34;ddddq{i}&#34; for i in range(startindex,startindex+DOF))))
     else:
         q = Matrix([symbols(&#34; &#34;.join(f&#34;q{i}&#34; for i in range(startindex,startindex+DOF)))])
         qd = Matrix([symbols(&#34; &#34;.join(f&#34;dq{i}&#34; for i in range(startindex,startindex+DOF)))])
         q2d = Matrix([symbols(&#34; &#34;.join(f&#34;ddq{i}&#34; for i in range(startindex,startindex+DOF)))])
-    return q, qd, q2d</code></pre>
+        q3d = Matrix([symbols(&#34; &#34;.join(f&#34;dddq{i}&#34; for i in range(startindex,startindex+DOF)))])
+        q4d = Matrix([symbols(&#34; &#34;.join(f&#34;ddddq{i}&#34; for i in range(startindex,startindex+DOF)))])
+    if derivatives:
+        return q, qd, q2d, q3d, q4d
+    else: 
+        return q, qd, q2d</code></pre>
 </details>
 </dd>
 <dt id="skidy.matrices.inertia_matrix"><code class="name flex">

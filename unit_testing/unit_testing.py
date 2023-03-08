@@ -458,14 +458,16 @@ class TestInvDyn(AbstractInvDyn,unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         prepare(cls)
-        Q = cls.s.closed_form_inv_dyn_body_fixed(cls.q,cls.qd,cls.q2d,zeros(6,1),True,False,False)
+        Q = cls.s.closed_form_inv_dyn_body_fixed(cls.q,cls.qd,cls.q2d,WEE=zeros(6,1),
+                                                 simplify=True,cse=False,parallel=False)
 
 
 class TestInvDynParallel(AbstractInvDyn,unittest.TestCase):
     @classmethod
     def setUpClass(self):
         prepare(self)
-        Q = self.s.closed_form_inv_dyn_body_fixed(self.q,self.qd,self.q2d,zeros(6,1),True,False,True)
+        Q = self.s.closed_form_inv_dyn_body_fixed(self.q,self.qd,self.q2d,WEE=zeros(6,1),
+                                                  simplify=True,cse=False,parallel=True)
 
 
 class TestKinGen(unittest.TestCase):

@@ -113,7 +113,8 @@ def dict_parser(d: dict) -&gt; SymbolicKinDyn:
     d = parse_hierarchical_expr(d, include_keys={&#34;mass&#34;, &#34;index&#34;, 
                                                  &#34;Ixx&#34;, &#34;Ixy&#34;, &#34;Ixz&#34;, 
                                                  &#34;Iyy&#34;, &#34;Ixz&#34;, &#34;Izz&#34;, 
-                                                 &#34;q&#34;, &#34;qd&#34;, &#34;d2d&#34;, &#34;WEE&#34;,
+                                                 &#34;q&#34;, &#34;qd&#34;, &#34;q2d&#34;, &#34;q3d&#34;, &#34;q4d&#34;,
+                                                 &#34;WEE&#34;, &#34;WDEE&#34;, &#34;W2DEE&#34;,
                                                  &#34;inertia&#34;})
     
     config_representation = d[&#34;representation&#34;] if &#34;representation&#34; in d else &#34;spatial&#34;
@@ -259,14 +260,19 @@ def dict_parser(d: dict) -&gt; SymbolicKinDyn:
     q = Matrix(d[&#34;q&#34;]) if &#34;q&#34; in d else None        
     qd = Matrix(d[&#34;qd&#34;]) if &#34;qd&#34; in d else None        
     q2d = Matrix(d[&#34;q2d&#34;]) if &#34;q2d&#34; in d else None        
+    q3d = Matrix(d[&#34;q3d&#34;]) if &#34;q3d&#34; in d else None        
+    q4d = Matrix(d[&#34;q4d&#34;]) if &#34;q4d&#34; in d else None        
     WEE = Matrix(d[&#34;WEE&#34;]) if &#34;WEE&#34; in d else zeros(6,1)        
+    WDEE = Matrix(d[&#34;WDEE&#34;]) if &#34;WDEE&#34; in d else zeros(6,1)        
+    W2DEE = Matrix(d[&#34;W2DEE&#34;]) if &#34;W2DEE&#34; in d else zeros(6,1)        
     
     skd = SymbolicKinDyn(gravity_vector=gravity,ee=ee,
                          body_ref_config=body_ref_config,
                          joint_screw_coord=joint_screw_coord,
                          config_representation=config_representation, 
                          Mb=Mb, parent=parent, support=support, child=child,
-                         q=q,qd=qd,q2d=q2d,WEE=WEE)
+                         q=q,qd=qd,q2d=q2d,q3d=q3d,q4d=q4d,
+                         WEE=WEE, WDEE=WDEE, W2DEE=W2DEE)
     return skd
 
 def generate_template_yaml(path: str=&#34;edit_me.yaml&#34;, structure: str = None, 
@@ -557,7 +563,7 @@ def generate_template_python(path:str=&#34;edit_me.py&#34;, structure:str=None, 
     
     p.append(&#34;# run Calculations&#34;)
     p.append(&#34;skd.closed_form_kinematics_body_fixed(q, qd, q2d, simplify=True)&#34;)
-    p.append(&#34;skd.closed_form_inv_dyn_body_fixed(q, qd, q2d, WEE, simplify=True)&#34;)
+    p.append(&#34;skd.closed_form_inv_dyn_body_fixed(q, qd, q2d, WEE=WEE, simplify=True)&#34;)
     p.append(&#34;&#34;)
     
     p.append(&#34;# Generate Code&#34;)
@@ -654,7 +660,8 @@ def robot_from_urdf(path: str, symbolic: bool=True, cse: bool=False,
     d = parse_hierarchical_expr(d, include_keys={&#34;mass&#34;, &#34;index&#34;, 
                                                  &#34;Ixx&#34;, &#34;Ixy&#34;, &#34;Ixz&#34;, 
                                                  &#34;Iyy&#34;, &#34;Ixz&#34;, &#34;Izz&#34;, 
-                                                 &#34;q&#34;, &#34;qd&#34;, &#34;d2d&#34;, &#34;WEE&#34;,
+                                                 &#34;q&#34;, &#34;qd&#34;, &#34;q2d&#34;, &#34;q3d&#34;, &#34;q4d&#34;,
+                                                 &#34;WEE&#34;, &#34;WDEE&#34;, &#34;W2DEE&#34;,
                                                  &#34;inertia&#34;})
     
     config_representation = d[&#34;representation&#34;] if &#34;representation&#34; in d else &#34;spatial&#34;
@@ -800,14 +807,19 @@ def robot_from_urdf(path: str, symbolic: bool=True, cse: bool=False,
     q = Matrix(d[&#34;q&#34;]) if &#34;q&#34; in d else None        
     qd = Matrix(d[&#34;qd&#34;]) if &#34;qd&#34; in d else None        
     q2d = Matrix(d[&#34;q2d&#34;]) if &#34;q2d&#34; in d else None        
+    q3d = Matrix(d[&#34;q3d&#34;]) if &#34;q3d&#34; in d else None        
+    q4d = Matrix(d[&#34;q4d&#34;]) if &#34;q4d&#34; in d else None        
     WEE = Matrix(d[&#34;WEE&#34;]) if &#34;WEE&#34; in d else zeros(6,1)        
+    WDEE = Matrix(d[&#34;WDEE&#34;]) if &#34;WDEE&#34; in d else zeros(6,1)        
+    W2DEE = Matrix(d[&#34;W2DEE&#34;]) if &#34;W2DEE&#34; in d else zeros(6,1)        
     
     skd = SymbolicKinDyn(gravity_vector=gravity,ee=ee,
                          body_ref_config=body_ref_config,
                          joint_screw_coord=joint_screw_coord,
                          config_representation=config_representation, 
                          Mb=Mb, parent=parent, support=support, child=child,
-                         q=q,qd=qd,q2d=q2d,WEE=WEE)
+                         q=q,qd=qd,q2d=q2d,q3d=q3d,q4d=q4d,
+                         WEE=WEE, WDEE=WDEE, W2DEE=W2DEE)
     return skd</code></pre>
 </details>
 </dd>
@@ -1044,7 +1056,7 @@ in yaml file. Defaults to True.</dd>
     
     p.append(&#34;# run Calculations&#34;)
     p.append(&#34;skd.closed_form_kinematics_body_fixed(q, qd, q2d, simplify=True)&#34;)
-    p.append(&#34;skd.closed_form_inv_dyn_body_fixed(q, qd, q2d, WEE, simplify=True)&#34;)
+    p.append(&#34;skd.closed_form_inv_dyn_body_fixed(q, qd, q2d, WEE=WEE, simplify=True)&#34;)
     p.append(&#34;&#34;)
     
     p.append(&#34;# Generate Code&#34;)

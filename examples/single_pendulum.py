@@ -54,7 +54,7 @@ skd = SymbolicKinDyn(gravity_vector=gravity,
 
 # run Calculations
 skd.closed_form_kinematics_body_fixed(q, qd, q2d, simplify=True)
-skd.closed_form_inv_dyn_body_fixed(q, qd, q2d, WEE, simplify=True)
+skd.closed_form_inv_dyn_body_fixed(q, qd, q2d, WEE=WEE, simplify=True)
 
 # Generate Code
 skd.generate_code(python=True, C=False, Matlab=False, latex=True,

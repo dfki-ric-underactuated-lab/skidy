@@ -85,7 +85,8 @@ def dict_parser(d: dict) -> SymbolicKinDyn:
     d = parse_hierarchical_expr(d, include_keys={"mass", "index", 
                                                  "Ixx", "Ixy", "Ixz", 
                                                  "Iyy", "Ixz", "Izz", 
-                                                 "q", "qd", "d2d", "WEE",
+                                                 "q", "qd", "q2d", "q3d", "q4d",
+                                                 "WEE", "WDEE", "W2DEE",
                                                  "inertia"})
     
     config_representation = d["representation"] if "representation" in d else "spatial"
@@ -231,14 +232,19 @@ def dict_parser(d: dict) -> SymbolicKinDyn:
     q = Matrix(d["q"]) if "q" in d else None        
     qd = Matrix(d["qd"]) if "qd" in d else None        
     q2d = Matrix(d["q2d"]) if "q2d" in d else None        
+    q3d = Matrix(d["q3d"]) if "q3d" in d else None        
+    q4d = Matrix(d["q4d"]) if "q4d" in d else None        
     WEE = Matrix(d["WEE"]) if "WEE" in d else zeros(6,1)        
+    WDEE = Matrix(d["WDEE"]) if "WDEE" in d else zeros(6,1)        
+    W2DEE = Matrix(d["W2DEE"]) if "W2DEE" in d else zeros(6,1)        
     
     skd = SymbolicKinDyn(gravity_vector=gravity,ee=ee,
                          body_ref_config=body_ref_config,
                          joint_screw_coord=joint_screw_coord,
                          config_representation=config_representation, 
                          Mb=Mb, parent=parent, support=support, child=child,
-                         q=q,qd=qd,q2d=q2d,WEE=WEE)
+                         q=q,qd=qd,q2d=q2d,q3d=q3d,q4d=q4d,
+                         WEE=WEE, WDEE=WDEE, W2DEE=W2DEE)
     return skd
 
 def generate_template_yaml(path: str="edit_me.yaml", structure: str = None, 
@@ -529,7 +535,7 @@ def generate_template_python(path:str="edit_me.py", structure:str=None, dof:int=
     
     p.append("# run Calculations")
     p.append("skd.closed_form_kinematics_body_fixed(q, qd, q2d, simplify=True)")
-    p.append("skd.closed_form_inv_dyn_body_fixed(q, qd, q2d, WEE, simplify=True)")
+    p.append("skd.closed_form_inv_dyn_body_fixed(q, qd, q2d, WEE=WEE, simplify=True)")
     p.append("")
     
     p.append("# Generate Code")

@@ -3,33 +3,47 @@ from typing import Union, List, Tuple
 import numpy as np
 
 def generalized_vectors(
-    DOF: int, startindex: int=0
+    DOF: int, startindex: int=0, derivatives: bool= False
     ) -> Tuple[MutableDenseMatrix, MutableDenseMatrix, MutableDenseMatrix]:
-    """Generate symbolic generalized vectors q, qd and q2d.
+    """Generate symbolic generalized vectors q, qd and q2d and optional
+    q3d and q4d.
     
     The symbols are named as follows:
         
         q0, q1, ....., qi for joint positions.
         dq0, dq1, ....., dqi for joint velocities.
         ddq0, ddq1, ....., ddqi for joint accelerations.
+        dddq0, dddq1, ....., dddqi for joint jerks.
+        ddddq0, ddddq1, ....., ddddqi for joint jounces.
+        
 
     Args:
         DOF (int): Degrees of freedom.
-        startindex (int): Index of first joint. Defaults to 0.
+        startindex (int, optional): Index of first joint. Defaults to 0.
+        derivatives (bool, optional): return jerks and jounces too. 
+            Defaults to False. 
 
     Returns:
-        tuple(sympy.Matrix,sympy.Matrix,sympy.Matrix): 
-            Generalized vectors.
+        tuple(sympy.Matrix): 
+            Generalized vectors: (q,dq,d2q) if derivative == False
+            else: (q,dq,d2q,q3d,q4d) 
     """
     if DOF > 1:
         q = Matrix(symbols(" ".join(f"q{i}" for i in range(startindex,startindex+DOF))))
         qd = Matrix(symbols(" ".join(f"dq{i}" for i in range(startindex,startindex+DOF))))
         q2d = Matrix(symbols(" ".join(f"ddq{i}" for i in range(startindex,startindex+DOF))))
+        q3d = Matrix(symbols(" ".join(f"dddq{i}" for i in range(startindex,startindex+DOF))))
+        q4d = Matrix(symbols(" ".join(f"ddddq{i}" for i in range(startindex,startindex+DOF))))
     else:
         q = Matrix([symbols(" ".join(f"q{i}" for i in range(startindex,startindex+DOF)))])
         qd = Matrix([symbols(" ".join(f"dq{i}" for i in range(startindex,startindex+DOF)))])
         q2d = Matrix([symbols(" ".join(f"ddq{i}" for i in range(startindex,startindex+DOF)))])
-    return q, qd, q2d
+        q3d = Matrix([symbols(" ".join(f"dddq{i}" for i in range(startindex,startindex+DOF)))])
+        q4d = Matrix([symbols(" ".join(f"ddddq{i}" for i in range(startindex,startindex+DOF)))])
+    if derivatives:
+        return q, qd, q2d, q3d, q4d
+    else: 
+        return q, qd, q2d
 
 def joint_screw(axis: list, vec: list=[0,0,0], revolute: bool=True) -> MutableDenseMatrix:
     """Get joint screw coordinates from joint axis and vector to joint.

@@ -44,6 +44,14 @@ class _AbstractCodeGeneration():
         self.C = None  # coriolis_centrifugal_matrix
         self.Qgrav = None  # gravity_vector
         self.Q = None  # inverse_dynamics
+        self.Md = None # generalized_mass_inertia_matrix_dot 
+        self.Cd = None # coriolis_centrifugal_matrix_dot
+        self.Qdgrav = None # gravity_vector_dot
+        self.Qd = None # inverse_dynamics_dot
+        self.M2d = None # generalized_mass_inertia_matrix_ddot
+        self.C2d = None # coriolis_centrifugal_matrix_ddot
+        self.Q2dgrav = None # gravity_vector_ddot
+        self.Q2d = None # inverse_dynamics_ddot
         self.Vh_BFn = None # hybrid_twist
         self.Vb_BFn = None # body_twist
         self.Vhd_BFn = None  # hybrid_acceleration
@@ -105,7 +113,16 @@ class _AbstractCodeGeneration():
                            "hybrid_jacobian_matrix_dot": self.Jh_dot,
                            "body_jacobian_matrix_dot": self.Jb_dot,
                            "hybrid_jacobian_matrix_ee_dot": self.Jh_ee_dot,
-                           "body_jacobian_matrix_ee_dot": self.Jb_ee_dot}  
+                           "body_jacobian_matrix_ee_dot": self.Jb_ee_dot,
+                           "generalized_mass_inertia_matrix_dot": self.Md, 
+                           "coriolis_centrifugal_matrix_dot": self.Cd,
+                           "gravity_vector_dot": self.Qdgrav,
+                           "inverse_dynamics_dot": self.Qd,
+                           "generalized_mass_inertia_matrix_ddot": self.M2d,
+                           "coriolis_centrifugal_matrix_ddot": self.C2d,
+                           "gravity_vector_ddot": self.Q2dgrav,
+                           "inverse_dynamics_ddot": self.Q2d,
+                           }  
         # exclude expressions which are None
         if filterNone:
             filtered = {k: v for k, v in all_expressions.items()
@@ -644,7 +661,8 @@ class _AbstractCodeGeneration():
                 elif "gravity" in names[i]: letter = "g"
                 elif "dynamics" in names[i]: letter = r"\tau"
                 elif "acceleration" in names[i]: letter = r"\dot V"
-                if "dot" in names[i]: letter = r"\dot "+letter
+                if "ddot" in names[i]: letter = r"\ddot "+letter
+                elif "dot" in names[i]: letter = r"\dot "+letter
                 if "_ee" in names[i]: letter = r"^E" + letter
                 elif ("twist" in names[i] 
                       or "jacobian" in names[i] 
@@ -652,7 +670,10 @@ class _AbstractCodeGeneration():
                 if "hybrid" in names[i]: letter += r"_h"
                 elif "body" in names[i]: letter += r"_b"
                 
-                replacements = [("ddq", r"\\ddot q"), ("dq", r"\\dot q")]
+                replacements = [("ddddq", r"\\ddddot q"),
+                                ("dddq", r"\\dddot q"),
+                                ("ddq", r"\\ddot q"), 
+                                ("dq", r"\\dot q")]
                 with doc.create(Section(regex.sub("_"," ",names[i]))):
                     eq = LatexPrinter().doprint(expressions[i])
                     for pat, repl in replacements:
@@ -685,7 +706,11 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
                  q:MutableDenseMatrix=None, 
                  qd: MutableDenseMatrix=None, 
                  q2d: MutableDenseMatrix=None, 
+                 q3d: MutableDenseMatrix=None, 
+                 q4d: MutableDenseMatrix=None, 
                  WEE: MutableDenseMatrix=zeros(6, 1),
+                 WDEE: MutableDenseMatrix=zeros(6, 1),
+                 W2DEE: MutableDenseMatrix=zeros(6, 1),
                  **kwargs) -> None:
         """SymbolicKinDyn
         Symbolic tool to compute equations of motion of serial chain 
@@ -739,9 +764,21 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
                 (n,1) Generalized velocity vector. Defaults to None.
             q2d (sympy.Matrix, optional): 
                 (n,1) Generalized acceleration vector. Defaults to None.
+            q3d (sympy.Matrix, optional): 
+                (n,1) Generalized jerk vector. Defaults to None.
+            q4d (sympy.Matrix, optional): 
+                (n,1) Generalized jounce vector. Defaults to None.
             WEE (sympy.Matrix, optional): 
                 (6,1) WEE (t) = [Mx,My,Mz,Fx,Fy,Fz] is the time varying 
                 wrench on the EE link. 
+                Defaults to zeros(6, 1).
+            WDEE (sympy.Matrix, optional): 
+                (6,1) WDEE (t) = [dMx,dMy,dMz,dFx,dFy,dFz] is the derivative 
+                of the time varying wrench on the EE link. 
+                Defaults to zeros(6, 1).
+            W2DEE (sympy.Matrix, optional): 
+                (6,1) W2DEE (t) = [ddMx,ddMy,ddMz,ddFx,ddFy,ddFz] is the 
+                2nd derivative of the time varying wrench on the EE link. 
                 Defaults to zeros(6, 1).
             
         """
@@ -800,7 +837,11 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
         self.q = q
         self.qd = qd
         self.q2d = q2d
+        self.q3d = q3d
+        self.q4d = q4d
         self.WEE = WEE
+        self.WDEE = WDEE
+        self.W2DEE = W2DEE
 
         
     @property
@@ -913,8 +954,15 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
         return self.fkin
 
     def closed_form_inv_dyn_body_fixed(
-        self, q:sympy.MutableDenseMatrix=None, qd: MutableDenseMatrix=None, 
-        q2d: MutableDenseMatrix=None, WEE: MutableDenseMatrix=..., 
+        self, 
+        q:sympy.MutableDenseMatrix=None, 
+        qd: MutableDenseMatrix=None, 
+        q2d: MutableDenseMatrix=None, 
+        q3d: MutableDenseMatrix=None, 
+        q4d: MutableDenseMatrix=None, 
+        WEE: MutableDenseMatrix=..., 
+        WDEE: MutableDenseMatrix=..., 
+        W2DEE: MutableDenseMatrix=..., 
         simplify: bool=True, cse: bool=False, 
         parallel: bool=True) -> MutableDenseMatrix:
         """Inverse dynamics using body fixed representation of the 
@@ -934,9 +982,21 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
                 (n,1) Generalized velocity vector. Defaults to None.
             q2d (sympy.Matrix, optional): 
                 (n,1) Generalized acceleration vector. Defaults to None.
+            q3d (sympy.Matrix, optional): 
+                (n,1) Generalized jerk vector. Defaults to None.
+            q4d (sympy.Matrix, optional): 
+                (n,1) Generalized jounce vector. Defaults to None.
             WEE (sympy.Matrix, optional): 
                 (6,1) WEE (t) = [Mx,My,Mz,Fx,Fy,Fz] is the time varying 
                 wrench on the EE link. 
+                Defaults to zeros(6, 1).
+            WDEE (sympy.Matrix, optional): 
+                (6,1) WDEE (t) = [dMx,dMy,dMz,dFx,dFy,dFz] is the derivative 
+                of the time varying wrench on the EE link. 
+                Defaults to zeros(6, 1).
+            W2DEE (sympy.Matrix, optional): 
+                (6,1) W2DEE (t) = [ddMx,ddMy,ddMz,ddFx,ddFy,ddFz] is the 
+                2nd derivative of the time varying wrench on the EE link. 
                 Defaults to zeros(6, 1).
             simplify (bool, optional): 
                 Use simplify command on saved expressions. 
@@ -961,17 +1021,21 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
             if not self.q or not self.qd or not self.q2d:
                 q, qd, q2d = generalized_vectors(self.n,self._find_start_index())
             else:
-                q, qd, q2d = self.q, self.qd, self.q2d
+                q, qd, q2d, q3d, q4d = self.q, self.qd, self.q2d, self.q3d, self.q4d
         
         if WEE is Ellipsis:
             WEE = self.WEE
+        if WDEE is Ellipsis:
+            WDEE = self.WDEE
+        if W2DEE is Ellipsis:
+            W2DEE = self.W2DEE
             
         if parallel:
             self._closed_form_inv_dyn_body_fixed_parallel(
-                q, qd, q2d, WEE, simplify, cse)
+                q, qd, q2d, q3d, q4d, WEE, WDEE, W2DEE, simplify, cse)
         else:
             self._closed_form_inv_dyn_body_fixed(
-                q, qd, q2d, WEE, simplify, cse)
+                q, qd, q2d, q3d, q4d, WEE, WDEE, W2DEE, simplify, cse)
         return self.Q
 
     def _closed_form_kinematics_body_fixed(
@@ -1242,8 +1306,12 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
 
     def _closed_form_inv_dyn_body_fixed(self, q: MutableDenseMatrix, 
                                         qd: MutableDenseMatrix, 
-                                        q2d: MutableDenseMatrix, 
+                                        q2d: MutableDenseMatrix,
+                                        q3d: MutableDenseMatrix=None, 
+                                        q4d: MutableDenseMatrix=None, 
                                         WEE: MutableDenseMatrix=zeros(6, 1), 
+                                        WDEE: MutableDenseMatrix=zeros(6, 1), 
+                                        W2DEE: MutableDenseMatrix=zeros(6, 1), 
                                         simplify: bool=True, 
                                         cse: bool=False) -> MutableDenseMatrix:
         """Inverse dynamics using body fixed representation of the 
@@ -1260,9 +1328,22 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
             q (sympy.Matrix): (n,1) Generalized position vector.
             qd (sympy.Matrix): (n,1 )Generalized velocity vector.
             q2d (sympy.Matrix): (n,1) Generalized acceleration vector.
+            q3d (sympy.Matrix, optional): 
+                (n,1) Generalized jerk vector. Defaults to None.
+            q4d (sympy.Matrix, optional): 
+                (n,1) Generalized jounce vector. Defaults to None.
             WEE (sympy.Matrix, optional): 
-                (6,1) WEE (t) = [Mx,My,Mz,Fx,Fy,Fz] is the time 
-                varying wrench on the EE link. Defaults to zeros(6, 1).
+                (6,1) WEE (t) = [Mx,My,Mz,Fx,Fy,Fz] is the time varying 
+                wrench on the EE link. 
+                Defaults to zeros(6, 1).
+            WDEE (sympy.Matrix, optional): 
+                (6,1) WDEE (t) = [dMx,dMy,dMz,dFx,dFy,dFz] is the derivative 
+                of the time varying wrench on the EE link. 
+                Defaults to zeros(6, 1).
+            W2DEE (sympy.Matrix, optional): 
+                (6,1) W2DEE (t) = [ddMx,ddMy,ddMz,ddFx,ddFy,ddFz] is the 
+                2nd derivative of the time varying wrench on the EE link. 
+                Defaults to zeros(6, 1).
             simplify (bool, optional): Use simplify command 
                 on saved expressions. Defaults to True.
             cse (bool, optional): Use common subexpression 
@@ -1276,7 +1357,11 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
         self.var_syms.update(q.free_symbols)
         self.var_syms.update(qd.free_symbols)
         self.var_syms.update(q2d.free_symbols)
+        if q3d: self.var_syms.update(q3d.free_symbols)
+        if q4d: self.var_syms.update(q4d.free_symbols)
         self.optional_var_syms.update(WEE.free_symbols)
+        self.optional_var_syms.update(WDEE.free_symbols)
+        self.optional_var_syms.update(W2DEE.free_symbols)
 
         self.n = len(q)
 
@@ -1383,6 +1468,124 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
         self.C = C
         self.Q = Q
         self.Qgrav = Qgrav
+
+        ##### First Order Derivatives of EOM #####
+        if q3d is not None:        
+            # First time derivative of Block diagonal matrix a (6n x 6n)
+            ad = zeros(6*self.n, 6*self.n)
+            for i in self.n:
+                ad[i*6:i*6+6, i*6:i*6+6] = q2d[i] * SE3adMatrix(self.X[i])
+
+            # Third order Forward Kinematics
+            V2d = J*q3d - A*ad*V
+                        
+            #  First time derivative of Block diagonal matrix b (6n x 6n) 
+            # used in Coriolis matrix
+            bd = zeros(6*self.n, 6*self.n)
+            for i in self.n:
+                bd[i*6:i*6+6, i*6:i*6+6] = SE3adMatrix(Vd[i*6:i*6+6])
+            
+            # First time derivative of Mass inertia matrix in joint space (n x n)
+            Mbd = -Mb*A*a - (Mb*A*a).T
+            Md = J.T * Mbd * J
+            if simplify:
+                Md = self.simplify(Md, cse)
+            elif cse:
+                Md = self._cse_expression(Md)
+            
+            # First time derivative of Coriolis-Centrifugal matrix in joint space (n x n)
+            Cbd = Mb*A*a*A*a - Mb*A*a*a - Mb*A*ad - bd.T * Mb - Cb*A*a - a.T*A.T*Cb
+            Cd = J.T*Cbd*J
+            if simplify:
+                Cd = self.simplify(Cd, cse)
+            elif cse:
+                Cd = self._cse_expression(Cd)
+            
+            # First time derivative of gravity force
+            Qdgrav = J.T*Mbd*U*Vd_0
+            if simplify:
+                Qdgrav = self.simplify(Qdgrav, cse)
+            elif cse:
+                Qdgrav = self._cse_expression(Qdgrav)
+            
+            # First time derivative of External Wrench
+            Wdext = zeros(6*self.n,1)
+            Wdext[-6:] = WDEE
+            Qdext = J.T*(Wdext - (A*a).T * Wext)
+            
+            # Qd = M*q3d + (Md + C)*q2d + Cd*qd  # without gravity 
+            Qd = M*q3d + (Md + C)*q2d + Cd*qd + Qdgrav + Qdext # with gravity
+            if simplify:
+                Qd = self.simplify(Qd, cse)
+            elif cse:
+                Qd = self._cse_expression(Qd)
+            
+            self.Md = Md
+            self.Cd = Cd
+            self.Qdgrav = Qdgrav
+            self.Qd = Qd
+
+        ##### Second Order Derivatives of EOM #####
+        if q3d is not None and q4d is not None:        
+            # Second time derivative of Block diagonal matrix a (6n x 6n)
+            a2d = zeros(6*self.n, 6*self.n)
+            for i in self.n:
+                a2d[i*6:i*6+6, i*6:i*6+6] = SE3adMatrix(self.X[i]) * q3d[i]
+                
+            # Second time derivative of Block diagonal matrix b (6n x 6n) 
+            # used in Coriolis matrix
+            b2d = zeros(6*self.n, 6*self.n)
+            for i in self.n:
+                b2d[i*6:i*6+6, i*6:i*6+6] = SE3adMatrix(V2d[i*6:i*6+6])
+                
+            # Second time derivative of Mass inertia matrix in joint space (n x n)
+            Mb2d = (- Mb*A*ad - (Mb*A*ad).T + 2*Mb*A*a*A*a + 2*(Mb*A*a*A*a).T 
+                    + 2*a.T*A.T*Mb*A*a - Mb*A*a*a - (Mb*A*a*a).T)
+            M2d = J.T*Mb2d*J
+            if simplify:
+                M2d = self.simplify(M2d, cse)
+            elif cse:
+                M2d = self._cse_expression(M2d)
+
+            # Second time derivative of Coriolis-Centrifugal matrix in joint space (n x n)
+            Cddot = (- Mb*A*a2d - 3*Mb*A*a*ad - Mb*A*a*a*a - b2d.T*Mb 
+                     + Mb*A*ad*A*a + Mb*A*a*a*A*a + 2*Mb*A*a*A*ad 
+                     + 2*Mb*A*a*A*a*a - 2*Mb*A*a*A*a*A*a)
+            Cb2d = (Cddot - (Cbd + a.T*A.T*Cb)*A*a - a.T*A.T*(Cbd + Cb*A*a) 
+                    - Cb*A*ad - ad.T*A.T*Cb - Cb*A*a*a - a.T*a.T*A.T*Cb 
+                    - Cbd*A*a - a.T*A.T*Cbd)
+            C2d = J.T*Cb2d*J
+            if simplify:
+                C2d = self.simplify(C2d, cse)
+            elif cse:
+                C2d = self._cse_expression(C2d)
+            
+            # Second time derivative of gravity force
+            Q2dgrav = J.T*Mb2d*U*Vd_0
+            if simplify:
+                Q2dgrav = self.simplify(Q2dgrav, cse)
+            elif cse:
+                Q2dgrav = self._cse_expression(Q2dgrav)
+
+            # Second time derivative of External Wrench
+            W2dext = zeros(6*self.n,1)
+            W2dext[-6:] = W2DEE
+            Q2dext = J.T*(W2dext - 2*(A*a).T*Wdext + (2*(A*a*A*a).T - (A*ad).T - (A*a*a).T)*Wext)
+            
+            # Second time derivative of generalized forces
+            # without gravity:
+            # Q2d = M*q4d + (2*Md + C)*q3d + (M2d + 2*Cd)*q2d + C2d*qd   
+            # with gravity and external forces:
+            Q2d = M*q4d + (2*Md + C)*q3d + (M2d + 2*Cd)*q2d + C2d*qd + Q2dgrav + Q2dext
+            if simplify:
+                Q2d = self.simplify(Q2d, cse)
+            elif cse:
+                Q2d = self._cse_expression(Q2d)
+            
+            self.M2d = M2d
+            self.C2d = C2d
+            self.Q2dgrav = Q2dgrav
+            self.Q2d = Q2d
 
         # save used symbols
         for e in self._get_expressions():
@@ -1728,8 +1931,15 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
         return self.fkin
 
     def _closed_form_inv_dyn_body_fixed_parallel(
-        self, q: MutableDenseMatrix, qd: MutableDenseMatrix, 
-        q2d: MutableDenseMatrix, WEE: MutableDenseMatrix=zeros(6, 1), 
+        self, 
+        q: MutableDenseMatrix, 
+        qd: MutableDenseMatrix, 
+        q2d: MutableDenseMatrix, 
+        q3d: MutableDenseMatrix, 
+        q4d: MutableDenseMatrix, 
+        WEE: MutableDenseMatrix=zeros(6, 1), 
+        WDEE: MutableDenseMatrix=zeros(6, 1), 
+        W2DEE: MutableDenseMatrix=zeros(6, 1), 
         simplify: bool=True, cse: bool=False) -> MutableDenseMatrix:
         """Inverse dynamics using body fixed representation of the 
         twists in closed form. 
@@ -1748,9 +1958,21 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
                 (n,1 )Generalized velocity vector.
             q2d (sympy.Matrix): 
                 (n,1) Generalized acceleration vector.
+            q3d (sympy.Matrix, optional): 
+                (n,1) Generalized jerk vector. Defaults to None.
+            q4d (sympy.Matrix, optional): 
+                (n,1) Generalized jounce vector. Defaults to None.
             WEE (sympy.Matrix, optional): 
                 (6,1) WEE (t) = [Mx,My,Mz,Fx,Fy,Fz] is the time varying 
                 wrench on the EE link. 
+                Defaults to zeros(6, 1).
+            WDEE (sympy.Matrix, optional): 
+                (6,1) WDEE (t) = [dMx,dMy,dMz,dFx,dFy,dFz] is the derivative 
+                of the time varying wrench on the EE link. 
+                Defaults to zeros(6, 1).
+            W2DEE (sympy.Matrix, optional): 
+                (6,1) W2DEE (t) = [ddMx,ddMy,ddMz,ddFx,ddFy,ddFz] is the 
+                2nd derivative of the time varying wrench on the EE link. 
                 Defaults to zeros(6, 1).
             simplify (bool, optional): 
                 Use simplify command on saved expressions. 
@@ -1774,7 +1996,11 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
         self.var_syms.update(q.free_symbols)
         self.var_syms.update(qd.free_symbols)
         self.var_syms.update(q2d.free_symbols)
+        if q3d: self.var_syms.update(q3d.free_symbols)
+        if q4d: self.var_syms.update(q4d.free_symbols)
         self.optional_var_syms.update(WEE.free_symbols)
+        self.optional_var_syms.update(WDEE.free_symbols)
+        self.optional_var_syms.update(W2DEE.free_symbols)
 
         self.n = len(q)
         self.queue_dict["subex_dict"] = Queue()
@@ -1895,12 +2121,187 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
         elif cse:
             self._start_cse_process("Q")
 
+        ##### First Order Derivatives of EOM #####
+        if q3d is not None:
+            # First time derivative of Block diagonal matrix a (6n x 6n)
+            ad = zeros(6*self.n, 6*self.n)
+            for i in self.n:
+                ad[i*6:i*6+6, i*6:i*6+6] = q2d[i] * SE3adMatrix(self.X[i])
+
+            # Third order Forward Kinematics
+            self._set_value_as_process(
+                "V2d", 
+                lambda: self._get_value("J")*q3d - A*ad*self._get_value("V"))
+                        
+            #  First time derivative of Block diagonal matrix b (6n x 6n) 
+            # used in Coriolis matrix
+            def _bd():
+                nonlocal self
+                bd = zeros(6*self.n, 6*self.n)
+                for i in self.n:
+                    bd[i*6:i*6+6, i*6:i*6+6] = SE3adMatrix(self._get_value("Vd")[i*6:i*6+6])
+                return bd
+            self._set_value_as_process("bd", _bd)
+            
+            # First time derivative of Mass inertia matrix in joint space (n x n)
+            Mbd = -Mb*A*a - (Mb*A*a).T
+            self._set_value_as_process(
+                "Md",
+                lambda: self._get_value("J").T * Mbd * self._get_value("J"))
+            if simplify:
+                self._start_simplification_process("Md",cse)
+            elif cse:
+                self._start_cse_process("Md")
+            
+            # First time derivative of Coriolis-Centrifugal matrix in joint space (n x n)
+            self._set_value_as_process(
+                "Cbd",
+                lambda: Mb*A*a*A*a - Mb*A*a*a - Mb*A*ad - self._get_value("bd").T * Mb 
+                        - self._get_value("Cb")*A*a - a.T*A.T*self._get_value("Cb"))
+            self._set_value_as_process(
+                "Cd", 
+                lambda: self._get_value("J").T*self._get_value("Cbd")*self._get_value("J"))
+            if simplify:
+                self._start_simplification_process("Cd",cse)
+            elif cse:
+                self._start_cse_process("Cd")
+            
+            # First time derivative of gravity force
+            self._set_value_as_process(
+                "Qdgrav",
+                lambda: self._get_value("J").T*Mbd*U*Vd_0)
+            if simplify:
+                self._start_simplification_process("Qdgrav",cse)
+            elif cse:
+                self._start_cse_process("Qdgrav")
+            
+            # First time derivative of External Wrench
+            Wdext = zeros(6*self.n,1)
+            Wdext[-6:] = WDEE
+            self._set_value_as_process(
+                "Qdext",
+                lambda: self._get_value("J").T*(Wdext - (A*a).T * Wext))
+            
+            self._set_value_as_process(
+                "Qd",
+                lambda: self._get_value("M")*q3d 
+                        + (self._get_value("Md") + self._get_value("C"))*q2d 
+                        + self._get_value("Cd")*qd + self._get_value("Qdgrav") 
+                        + self._get_value("Qdext")
+            )
+            if simplify:
+                self._start_simplification_process("Qd",cse)
+            elif cse:
+                self._start_cse_process("Qd")
+            
+        ##### Second Order Derivatives of EOM #####
+        if q3d is not None and q4d is not None:        
+            # Second time derivative of Block diagonal matrix a (6n x 6n)
+            a2d = zeros(6*self.n, 6*self.n)
+            for i in self.n:
+                a2d[i*6:i*6+6, i*6:i*6+6] = SE3adMatrix(self.X[i]) * q3d[i]
+                
+            # Second time derivative of Block diagonal matrix b (6n x 6n) 
+            # used in Coriolis matrix
+            def _b2d():
+                nonlocal self
+                b2d = zeros(6*self.n, 6*self.n)
+                for i in self.n:
+                    b2d[i*6:i*6+6, i*6:i*6+6] = SE3adMatrix(
+                        self._get_value("V2d")[i*6:i*6+6])
+                return b2d
+            self._set_value_as_process("b2d", _b2d)
+                
+            # Second time derivative of Mass inertia matrix in joint space (n x n)
+            Mb2d = (- Mb*A*ad - (Mb*A*ad).T + 2*Mb*A*a*A*a + 2*(Mb*A*a*A*a).T 
+                    + 2*a.T*A.T*Mb*A*a - Mb*A*a*a - (Mb*A*a*a).T)
+            self._set_value_as_process(
+                "M2d",
+                lambda: self._get_value("J").T*Mb2d*self._get_value("J"))
+            if simplify:
+                self._start_simplification_process("M2d",cse)
+            elif cse:
+                self._start_cse_process("M2d")
+
+            # Second time derivative of Coriolis-Centrifugal matrix in joint space (n x n)
+            self._set_value_as_process(
+                "Cddot",
+                lambda: - Mb*A*a2d - 3*Mb*A*a*ad - Mb*A*a*a*a 
+                        - self._get_value("b2d").T*Mb 
+                        + Mb*A*ad*A*a + Mb*A*a*a*A*a + 2*Mb*A*a*A*ad 
+                        + 2*Mb*A*a*A*a*a - 2*Mb*A*a*A*a*A*a
+            )
+            self._set_value_as_process(
+                "Cb2d",
+                lambda: self._get_value("Cddot") 
+                        - (self._get_value("Cbd") + a.T*A.T*self._get_value("Cb"))*A*a 
+                        - a.T*A.T*(self._get_value("Cbd") + self._get_value("Cb")*A*a) 
+                        - self._get_value("Cb")*A*ad - ad.T*A.T*self._get_value("Cb") 
+                        - self._get_value("Cb")*A*a*a - a.T*a.T*A.T*self._get_value("Cb") 
+                        - self._get_value("Cbd")*A*a - a.T*A.T*self._get_value("Cbd")
+            )
+            self._set_value_as_process(
+                "C2d",
+                lambda: self._get_value("J").T*self._get_value("Cb2d")*self._get_value("J")
+            )
+            if simplify:
+                self._start_simplification_process("C2d", cse)
+            elif cse:
+                self._start_cse_process("C2d")
+            
+            # Second time derivative of gravity force
+            self._set_value_as_process(
+                "Q2dgrav",
+                lambda: self._get_value("J").T*Mb2d*U*Vd_0
+            )
+            if simplify:
+                self._start_simplification_process("Q2dgrav",cse)
+            elif cse:
+                self._start_cse_process("Q2dgrav")
+
+            # Second time derivative of External Wrench
+            W2dext = zeros(6*self.n,1)
+            W2dext[-6:] = W2DEE
+            self._set_value_as_process(
+                "Q2dext",
+                lambda: self._get_value("J").T
+                        * (W2dext - 2*(A*a).T*Wdext + (2*(A*a*A*a).T - (A*ad).T - (A*a*a).T)*Wext) 
+            )
+            
+            # Second time derivative of generalized forces
+            # with gravity and external forces:
+            self._set_value_as_process(
+                "Q2d",
+                lambda: self._get_value("M")*q4d 
+                        + (2*self._get_value("Md") + self._get_value("C"))*q3d 
+                        + (self._get_value("M2d") + 2*self._get_value("Cd"))*q2d 
+                        + self._get_value("C2d")*qd 
+                        + self._get_value("Q2dgrav") 
+                        + self._get_value("Q2dext") 
+            )
+            if simplify:
+                self._start_simplification_process("Q2d",cse)
+            elif cse:
+                self._start_cse_process("Q2d")
+                Q2d = self._cse_expression(Q2d)
+            
+
         self._V = self._get_value("V")
         self.J = self._get_value("J")
         self.M = self._get_value("M")
         self.C = self._get_value("C")
         self.Qgrav = self._get_value("Qgrav")
         self.Q = self._get_value("Q")
+        if q3d is not None:
+            self.Md = self._get_value("Md")
+            self.Cd = self._get_value("Cd")
+            self.Qdgrav = self._get_value("Qdgrav")
+            self.Qd = self._get_value("Qd")
+        if q3d is not None and q4d is not None:
+            self.M2d = self._get_value("M2d")
+            self.C2d = self._get_value("C2d")
+            self.Q2dgrav = self._get_value("Q2dgrav")
+            self.Q2d = self._get_value("Q2d")
 
         try:
             while True:
@@ -2489,10 +2890,18 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
         q = []
         dq = []
         ddq = []
+        dddq = []
+        ddddq = []
         var_rest = []
-        opt_var = []
+        WEE = []
+        WDEE = []
+        W2DEE = []
         for i in var_syms:
-            if str(i).startswith("ddq"):
+            if str(i).startswith("ddddq"):
+                ddddq.append(i)
+            elif str(i).startswith("dddq"):
+                dddq.append(i)
+            elif str(i).startswith("ddq"):
                 ddq.append(i)
             elif str(i).startswith("dq"):
                 dq.append(i)
@@ -2501,8 +2910,13 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
             else:
                 var_rest.append(i)
                 
-        for i in optional_var_syms:  
-            opt_var.append(i)
+        for i in optional_var_syms:
+            if str(i).startswith("dd"):
+                W2DEE.append(i)
+            elif str(i).startswith("d"):
+                WDEE.append(i)
+            else:
+                WEE.append(i)
             
         def symsort(data: List[sympy.Symbol]) -> List[sympy.Symbol]:
             """Sort symbols
@@ -2519,8 +2933,12 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
         return (symsort(q) 
                 + symsort(dq) 
                 + symsort(ddq) 
+                + symsort(dddq) 
+                + symsort(ddddq) 
                 + symsort(var_rest) 
-                + symsort(opt_var) 
+                + symsort(WEE) 
+                + symsort(WDEE) 
+                + symsort(W2DEE) 
                 + symsort(rest))
 
     def _cse_expression(self, exp: sympy.Expr) -> sympy.Expr:
