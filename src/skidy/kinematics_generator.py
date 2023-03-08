@@ -1483,7 +1483,7 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
             # used in Coriolis matrix
             bd = zeros(6*self.n, 6*self.n)
             for i in range(self.n):
-                bd[i*6:i*6+6, i*6:i*6+6] = SE3adMatrix(Vd[i*6:i*6+6])
+                bd[i*6:i*6+6, i*6:i*6+6] = SE3adMatrix(Matrix(Vd[i*6:i*6+6]))
             
             # First time derivative of Mass inertia matrix in joint space (n x n)
             Mbd = -Mb*A*a - (Mb*A*a).T
@@ -1536,7 +1536,7 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
             # used in Coriolis matrix
             b2d = zeros(6*self.n, 6*self.n)
             for i in range(self.n):
-                b2d[i*6:i*6+6, i*6:i*6+6] = SE3adMatrix(V2d[i*6:i*6+6])
+                b2d[i*6:i*6+6, i*6:i*6+6] = SE3adMatrix(Matrix(V2d[i*6:i*6+6]))
                 
             # Second time derivative of Mass inertia matrix in joint space (n x n)
             Mb2d = (- Mb*A*ad - (Mb*A*ad).T + 2*Mb*A*a*A*a + 2*(Mb*A*a*A*a).T 
