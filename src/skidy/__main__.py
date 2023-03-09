@@ -29,7 +29,7 @@ def main() -> None:
     parser.add_argument("--no-dynamics", action="store_true", help="skip generation of dynamics equations.")
     parser.add_argument("-f", "--folder", type=str, default="./generated_code", help="folder where to save generated code. Defaults to './generated_code'")
     parser.add_argument("--serial", "--not-parallel", action="store_false", default=True, help="don't use parallel computation")
-    parser.add_argument("--name", type=str, default="plant", help="name of class and file. Defaults to 'plant'")
+    parser.add_argument("--name", type=str, default="", help="name of class and file. Defaults to filename")
     parser.add_argument("--project", type=str, default="Project", help="project name in C header. Defaults to 'Project'.")
     # parser.add_argument("--yaml",action="store_true", help="enforce yaml file")
     # parser.add_argument("--json",action="store_true", help="enforce json file")
@@ -85,6 +85,8 @@ def main() -> None:
     else:
         if not os.path.exists(path) or not os.path.isfile(path):
             raise ValueError(f"{path} is no existing file.")
+        
+        if args.name == "": args.name = name
         
         if not args.python and not args.C and not args.matlab and not args.latex and not args.cython:
             raise ValueError("Please provide at least one programming language in which I should generate code.")

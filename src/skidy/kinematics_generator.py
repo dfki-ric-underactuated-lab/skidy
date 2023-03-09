@@ -671,9 +671,14 @@ class _AbstractCodeGeneration():
                 elif "body" in names[i]: letter += r"_b"
                 
                 replacements = [("ddddq", r"\\ddddot q"),
+                                ("ddddtheta", r"\\ddddot \\theta"),
                                 ("dddq", r"\\dddot q"),
+                                ("dddtheta", r"\\dddot \\theta"),
                                 ("ddq", r"\\ddot q"), 
-                                ("dq", r"\\dot q")]
+                                ("ddtheta", r"\\ddot \\theta"), 
+                                ("dq", r"\\dot q"),
+                                ("dtheta", r"\\dot \\theta")
+                                ]
                 with doc.create(Section(regex.sub("_"," ",names[i]))):
                     eq = LatexPrinter().doprint(expressions[i])
                     for pat, repl in replacements:
@@ -687,7 +692,79 @@ class _AbstractCodeGeneration():
             
             # save tex file and compile pdf
             doc.generate_pdf(os.path.join(folder, "latex",name), clean_tex=False)
+    
+    def _sort_variables(self, vars:List[sympy.Symbol]) -> List[sympy.Symbol]:
+        """Sort variables for code generation starting with q, qd, qdd, 
+        continuing with variable symbols and ending with constant 
+        symbols.
+
+        Args:
+            vars (list of sympy.symbols): Variables to sort.
+
+        Returns:
+            list: Sorted list of variables.
+        """
+        # vars as set
+        vars = set(vars)
+        # divide into variable and constant symbols
+        var_syms = self.var_syms.intersection(vars)
+        optional_var_syms = self.optional_var_syms.intersection(vars)
+        rest = list(vars.difference(var_syms).difference(optional_var_syms))
+        # divide variable symbols into q, dq, ddq and other variable symbols
+        q = []
+        dq = []
+        ddq = []
+        dddq = []
+        ddddq = []
+        var_rest = []
+        WEE = []
+        WDEE = []
+        W2DEE = []
+        for i in var_syms:
+            if str(i).startswith("ddddq") or  (self.q4d and i in self.q4d):
+                ddddq.append(i)
+            elif str(i).startswith("dddq") or (self.q3d and i in self.q3d):
+                dddq.append(i)
+            elif str(i).startswith("ddq") or i in self.q2d:
+                ddq.append(i)
+            elif str(i).startswith("dq") or i in self.qd:
+                dq.append(i)
+            elif str(i).startswith("q") or i in self.q:
+                q.append(i)
+            else:
+                var_rest.append(i)
                 
+        for i in optional_var_syms:
+            if str(i).startswith("dd") or i in self.W2DEE:
+                W2DEE.append(i)
+            elif str(i).startswith("d") or i in self.WDEE:
+                WDEE.append(i)
+            else:
+                WEE.append(i)
+            
+        def symsort(data: List[sympy.Symbol]) -> List[sympy.Symbol]:
+            """Sort symbols
+
+            Args:
+                data (list): symbols
+
+            Returns:
+                list: sorted symbols
+            """
+            return [x for _, x in sorted(zip(list(map(str, data)), data))]
+        
+        # return sorted list
+        return (symsort(q) 
+                + symsort(dq) 
+                + symsort(ddq) 
+                + symsort(dddq) 
+                + symsort(ddddq) 
+                + symsort(var_rest) 
+                + symsort(WEE) 
+                + symsort(WDEE) 
+                + symsort(W2DEE) 
+                + symsort(rest))
+            
             
 class SymbolicKinDyn(_AbstractCodeGeneration):
     BODY_FIXED = "body_fixed"
@@ -941,10 +1018,13 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
             if not self.n:
                 self.n = len(self.body_ref_config)
             if not self.q or not self.qd or not self.q2d:
+                print(self.q, self.qd, self.q2d)
                 q, qd, q2d = generalized_vectors(self.n,self._find_start_index())
             else:
                 q, qd, q2d = self.q, self.qd, self.q2d
-            
+                
+        self._save_vectors(q, qd, q2d, None, None, ..., ..., ...)    
+        
         if parallel:
             self._closed_form_kinematics_body_fixed_parallel(
                 q, qd, q2d, simplify, cse)
@@ -1029,6 +1109,8 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
             WDEE = self.WDEE
         if W2DEE is Ellipsis:
             W2DEE = self.W2DEE
+        
+        self._save_vectors(q, qd, q2d, q3d, q4d, WEE, WDEE, W2DEE)
             
         if parallel:
             self._closed_form_inv_dyn_body_fixed_parallel(
@@ -2869,78 +2951,6 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
             prefix=prefix, 
             exclude=exclude)
 
-    def _sort_variables(self, vars:List[sympy.Symbol]) -> List[sympy.Symbol]:
-        """Sort variables for code generation starting with q, qd, qdd, 
-        continuing with variable symbols and ending with constant 
-        symbols.
-
-        Args:
-            vars (list of sympy.symbols): Variables to sort.
-
-        Returns:
-            list: Sorted list of variables.
-        """
-        # vars as set
-        vars = set(vars)
-        # divide into variable and constant symbols
-        var_syms = self.var_syms.intersection(vars)
-        optional_var_syms = self.optional_var_syms.intersection(vars)
-        rest = list(vars.difference(var_syms).difference(optional_var_syms))
-        # divide variable symbols into q, dq, ddq and other variable symbols
-        q = []
-        dq = []
-        ddq = []
-        dddq = []
-        ddddq = []
-        var_rest = []
-        WEE = []
-        WDEE = []
-        W2DEE = []
-        for i in var_syms:
-            if str(i).startswith("ddddq"):
-                ddddq.append(i)
-            elif str(i).startswith("dddq"):
-                dddq.append(i)
-            elif str(i).startswith("ddq"):
-                ddq.append(i)
-            elif str(i).startswith("dq"):
-                dq.append(i)
-            elif str(i).startswith("q"):
-                q.append(i)
-            else:
-                var_rest.append(i)
-                
-        for i in optional_var_syms:
-            if str(i).startswith("dd"):
-                W2DEE.append(i)
-            elif str(i).startswith("d"):
-                WDEE.append(i)
-            else:
-                WEE.append(i)
-            
-        def symsort(data: List[sympy.Symbol]) -> List[sympy.Symbol]:
-            """Sort symbols
-
-            Args:
-                data (list): symbols
-
-            Returns:
-                list: sorted symbols
-            """
-            return [x for _, x in sorted(zip(list(map(str, data)), data))]
-        
-        # return sorted list
-        return (symsort(q) 
-                + symsort(dq) 
-                + symsort(ddq) 
-                + symsort(dddq) 
-                + symsort(ddddq) 
-                + symsort(var_rest) 
-                + symsort(WEE) 
-                + symsort(WDEE) 
-                + symsort(W2DEE) 
-                + symsort(rest))
-
     def _cse_expression(self, exp: sympy.Expr) -> sympy.Expr:
         """Use common subexpression elimination to shorten expression.
         The used subexpressions are saved to the class internal 
@@ -3132,3 +3142,39 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
             if max([int(i) for i in indices]) == self.n -1:
                 return 0
         return 1
+
+    def _save_vectors(self, q: MutableDenseMatrix, qd: MutableDenseMatrix, 
+                      q2d: MutableDenseMatrix, q3d: MutableDenseMatrix, 
+                      q4d: MutableDenseMatrix, WEE: MutableDenseMatrix, 
+                      WDEE: MutableDenseMatrix, W2DEE: MutableDenseMatrix) -> None:
+        """Save generalized vectors als class parameter.
+
+        Args:
+            q (sympy.Matrix): 
+                (n,1) Generalized position vector.
+            qd (sympy.Matrix): 
+                (n,1) Generalized velocity vector.
+            q2d (sympy.Matrix): 
+                (n,1) Generalized acceleration vector.
+            q3d (sympy.Matrix): 
+                (n,1) Generalized jerk vector.
+            q4d (sympy.Matrix): 
+                (n,1) Generalized jounce vector.
+            WEE (sympy.Matrix): 
+                (6,1) WEE (t) = [Mx,My,Mz,Fx,Fy,Fz] is the time varying 
+                wrench on the EE link. 
+            WDEE (sympy.Matrix): 
+                (6,1) WDEE (t) = [dMx,dMy,dMz,dFx,dFy,dFz] is the derivative 
+                of the time varying wrench on the EE link. 
+            W2DEE (sympy.Matrix): 
+                (6,1) W2DEE (t) = [ddMx,ddMy,ddMz,ddFx,ddFy,ddFz] is the 
+                2nd derivative of the time varying wrench on the EE link. 
+        """
+        if not self.q: self.q = q 
+        if not self.qd: self.qd = qd 
+        if not self.q2d: self.q2d = q2d 
+        if not self.q3d: self.q3d = q3d 
+        if not self.q4d: self.q4d = q4d
+        if self.WEE == zeros(6,1) and WEE is not Ellipsis: self.WEE = WEE
+        if self.WDEE == zeros(6,1) and WDEE is not Ellipsis: self.WDEE = WDEE
+        if self.W2DEE == zeros(6,1) and W2DEE is not Ellipsis: self.W2DEE = W2DEE

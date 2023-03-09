@@ -1,0 +1,42 @@
+---
+gravity: [0,0,-g]
+
+representation: spatial
+
+joint_screw_coord:
+  - type: prismatic
+    axis: [0,0,1]
+
+  - type: revolute
+    axis: [0,0,1]
+
+  - type: revolute
+    axis: [0,0,1]
+    vec: [l2,0,0]
+
+body_ref_config:
+  - translation: [0,0,0]
+
+  - translation: [0,0,0]
+
+  - translation: [l2,0,0]
+
+ee:
+  translation: [l3,0,0]
+
+mass_inertia:
+  - mass: m1
+    inertia: 0
+    com: [0,0,0]
+
+  - mass: m2
+    inertia: m2*l2**2
+    com: [l2,0,0]
+
+  - mass: m3
+    inertia: m3*l3**2
+    com: [l3,0,0]
+
+q: [d1,theta2,theta3]
+qd: [dd1, dtheta2, dtheta3]
+q2d: [ddd1, ddtheta2, ddtheta3]

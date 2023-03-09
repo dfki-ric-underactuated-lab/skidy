@@ -11,7 +11,7 @@ Usage:
 from sympy import symbols
 from sympy.abc import *
 
-q0, q1, q2, q3, q4, q5, q6, q7, q8, q9, q10 = symbols("q0, q1, q2, q3, q4, q5, q6, q7, q8, q9, q10", real=1, constant = 0)
+# q0, q1, q2, q3, q4, q5, q6, q7, q8, q9, q10 = symbols("q0, q1, q2, q3, q4, q5, q6, q7, q8, q9, q10", real=1, constant = 0)
 dq, dq0, dq1, dq2, dq3, dq4, dq5, dq6, dq7, dq8, dq9, dq10 = symbols("dq, dq0, dq1, dq2, dq3, dq4, dq5, dq6, dq7, dq8, dq9, dq10", real=1, constant = 0)
 ddq, ddq0, ddq1, ddq2, ddq3, ddq4, ddq5, ddq6, ddq7, ddq8, ddq9, ddq10 = symbols("ddq, ddq0, ddq1, ddq2, ddq3, ddq4, ddq5, ddq6, ddq7, ddq8, ddq9, ddq10", real=1, constant = 0)
 dddq, dddq0, dddq1, dddq2, dddq3, dddq4, dddq5, dddq6, dddq7, dddq8, dddq9, dddq10 = symbols("dddq, dddq0, dddq1, dddq2, dddq3, dddq4, dddq5, dddq6, dddq7, dddq8, dddq9, dddq10", real=1, constant = 0)

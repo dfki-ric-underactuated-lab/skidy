@@ -67,7 +67,7 @@ def joint_screw(axis: list, vec: list=[0,0,0], revolute: bool=True) -> MutableDe
         y = Matrix(vec)
         return Matrix([e, y.cross(e)])
     else:
-        return Matrix([0,0,0,e])
+        return Matrix([0,0,0,*e])
         
 
 def symbolic_inertia_matrix(
