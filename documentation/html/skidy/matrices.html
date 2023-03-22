@@ -95,7 +95,7 @@ def joint_screw(axis: list, vec: list=[0,0,0], revolute: bool=True) -&gt; Mutabl
         y = Matrix(vec)
         return Matrix([e, y.cross(e)])
     else:
-        return Matrix([0,0,0,e])
+        return Matrix([0,0,0,*e])
         
 
 def symbolic_inertia_matrix(
@@ -914,7 +914,7 @@ Defaults to True.</dd>
         y = Matrix(vec)
         return Matrix([e, y.cross(e)])
     else:
-        return Matrix([0,0,0,e])</code></pre>
+        return Matrix([0,0,0,*e])</code></pre>
 </details>
 </dd>
 <dt id="skidy.matrices.mass_matrix_mixed_data"><code class="name flex">

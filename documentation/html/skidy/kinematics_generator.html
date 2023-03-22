@@ -47,6 +47,8 @@ from sympy.printing.numpy import NumPyPrinter
 from sympy.simplify.cse_main import numbered_symbols
 from sympy.simplify.fu import fu
 from sympy.utilities.codegen import codegen
+import sympy.physics.mechanics
+
 from urdf_parser_py.urdf import URDF
 
 from skidy.matrices import (SE3AdjInvMatrix, SE3AdjMatrix,
@@ -699,9 +701,14 @@ class _AbstractCodeGeneration():
                 elif &#34;body&#34; in names[i]: letter += r&#34;_b&#34;
                 
                 replacements = [(&#34;ddddq&#34;, r&#34;\\ddddot q&#34;),
+                                (&#34;ddddtheta&#34;, r&#34;\\ddddot \\theta&#34;),
                                 (&#34;dddq&#34;, r&#34;\\dddot q&#34;),
+                                (&#34;dddtheta&#34;, r&#34;\\dddot \\theta&#34;),
                                 (&#34;ddq&#34;, r&#34;\\ddot q&#34;), 
-                                (&#34;dq&#34;, r&#34;\\dot q&#34;)]
+                                (&#34;ddtheta&#34;, r&#34;\\ddot \\theta&#34;), 
+                                (&#34;dq&#34;, r&#34;\\dot q&#34;),
+                                (&#34;dtheta&#34;, r&#34;\\dot \\theta&#34;)
+                                ]
                 with doc.create(Section(regex.sub(&#34;_&#34;,&#34; &#34;,names[i]))):
                     eq = LatexPrinter().doprint(expressions[i])
                     for pat, repl in replacements:
@@ -715,7 +722,79 @@ class _AbstractCodeGeneration():
             
             # save tex file and compile pdf
             doc.generate_pdf(os.path.join(folder, &#34;latex&#34;,name), clean_tex=False)
+    
+    def _sort_variables(self, vars:List[sympy.Symbol]) -&gt; List[sympy.Symbol]:
+        &#34;&#34;&#34;Sort variables for code generation starting with q, qd, qdd, 
+        continuing with variable symbols and ending with constant 
+        symbols.
+
+        Args:
+            vars (list of sympy.symbols): Variables to sort.
+
+        Returns:
+            list: Sorted list of variables.
+        &#34;&#34;&#34;
+        # vars as set
+        vars = set(vars)
+        # divide into variable and constant symbols
+        var_syms = self.var_syms.intersection(vars)
+        optional_var_syms = self.optional_var_syms.intersection(vars)
+        rest = list(vars.difference(var_syms).difference(optional_var_syms))
+        # divide variable symbols into q, dq, ddq and other variable symbols
+        q = []
+        dq = []
+        ddq = []
+        dddq = []
+        ddddq = []
+        var_rest = []
+        WEE = []
+        WDEE = []
+        W2DEE = []
+        for i in var_syms:
+            if str(i).startswith(&#34;ddddq&#34;) or  (self.q4d and i in self.q4d):
+                ddddq.append(i)
+            elif str(i).startswith(&#34;dddq&#34;) or (self.q3d and i in self.q3d):
+                dddq.append(i)
+            elif str(i).startswith(&#34;ddq&#34;) or i in self.q2d:
+                ddq.append(i)
+            elif str(i).startswith(&#34;dq&#34;) or i in self.qd:
+                dq.append(i)
+            elif str(i).startswith(&#34;q&#34;) or i in self.q:
+                q.append(i)
+            else:
+                var_rest.append(i)
                 
+        for i in optional_var_syms:
+            if str(i).startswith(&#34;dd&#34;) or i in self.W2DEE:
+                W2DEE.append(i)
+            elif str(i).startswith(&#34;d&#34;) or i in self.WDEE:
+                WDEE.append(i)
+            else:
+                WEE.append(i)
+            
+        def symsort(data: List[sympy.Symbol]) -&gt; List[sympy.Symbol]:
+            &#34;&#34;&#34;Sort symbols
+
+            Args:
+                data (list): symbols
+
+            Returns:
+                list: sorted symbols
+            &#34;&#34;&#34;
+            return [x for _, x in sorted(zip(list(map(str, data)), data))]
+        
+        # return sorted list
+        return (symsort(q) 
+                + symsort(dq) 
+                + symsort(ddq) 
+                + symsort(dddq) 
+                + symsort(ddddq) 
+                + symsort(var_rest) 
+                + symsort(WEE) 
+                + symsort(WDEE) 
+                + symsort(W2DEE) 
+                + symsort(rest))
+            
             
 class SymbolicKinDyn(_AbstractCodeGeneration):
     BODY_FIXED = &#34;body_fixed&#34;
@@ -969,10 +1048,13 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
             if not self.n:
                 self.n = len(self.body_ref_config)
             if not self.q or not self.qd or not self.q2d:
+                print(self.q, self.qd, self.q2d)
                 q, qd, q2d = generalized_vectors(self.n,self._find_start_index())
             else:
                 q, qd, q2d = self.q, self.qd, self.q2d
-            
+                
+        self._save_vectors(q, qd, q2d, None, None, ..., ..., ...)    
+        
         if parallel:
             self._closed_form_kinematics_body_fixed_parallel(
                 q, qd, q2d, simplify, cse)
@@ -1057,6 +1139,8 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
             WDEE = self.WDEE
         if W2DEE is Ellipsis:
             W2DEE = self.W2DEE
+        
+        self._save_vectors(q, qd, q2d, q3d, q4d, WEE, WDEE, W2DEE)
             
         if parallel:
             self._closed_form_inv_dyn_body_fixed_parallel(
@@ -1505,7 +1589,7 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
                 ad[i*6:i*6+6, i*6:i*6+6] = q2d[i] * SE3adMatrix(self.X[i])
 
             # Third order Forward Kinematics
-            V2d = J*q3d - A*ad*V
+            V2d = J*q3d - A*ad*V - 2*A*a*Vd - A*a*a*V
                         
             #  First time derivative of Block diagonal matrix b (6n x 6n) 
             # used in Coriolis matrix
@@ -2159,7 +2243,8 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
             # Third order Forward Kinematics
             self._set_value_as_process(
                 &#34;V2d&#34;, 
-                lambda: self._get_value(&#34;J&#34;)*q3d - A*ad*self._get_value(&#34;V&#34;))
+                lambda: self._get_value(&#34;J&#34;)*q3d - A*ad*self._get_value(&#34;V&#34;)
+                - 2*A*a*self._get_value(&#34;Vd&#34;) - A*a*a*self._get_value(&#34;V&#34;))
                         
             #  First time derivative of Block diagonal matrix b (6n x 6n) 
             # used in Coriolis matrix
@@ -2897,78 +2982,6 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
             prefix=prefix, 
             exclude=exclude)
 
-    def _sort_variables(self, vars:List[sympy.Symbol]) -&gt; List[sympy.Symbol]:
-        &#34;&#34;&#34;Sort variables for code generation starting with q, qd, qdd, 
-        continuing with variable symbols and ending with constant 
-        symbols.
-
-        Args:
-            vars (list of sympy.symbols): Variables to sort.
-
-        Returns:
-            list: Sorted list of variables.
-        &#34;&#34;&#34;
-        # vars as set
-        vars = set(vars)
-        # divide into variable and constant symbols
-        var_syms = self.var_syms.intersection(vars)
-        optional_var_syms = self.optional_var_syms.intersection(vars)
-        rest = list(vars.difference(var_syms).difference(optional_var_syms))
-        # divide variable symbols into q, dq, ddq and other variable symbols
-        q = []
-        dq = []
-        ddq = []
-        dddq = []
-        ddddq = []
-        var_rest = []
-        WEE = []
-        WDEE = []
-        W2DEE = []
-        for i in var_syms:
-            if str(i).startswith(&#34;ddddq&#34;):
-                ddddq.append(i)
-            elif str(i).startswith(&#34;dddq&#34;):
-                dddq.append(i)
-            elif str(i).startswith(&#34;ddq&#34;):
-                ddq.append(i)
-            elif str(i).startswith(&#34;dq&#34;):
-                dq.append(i)
-            elif str(i).startswith(&#34;q&#34;):
-                q.append(i)
-            else:
-                var_rest.append(i)
-                
-        for i in optional_var_syms:
-            if str(i).startswith(&#34;dd&#34;):
-                W2DEE.append(i)
-            elif str(i).startswith(&#34;d&#34;):
-                WDEE.append(i)
-            else:
-                WEE.append(i)
-            
-        def symsort(data: List[sympy.Symbol]) -&gt; List[sympy.Symbol]:
-            &#34;&#34;&#34;Sort symbols
-
-            Args:
-                data (list): symbols
-
-            Returns:
-                list: sorted symbols
-            &#34;&#34;&#34;
-            return [x for _, x in sorted(zip(list(map(str, data)), data))]
-        
-        # return sorted list
-        return (symsort(q) 
-                + symsort(dq) 
-                + symsort(ddq) 
-                + symsort(dddq) 
-                + symsort(ddddq) 
-                + symsort(var_rest) 
-                + symsort(WEE) 
-                + symsort(WDEE) 
-                + symsort(W2DEE) 
-                + symsort(rest))
-
     def _cse_expression(self, exp: sympy.Expr) -&gt; sympy.Expr:
         &#34;&#34;&#34;Use common subexpression elimination to shorten expression.
         The used subexpressions are saved to the class internal 
@@ -3159,7 +3172,96 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
                 return 0
             if max([int(i) for i in indices]) == self.n -1:
                 return 0
-        return 1</code></pre>
+        return 1
+
+    def _save_vectors(self, q: MutableDenseMatrix, qd: MutableDenseMatrix, 
+                      q2d: MutableDenseMatrix, q3d: MutableDenseMatrix, 
+                      q4d: MutableDenseMatrix, WEE: MutableDenseMatrix, 
+                      WDEE: MutableDenseMatrix, W2DEE: MutableDenseMatrix) -&gt; None:
+        &#34;&#34;&#34;Save generalized vectors als class parameter.
+
+        Args:
+            q (sympy.Matrix): 
+                (n,1) Generalized position vector.
+            qd (sympy.Matrix): 
+                (n,1) Generalized velocity vector.
+            q2d (sympy.Matrix): 
+                (n,1) Generalized acceleration vector.
+            q3d (sympy.Matrix): 
+                (n,1) Generalized jerk vector.
+            q4d (sympy.Matrix): 
+                (n,1) Generalized jounce vector.
+            WEE (sympy.Matrix): 
+                (6,1) WEE (t) = [Mx,My,Mz,Fx,Fy,Fz] is the time varying 
+                wrench on the EE link. 
+            WDEE (sympy.Matrix): 
+                (6,1) WDEE (t) = [dMx,dMy,dMz,dFx,dFy,dFz] is the derivative 
+                of the time varying wrench on the EE link. 
+            W2DEE (sympy.Matrix): 
+                (6,1) W2DEE (t) = [ddMx,ddMy,ddMz,ddFx,ddFy,ddFz] is the 
+                2nd derivative of the time varying wrench on the EE link. 
+        &#34;&#34;&#34;
+        if not self.q: self.q = q 
+        if not self.qd: self.qd = qd 
+        if not self.q2d: self.q2d = q2d 
+        if not self.q3d: self.q3d = q3d 
+        if not self.q4d: self.q4d = q4d
+        if self.WEE == zeros(6,1) and WEE is not Ellipsis: self.WEE = WEE
+        if self.WDEE == zeros(6,1) and WDEE is not Ellipsis: self.WDEE = WDEE
+        if self.W2DEE == zeros(6,1) and W2DEE is not Ellipsis: self.W2DEE = W2DEE
+        
+    def _time_derivative(self, expression: sympy.Expr, level: int=1) -&gt; sympy.Expr:
+        &#34;&#34;&#34;Generate time derivative of expression by substituting 
+        generalized vectors with time dependent functions,
+        let sympy calculate the time derivative, and resubstitute the 
+        generalized vectors.
+
+        Used for unit testing.
+        
+        Warning: This does not support external wrenches yet.
+
+        Args:
+            expression (sympy.Expr): 
+                expression dependent on generalized vectors.
+            level (int, optional): 
+                Order of derivative to evaluate. Defaults to 1.
+
+        Returns:
+            sympy.Expr: Derived expression.
+        &#34;&#34;&#34;
+        # generate dynamic symbols as substitutes
+        startindex = 1
+        if self.n &gt; 1:
+            subq = Matrix(sympy.physics.mechanics.dynamicsymbols(
+                &#34; &#34;.join(f&#34;subq{i}&#34; for i in range(startindex,startindex+self.n))))
+            subqd =  subq.diff()
+            subq2d = subqd.diff() 
+            subq3d = subq2d.diff() 
+            subq4d = subq3d.diff() 
+        else:
+            subq = Matrix([sympy.physics.mechanics.dynamicsymbols(
+                &#34; &#34;.join(f&#34;subq{i}&#34; for i in range(startindex,startindex+self.n)))])
+            subqd =  subq.diff()
+            subq2d = subqd.diff() 
+            subq3d = subq2d.diff() 
+            subq4d = subq3d.diff()
+        # substitute
+        expression = (expression.subs(zip(self.q,subq))
+                                .subs(zip(self.qd,subqd))
+                                .subs(zip(self.q2d,subq2d))
+                                .subs(zip(self.q3d,subq3d))
+                                .subs(zip(self.q4d,subq4d)))
+        # derivative
+        for _ in range(level):
+            expression = expression.diff(&#34;t&#34;)
+        # resubstitute
+        expression = (expression.subs(zip(subq4d,self.q4d))
+                                .subs(zip(subq3d,self.q3d))
+                                .subs(zip(subq2d,self.q2d))
+                                .subs(zip(subqd,self.qd))
+                                .subs(zip(subq,self.q))
+                                )
+        return expression</code></pre>
 </details>
 </section>
 <section>
@@ -3519,10 +3621,13 @@ Defaults to zeros(6, 1).</dd>
             if not self.n:
                 self.n = len(self.body_ref_config)
             if not self.q or not self.qd or not self.q2d:
+                print(self.q, self.qd, self.q2d)
                 q, qd, q2d = generalized_vectors(self.n,self._find_start_index())
             else:
                 q, qd, q2d = self.q, self.qd, self.q2d
-            
+                
+        self._save_vectors(q, qd, q2d, None, None, ..., ..., ...)    
+        
         if parallel:
             self._closed_form_kinematics_body_fixed_parallel(
                 q, qd, q2d, simplify, cse)
@@ -3607,6 +3712,8 @@ Defaults to zeros(6, 1).</dd>
             WDEE = self.WDEE
         if W2DEE is Ellipsis:
             W2DEE = self.W2DEE
+        
+        self._save_vectors(q, qd, q2d, q3d, q4d, WEE, WDEE, W2DEE)
             
         if parallel:
             self._closed_form_inv_dyn_body_fixed_parallel(
@@ -4055,7 +4162,7 @@ Defaults to zeros(6, 1).</dd>
                 ad[i*6:i*6+6, i*6:i*6+6] = q2d[i] * SE3adMatrix(self.X[i])
 
             # Third order Forward Kinematics
-            V2d = J*q3d - A*ad*V
+            V2d = J*q3d - A*ad*V - 2*A*a*Vd - A*a*a*V
                         
             #  First time derivative of Block diagonal matrix b (6n x 6n) 
             # used in Coriolis matrix
@@ -4709,7 +4816,8 @@ Defaults to zeros(6, 1).</dd>
             # Third order Forward Kinematics
             self._set_value_as_process(
                 &#34;V2d&#34;, 
-                lambda: self._get_value(&#34;J&#34;)*q3d - A*ad*self._get_value(&#34;V&#34;))
+                lambda: self._get_value(&#34;J&#34;)*q3d - A*ad*self._get_value(&#34;V&#34;)
+                - 2*A*a*self._get_value(&#34;Vd&#34;) - A*a*a*self._get_value(&#34;V&#34;))
                         
             #  First time derivative of Block diagonal matrix b (6n x 6n) 
             # used in Coriolis matrix
@@ -5447,78 +5555,6 @@ Defaults to zeros(6, 1).</dd>
             prefix=prefix, 
             exclude=exclude)
 
-    def _sort_variables(self, vars:List[sympy.Symbol]) -&gt; List[sympy.Symbol]:
-        &#34;&#34;&#34;Sort variables for code generation starting with q, qd, qdd, 
-        continuing with variable symbols and ending with constant 
-        symbols.
-
-        Args:
-            vars (list of sympy.symbols): Variables to sort.
-
-        Returns:
-            list: Sorted list of variables.
-        &#34;&#34;&#34;
-        # vars as set
-        vars = set(vars)
-        # divide into variable and constant symbols
-        var_syms = self.var_syms.intersection(vars)
-        optional_var_syms = self.optional_var_syms.intersection(vars)
-        rest = list(vars.difference(var_syms).difference(optional_var_syms))
-        # divide variable symbols into q, dq, ddq and other variable symbols
-        q = []
-        dq = []
-        ddq = []
-        dddq = []
-        ddddq = []
-        var_rest = []
-        WEE = []
-        WDEE = []
-        W2DEE = []
-        for i in var_syms:
-            if str(i).startswith(&#34;ddddq&#34;):
-                ddddq.append(i)
-            elif str(i).startswith(&#34;dddq&#34;):
-                dddq.append(i)
-            elif str(i).startswith(&#34;ddq&#34;):
-                ddq.append(i)
-            elif str(i).startswith(&#34;dq&#34;):
-                dq.append(i)
-            elif str(i).startswith(&#34;q&#34;):
-                q.append(i)
-            else:
-                var_rest.append(i)
-                
-        for i in optional_var_syms:
-            if str(i).startswith(&#34;dd&#34;):
-                W2DEE.append(i)
-            elif str(i).startswith(&#34;d&#34;):
-                WDEE.append(i)
-            else:
-                WEE.append(i)
-            
-        def symsort(data: List[sympy.Symbol]) -&gt; List[sympy.Symbol]:
-            &#34;&#34;&#34;Sort symbols
-
-            Args:
-                data (list): symbols
-
-            Returns:
-                list: sorted symbols
-            &#34;&#34;&#34;
-            return [x for _, x in sorted(zip(list(map(str, data)), data))]
-        
-        # return sorted list
-        return (symsort(q) 
-                + symsort(dq) 
-                + symsort(ddq) 
-                + symsort(dddq) 
-                + symsort(ddddq) 
-                + symsort(var_rest) 
-                + symsort(WEE) 
-                + symsort(WDEE) 
-                + symsort(W2DEE) 
-                + symsort(rest))
-
     def _cse_expression(self, exp: sympy.Expr) -&gt; sympy.Expr:
         &#34;&#34;&#34;Use common subexpression elimination to shorten expression.
         The used subexpressions are saved to the class internal 
@@ -5709,7 +5745,96 @@ Defaults to zeros(6, 1).</dd>
                 return 0
             if max([int(i) for i in indices]) == self.n -1:
                 return 0
-        return 1</code></pre>
+        return 1
+
+    def _save_vectors(self, q: MutableDenseMatrix, qd: MutableDenseMatrix, 
+                      q2d: MutableDenseMatrix, q3d: MutableDenseMatrix, 
+                      q4d: MutableDenseMatrix, WEE: MutableDenseMatrix, 
+                      WDEE: MutableDenseMatrix, W2DEE: MutableDenseMatrix) -&gt; None:
+        &#34;&#34;&#34;Save generalized vectors als class parameter.
+
+        Args:
+            q (sympy.Matrix): 
+                (n,1) Generalized position vector.
+            qd (sympy.Matrix): 
+                (n,1) Generalized velocity vector.
+            q2d (sympy.Matrix): 
+                (n,1) Generalized acceleration vector.
+            q3d (sympy.Matrix): 
+                (n,1) Generalized jerk vector.
+            q4d (sympy.Matrix): 
+                (n,1) Generalized jounce vector.
+            WEE (sympy.Matrix): 
+                (6,1) WEE (t) = [Mx,My,Mz,Fx,Fy,Fz] is the time varying 
+                wrench on the EE link. 
+            WDEE (sympy.Matrix): 
+                (6,1) WDEE (t) = [dMx,dMy,dMz,dFx,dFy,dFz] is the derivative 
+                of the time varying wrench on the EE link. 
+            W2DEE (sympy.Matrix): 
+                (6,1) W2DEE (t) = [ddMx,ddMy,ddMz,ddFx,ddFy,ddFz] is the 
+                2nd derivative of the time varying wrench on the EE link. 
+        &#34;&#34;&#34;
+        if not self.q: self.q = q 
+        if not self.qd: self.qd = qd 
+        if not self.q2d: self.q2d = q2d 
+        if not self.q3d: self.q3d = q3d 
+        if not self.q4d: self.q4d = q4d
+        if self.WEE == zeros(6,1) and WEE is not Ellipsis: self.WEE = WEE
+        if self.WDEE == zeros(6,1) and WDEE is not Ellipsis: self.WDEE = WDEE
+        if self.W2DEE == zeros(6,1) and W2DEE is not Ellipsis: self.W2DEE = W2DEE
+        
+    def _time_derivative(self, expression: sympy.Expr, level: int=1) -&gt; sympy.Expr:
+        &#34;&#34;&#34;Generate time derivative of expression by substituting 
+        generalized vectors with time dependent functions,
+        let sympy calculate the time derivative, and resubstitute the 
+        generalized vectors.
+
+        Used for unit testing.
+        
+        Warning: This does not support external wrenches yet.
+
+        Args:
+            expression (sympy.Expr): 
+                expression dependent on generalized vectors.
+            level (int, optional): 
+                Order of derivative to evaluate. Defaults to 1.
+
+        Returns:
+            sympy.Expr: Derived expression.
+        &#34;&#34;&#34;
+        # generate dynamic symbols as substitutes
+        startindex = 1
+        if self.n &gt; 1:
+            subq = Matrix(sympy.physics.mechanics.dynamicsymbols(
+                &#34; &#34;.join(f&#34;subq{i}&#34; for i in range(startindex,startindex+self.n))))
+            subqd =  subq.diff()
+            subq2d = subqd.diff() 
+            subq3d = subq2d.diff() 
+            subq4d = subq3d.diff() 
+        else:
+            subq = Matrix([sympy.physics.mechanics.dynamicsymbols(
+                &#34; &#34;.join(f&#34;subq{i}&#34; for i in range(startindex,startindex+self.n)))])
+            subqd =  subq.diff()
+            subq2d = subqd.diff() 
+            subq3d = subq2d.diff() 
+            subq4d = subq3d.diff()
+        # substitute
+        expression = (expression.subs(zip(self.q,subq))
+                                .subs(zip(self.qd,subqd))
+                                .subs(zip(self.q2d,subq2d))
+                                .subs(zip(self.q3d,subq3d))
+                                .subs(zip(self.q4d,subq4d)))
+        # derivative
+        for _ in range(level):
+            expression = expression.diff(&#34;t&#34;)
+        # resubstitute
+        expression = (expression.subs(zip(subq4d,self.q4d))
+                                .subs(zip(subq3d,self.q3d))
+                                .subs(zip(subq2d,self.q2d))
+                                .subs(zip(subqd,self.qd))
+                                .subs(zip(subq,self.q))
+                                )
+        return expression</code></pre>
 </details>
 <h3>Ancestors</h3>
 <ul class="hlist">
@@ -5907,6 +6032,8 @@ of bodies not set.</p>
         WDEE = self.WDEE
     if W2DEE is Ellipsis:
         W2DEE = self.W2DEE
+    
+    self._save_vectors(q, qd, q2d, q3d, q4d, WEE, WDEE, W2DEE)
         
     if parallel:
         self._closed_form_inv_dyn_body_fixed_parallel(
@@ -6029,10 +6156,13 @@ of bodies not set.</p>
         if not self.n:
             self.n = len(self.body_ref_config)
         if not self.q or not self.qd or not self.q2d:
+            print(self.q, self.qd, self.q2d)
             q, qd, q2d = generalized_vectors(self.n,self._find_start_index())
         else:
             q, qd, q2d = self.q, self.qd, self.q2d
-        
+            
+    self._save_vectors(q, qd, q2d, None, None, ..., ..., ...)    
+    
     if parallel:
         self._closed_form_kinematics_body_fixed_parallel(
             q, qd, q2d, simplify, cse)

@@ -5,7 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
 <meta name="generator" content="pdoc 0.10.0" />
 <title>skidy.symbols API documentation</title>
-<meta name="description" content="" />
+<meta name="description" content="symbols:
+This module exports all latin and greek letters, as well as some common
+used letter combinations with and without indices between 0 and 10 …" />
 <link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/sanitize.min.css" integrity="sha256-PK9q560IAAa6WVRRh76LtCaI8pjTJ2z11v0miyNNjrs=" crossorigin>
 <link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/typography.min.css" integrity="sha256-7l/o7C8jubJiy74VsKTidCy1yBkRtiUGbVkYBylBqUg=" crossorigin>
 <link rel="stylesheet preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.1/styles/github.min.css" crossorigin>
@@ -22,13 +24,30 @@
 <h1 class="title">Module <code>skidy.symbols</code></h1>
 </header>
 <section id="section-intro">
+<p>symbols:
+This module exports all latin and greek letters, as well as some common
+used letter combinations with and without indices between 0 and 10.</p>
+<h2 id="usage">Usage</h2>
+<p>To use the defined symbols use e.g.:</p>
+<p><code>from <a title="skidy.symbols" href="#skidy.symbols">skidy.symbols</a> import m1, l1, Ixx1, Fx</code></p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">from sympy.abc import *
+<pre><code class="python">&#34;&#34;&#34;symbols:
+This module exports all latin and greek letters, as well as some common 
+used letter combinations with and without indices between 0 and 10.
 
-q0, q1, q2, q3, q4, q5, q6, q7, q8, q9, q10 = symbols(&#34;q0, q1, q2, q3, q4, q5, q6, q7, q8, q9, q10&#34;, real=1, constant = 0)
+Usage:
+    To use the defined symbols use e.g.:
+    
+    `from skidy.symbols import m1, l1, Ixx1, Fx`
+
+&#34;&#34;&#34;
+from sympy import symbols
+from sympy.abc import *
+
+# q0, q1, q2, q3, q4, q5, q6, q7, q8, q9, q10 = symbols(&#34;q0, q1, q2, q3, q4, q5, q6, q7, q8, q9, q10&#34;, real=1, constant = 0)
 dq, dq0, dq1, dq2, dq3, dq4, dq5, dq6, dq7, dq8, dq9, dq10 = symbols(&#34;dq, dq0, dq1, dq2, dq3, dq4, dq5, dq6, dq7, dq8, dq9, dq10&#34;, real=1, constant = 0)
 ddq, ddq0, ddq1, ddq2, ddq3, ddq4, ddq5, ddq6, ddq7, ddq8, ddq9, ddq10 = symbols(&#34;ddq, ddq0, ddq1, ddq2, ddq3, ddq4, ddq5, ddq6, ddq7, ddq8, ddq9, ddq10&#34;, real=1, constant = 0)
 dddq, dddq0, dddq1, dddq2, dddq3, dddq4, dddq5, dddq6, dddq7, dddq8, dddq9, dddq10 = symbols(&#34;dddq, dddq0, dddq1, dddq2, dddq3, dddq4, dddq5, dddq6, dddq7, dddq8, dddq9, dddq10&#34;, real=1, constant = 0)
@@ -39,17 +58,21 @@ dFx, dFy, dFz, dMx, dMy, dMz, dfx, dfy, dfz, dmx, dmy, dmz, dtaux, dtauy, dtauz 
 ddFx, ddFy, ddFz, ddMx, ddMy, ddMz, ddfx, ddfy, ddfz, ddmx, ddmy, ddmz, ddtaux, ddtauy, ddtauz = symbols(&#34;ddFx, ddFy, ddFz, ddMx, ddMy, ddMz, ddfx, ddfy, ddfz, ddmx, ddmy, ddmz, ddtaux, ddtauy, ddtauz&#34;, real=1)
 dF, dM, df, dm, dtau, ddF, ddM, ddf, ddm, ddtau = symbols(&#34;dF, dM, df, dm, dtau, ddF, ddM, ddf, ddm, ddtau&#34;, real=1)  
 
-m0, m1, m2, m3, m4, m5, m6, m7, m8, m9, m10 = symbols(&#34;m0, m1, m2, m3, m4, m5, m6, m7, m8, m9, m10&#34;, real=1, constant = 1)
+# m0, m1, m2, m3, m4, m5, m6, m7, m8, m9, m10 = symbols(&#34;m0, m1, m2, m3, m4, m5, m6, m7, m8, m9, m10&#34;, real=1, constant = 1)
 
-l0, l1, l2, l3, l4, l5, l6, l7, l8, l9, l10 = symbols(&#34;l0, l1, l2, l3, l4, l5, l6, l7, l8, l9, l10&#34;, real=1, constant = 1)
-L0, L1, L2, L3, L4, L5, L6, L7, L8, L9, L10 = symbols(&#34;L0, L1, L2, L3, L4, L5, L6, L7, L8, L9, L10&#34;, real=1, constant = 1)
+# l0, l1, l2, l3, l4, l5, l6, l7, l8, l9, l10 = symbols(&#34;l0, l1, l2, l3, l4, l5, l6, l7, l8, l9, l10&#34;, real=1, constant = 1)
+# L0, L1, L2, L3, L4, L5, L6, L7, L8, L9, L10 = symbols(&#34;L0, L1, L2, L3, L4, L5, L6, L7, L8, L9, L10&#34;, real=1, constant = 1)
 
-x0, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10 = symbols(&#34;x0, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10&#34;, real=1, constant = 1)
-y0, y1, y2, y3, y4, y5, y6, y7, y8, y9, y10 = symbols(&#34;y0, y1, y2, y3, y4, y5, y6, y7, y8, y9, y10&#34;, real=1, constant = 1)
-z0, z1, z2, z3, z4, z5, z6, z7, z8, z9, z10 = symbols(&#34;z0, z1, z2, z3, z4, z5, z6, z7, z8, z9, z10&#34;, real=1, constant = 1)
+# x0, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10 = symbols(&#34;x0, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10&#34;, real=1, constant = 1)
+# y0, y1, y2, y3, y4, y5, y6, y7, y8, y9, y10 = symbols(&#34;y0, y1, y2, y3, y4, y5, y6, y7, y8, y9, y10&#34;, real=1, constant = 1)
+# z0, z1, z2, z3, z4, z5, z6, z7, z8, z9, z10 = symbols(&#34;z0, z1, z2, z3, z4, z5, z6, z7, z8, z9, z10&#34;, real=1, constant = 1)
 
-I0, I1, I2, I3, I4, I5, I6, I7, I8, I9, I10 = symbols(&#34;I0, I1, I2, I3, I4, I5, I6, I7, I8, I9, I10&#34;, real=1, constant = 1)
-i0, i1, i2, i3, i4, i5, i6, i7, i8, i9, i10 = symbols(&#34;i0, i1, i2, i3, i4, i5, i6, i7, i8, i9, i10&#34;, real=1, constant = 1)
+# X0, X1, X2, X3, X4, X5, X6, X7, X8, X9, X10 = symbols(&#34;X0, X1, X2, X3, X4, X5, X6, X7, X8, X9, X10&#34;, real=1, constant = 1)
+# Y0, Y1, Y2, Y3, Y4, Y5, Y6, Y7, Y8, Y9, Y10 = symbols(&#34;Y0, Y1, Y2, Y3, Y4, Y5, Y6, Y7, Y8, Y9, Y10&#34;, real=1, constant = 1)
+# Z0, Z1, Z2, Z3, Z4, Z5, Z6, Z7, Z8, Z9, Z10 = symbols(&#34;Z0, Z1, Z2, Z3, Z4, Z5, Z6, Z7, Z8, Z9, Z10&#34;, real=1, constant = 1)
+
+# I0, I1, I2, I3, I4, I5, I6, I7, I8, I9, I10 = symbols(&#34;I0, I1, I2, I3, I4, I5, I6, I7, I8, I9, I10&#34;, real=1, constant = 1)
+# i0, i1, i2, i3, i4, i5, i6, i7, i8, i9, i10 = symbols(&#34;i0, i1, i2, i3, i4, i5, i6, i7, i8, i9, i10&#34;, real=1, constant = 1)
 
 Ixx, Ixx0, Ixx1, Ixx2, Ixx3, Ixx4, Ixx5, Ixx6, Ixx7, Ixx8, Ixx9, Ixx10 = symbols(&#34;Ixx, Ixx0, Ixx1, Ixx2, Ixx3, Ixx4, Ixx5, Ixx6, Ixx7, Ixx8, Ixx9, Ixx10&#34;, real=1, constant = 1)
 Iyy, Iyy0, Iyy1, Iyy2, Iyy3, Iyy4, Iyy5, Iyy6, Iyy7, Iyy8, Iyy9, Iyy10 = symbols(&#34;Iyy, Iyy0, Iyy1, Iyy2, Iyy3, Iyy4, Iyy5, Iyy6, Iyy7, Iyy8, Iyy9, Iyy10&#34;, real=1, constant = 1)
@@ -65,7 +88,7 @@ ixy, ixy0, ixy1, ixy2, ixy3, ixy4, ixy5, ixy6, ixy7, ixy8, ixy9, ixy10 = symbols
 ixz, ixz0, ixz1, ixz2, ixz3, ixz4, ixz5, ixz6, ixz7, ixz8, ixz9, ixz10 = symbols(&#34;ixz, ixz0, ixz1, ixz2, ixz3, ixz4, ixz5, ixz6, ixz7, ixz8, ixz9, ixz10&#34;, real=1, constant = 1)
 iyz, iyz0, iyz1, iyz2, iyz3, iyz4, iyz5, iyz6, iyz7, iyz8, iyz9, iyz10 = symbols(&#34;iyz, iyz0, iyz1, iyz2, iyz3, iyz4, iyz5, iyz6, iyz7, iyz8, iyz9, iyz10&#34;, real=1, constant = 1)
 
-c0, c1, c2, c3, c4, c5, c6, c7, c8, c9, c10 = symbols(&#34;c0, c1, c2, c3, c4, c5, c6, c7, c8, c9, c10&#34;, real=1, constant = 1)
+# c0, c1, c2, c3, c4, c5, c6, c7, c8, c9, c10 = symbols(&#34;c0, c1, c2, c3, c4, c5, c6, c7, c8, c9, c10&#34;, real=1, constant = 1)
 
 cx, cx0, cx1, cx2, cx3, cx4, cx5, cx6, cx7, cx8, cx9, cx10 = symbols(&#34;cx, cx0, cx1, cx2, cx3, cx4, cx5, cx6, cx7, cx8, cx9, cx10&#34;, real=1, constant = 1)
 cy, cy0, cy1, cy2, cy3, cy4, cy5, cy6, cy7, cy8, cy9, cy10 = symbols(&#34;cy, cy0, cy1, cy2, cy3, cy4, cy5, cy6, cy7, cy8, cy9, cy10&#34;, real=1, constant = 1)
@@ -78,7 +101,85 @@ cgy, cgy0, cgy1, cgy2, cgy3, cgy4, cgy5, cgy6, cgy7, cgy8, cgy9, cgy10 = symbols
 cgz, cgz0, cgz1, cgz2, cgz3, cgz4, cgz5, cgz6, cgz7, cgz8, cgz9, cgz10 = symbols(&#34;cgz, cgz0, cgz1, cgz2, cgz3, cgz4, cgz5, cgz6, cgz7, cgz8, cgz9, cgz10&#34;, real=1, constant = 1)
 
 Lc, Lc0, Lc1, Lc2, Lc3, Lc4, Lc5, Lc6, Lc7, Lc8, Lc9, Lc10 = symbols(&#34;Lc, Lc0, Lc1, Lc2, Lc3, Lc4, Lc5, Lc6, Lc7, Lc8, Lc9, Lc10&#34;, real=1, constant = 1)
-lc, lc0, lc1, lc2, lc3, lc4, lc5, lc6, lc7, lc8, lc9, lc10 = symbols(&#34;lc, lc0, lc1, lc2, lc3, lc4, lc5, lc6, lc7, lc8, lc9, lc10&#34;, real=1, constant = 1)</code></pre>
+lc, lc0, lc1, lc2, lc3, lc4, lc5, lc6, lc7, lc8, lc9, lc10 = symbols(&#34;lc, lc0, lc1, lc2, lc3, lc4, lc5, lc6, lc7, lc8, lc9, lc10&#34;, real=1, constant = 1)
+
+a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10 = symbols(&#34;a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10&#34;, real=True)
+b0, b1, b2, b3, b4, b5, b6, b7, b8, b9, b10 = symbols(&#34;b0, b1, b2, b3, b4, b5, b6, b7, b8, b9, b10&#34;, real=True)
+c0, c1, c2, c3, c4, c5, c6, c7, c8, c9, c10 = symbols(&#34;c0, c1, c2, c3, c4, c5, c6, c7, c8, c9, c10&#34;, real=True)
+d0, d1, d2, d3, d4, d5, d6, d7, d8, d9, d10 = symbols(&#34;d0, d1, d2, d3, d4, d5, d6, d7, d8, d9, d10&#34;, real=True)
+e0, e1, e2, e3, e4, e5, e6, e7, e8, e9, e10 = symbols(&#34;e0, e1, e2, e3, e4, e5, e6, e7, e8, e9, e10&#34;, real=True)
+f0, f1, f2, f3, f4, f5, f6, f7, f8, f9, f10 = symbols(&#34;f0, f1, f2, f3, f4, f5, f6, f7, f8, f9, f10&#34;, real=True)
+g0, g1, g2, g3, g4, g5, g6, g7, g8, g9, g10 = symbols(&#34;g0, g1, g2, g3, g4, g5, g6, g7, g8, g9, g10&#34;, real=True)
+h0, h1, h2, h3, h4, h5, h6, h7, h8, h9, h10 = symbols(&#34;h0, h1, h2, h3, h4, h5, h6, h7, h8, h9, h10&#34;, real=True)
+i0, i1, i2, i3, i4, i5, i6, i7, i8, i9, i10 = symbols(&#34;i0, i1, i2, i3, i4, i5, i6, i7, i8, i9, i10&#34;, real=True)
+j0, j1, j2, j3, j4, j5, j6, j7, j8, j9, j10 = symbols(&#34;j0, j1, j2, j3, j4, j5, j6, j7, j8, j9, j10&#34;, real=True)
+k0, k1, k2, k3, k4, k5, k6, k7, k8, k9, k10 = symbols(&#34;k0, k1, k2, k3, k4, k5, k6, k7, k8, k9, k10&#34;, real=True)
+l0, l1, l2, l3, l4, l5, l6, l7, l8, l9, l10 = symbols(&#34;l0, l1, l2, l3, l4, l5, l6, l7, l8, l9, l10&#34;, real=True)
+m0, m1, m2, m3, m4, m5, m6, m7, m8, m9, m10 = symbols(&#34;m0, m1, m2, m3, m4, m5, m6, m7, m8, m9, m10&#34;, real=True)
+n0, n1, n2, n3, n4, n5, n6, n7, n8, n9, n10 = symbols(&#34;n0, n1, n2, n3, n4, n5, n6, n7, n8, n9, n10&#34;, real=True)
+o0, o1, o2, o3, o4, o5, o6, o7, o8, o9, o10 = symbols(&#34;o0, o1, o2, o3, o4, o5, o6, o7, o8, o9, o10&#34;, real=True)
+p0, p1, p2, p3, p4, p5, p6, p7, p8, p9, p10 = symbols(&#34;p0, p1, p2, p3, p4, p5, p6, p7, p8, p9, p10&#34;, real=True)
+q0, q1, q2, q3, q4, q5, q6, q7, q8, q9, q10 = symbols(&#34;q0, q1, q2, q3, q4, q5, q6, q7, q8, q9, q10&#34;, real=True)
+u0, u1, u2, u3, u4, u5, u6, u7, u8, u9, u10 = symbols(&#34;u0, u1, u2, u3, u4, u5, u6, u7, u8, u9, u10&#34;, real=True)
+r0, r1, r2, r3, r4, r5, r6, r7, r8, r9, r10 = symbols(&#34;r0, r1, r2, r3, r4, r5, r6, r7, r8, r9, r10&#34;, real=True)
+s0, s1, s2, s3, s4, s5, s6, s7, s8, s9, s10 = symbols(&#34;s0, s1, s2, s3, s4, s5, s6, s7, s8, s9, s10&#34;, real=True)
+t0, t1, t2, t3, t4, t5, t6, t7, t8, t9, t10 = symbols(&#34;t0, t1, t2, t3, t4, t5, t6, t7, t8, t9, t10&#34;, real=True)
+u0, u1, u2, u3, u4, u5, u6, u7, u8, u9, u10 = symbols(&#34;u0, u1, u2, u3, u4, u5, u6, u7, u8, u9, u10&#34;, real=True)
+v0, v1, v2, v3, v4, v5, v6, v7, v8, v9, v10 = symbols(&#34;v0, v1, v2, v3, v4, v5, v6, v7, v8, v9, v10&#34;, real=True)
+w0, w1, w2, w3, w4, w5, w6, w7, w8, w9, w10 = symbols(&#34;w0, w1, w2, w3, w4, w5, w6, w7, w8, w9, w10&#34;, real=True)
+x0, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10 = symbols(&#34;x0, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10&#34;, real=True)
+y0, y1, y2, y3, y4, y5, y6, y7, y8, y9, y10 = symbols(&#34;y0, y1, y2, y3, y4, y5, y6, y7, y8, y9, y10&#34;, real=True)
+z0, z1, z2, z3, z4, z5, z6, z7, z8, z9, z10 = symbols(&#34;z0, z1, z2, z3, z4, z5, z6, z7, z8, z9, z10&#34;, real=True)
+A0, A1, A2, A3, A4, A5, A6, A7, A8, A9, A10 = symbols(&#34;A0, A1, A2, A3, A4, A5, A6, A7, A8, A9, A10&#34;, real=True)
+B0, B1, B2, B3, B4, B5, B6, B7, B8, B9, B10 = symbols(&#34;B0, B1, B2, B3, B4, B5, B6, B7, B8, B9, B10&#34;, real=True)
+C0, C1, C2, C3, C4, C5, C6, C7, C8, C9, C10 = symbols(&#34;C0, C1, C2, C3, C4, C5, C6, C7, C8, C9, C10&#34;, real=True)
+D0, D1, D2, D3, D4, D5, D6, D7, D8, D9, D10 = symbols(&#34;D0, D1, D2, D3, D4, D5, D6, D7, D8, D9, D10&#34;, real=True)
+E0, E1, E2, E3, E4, E5, E6, E7, E8, E9, E10 = symbols(&#34;E0, E1, E2, E3, E4, E5, E6, E7, E8, E9, E10&#34;, real=True)
+F0, F1, F2, F3, F4, F5, F6, F7, F8, F9, F10 = symbols(&#34;F0, F1, F2, F3, F4, F5, F6, F7, F8, F9, F10&#34;, real=True)
+G0, G1, G2, G3, G4, G5, G6, G7, G8, G9, G10 = symbols(&#34;G0, G1, G2, G3, G4, G5, G6, G7, G8, G9, G10&#34;, real=True)
+H0, H1, H2, H3, H4, H5, H6, H7, H8, H9, H10 = symbols(&#34;H0, H1, H2, H3, H4, H5, H6, H7, H8, H9, H10&#34;, real=True)
+I0, I1, I2, I3, I4, I5, I6, I7, I8, I9, I10 = symbols(&#34;I0, I1, I2, I3, I4, I5, I6, I7, I8, I9, I10&#34;, real=True)
+J0, J1, J2, J3, J4, J5, J6, J7, J8, J9, J10 = symbols(&#34;J0, J1, J2, J3, J4, J5, J6, J7, J8, J9, J10&#34;, real=True)
+K0, K1, K2, K3, K4, K5, K6, K7, K8, K9, K10 = symbols(&#34;K0, K1, K2, K3, K4, K5, K6, K7, K8, K9, K10&#34;, real=True)
+L0, L1, L2, L3, L4, L5, L6, L7, L8, L9, L10 = symbols(&#34;L0, L1, L2, L3, L4, L5, L6, L7, L8, L9, L10&#34;, real=True)
+M0, M1, M2, M3, M4, M5, M6, M7, M8, M9, M10 = symbols(&#34;M0, M1, M2, M3, M4, M5, M6, M7, M8, M9, M10&#34;, real=True)
+N0, N1, N2, N3, N4, N5, N6, N7, N8, N9, N10 = symbols(&#34;N0, N1, N2, N3, N4, N5, N6, N7, N8, N9, N10&#34;, real=True)
+O0, O1, O2, O3, O4, O5, O6, O7, O8, O9, O10 = symbols(&#34;O0, O1, O2, O3, O4, O5, O6, O7, O8, O9, O10&#34;, real=True)
+P0, P1, P2, P3, P4, P5, P6, P7, P8, P9, P10 = symbols(&#34;P0, P1, P2, P3, P4, P5, P6, P7, P8, P9, P10&#34;, real=True)
+Q0, Q1, Q2, Q3, Q4, Q5, Q6, Q7, Q8, Q9, Q10 = symbols(&#34;Q0, Q1, Q2, Q3, Q4, Q5, Q6, Q7, Q8, Q9, Q10&#34;, real=True)
+R0, R1, R2, R3, R4, R5, R6, R7, R8, R9, R10 = symbols(&#34;R0, R1, R2, R3, R4, R5, R6, R7, R8, R9, R10&#34;, real=True)
+S0, S1, S2, S3, S4, S5, S6, S7, S8, S9, S10 = symbols(&#34;S0, S1, S2, S3, S4, S5, S6, S7, S8, S9, S10&#34;, real=True)
+T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10 = symbols(&#34;T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10&#34;, real=True)
+U0, U1, U2, U3, U4, U5, U6, U7, U8, U9, U10 = symbols(&#34;U0, U1, U2, U3, U4, U5, U6, U7, U8, U9, U10&#34;, real=True)
+V0, V1, V2, V3, V4, V5, V6, V7, V8, V9, V10 = symbols(&#34;V0, V1, V2, V3, V4, V5, V6, V7, V8, V9, V10&#34;, real=True)
+W0, W1, W2, W3, W4, W5, W6, W7, W8, W9, W10 = symbols(&#34;W0, W1, W2, W3, W4, W5, W6, W7, W8, W9, W10&#34;, real=True)
+X0, X1, X2, X3, X4, X5, X6, X7, X8, X9, X10 = symbols(&#34;X0, X1, X2, X3, X4, X5, X6, X7, X8, X9, X10&#34;, real=True)
+Y0, Y1, Y2, Y3, Y4, Y5, Y6, Y7, Y8, Y9, Y10 = symbols(&#34;Y0, Y1, Y2, Y3, Y4, Y5, Y6, Y7, Y8, Y9, Y10&#34;, real=True)
+Z0, Z1, Z2, Z3, Z4, Z5, Z6, Z7, Z8, Z9, Z10 = symbols(&#34;Z0, Z1, Z2, Z3, Z4, Z5, Z6, Z7, Z8, Z9, Z10&#34;, real=True)
+alpha0, alpha1, alpha2, alpha3, alpha4, alpha5, alpha6, alpha7, alpha8, alpha9, alpha10 = symbols(&#34;alpha0, alpha1, alpha2, alpha3, alpha4, alpha5, alpha6, alpha7, alpha8, alpha9, alpha10&#34;, real=True)
+beta0, beta1, beta2, beta3, beta4, beta5, beta6, beta7, beta8, beta9, beta10 = symbols(&#34;beta0, beta1, beta2, beta3, beta4, beta5, beta6, beta7, beta8, beta9, beta10&#34;, real=True)
+gamma0, gamma1, gamma2, gamma3, gamma4, gamma5, gamma6, gamma7, gamma8, gamma9, gamma10 = symbols(&#34;gamma0, gamma1, gamma2, gamma3, gamma4, gamma5, gamma6, gamma7, gamma8, gamma9, gamma10&#34;, real=True)
+delta0, delta1, delta2, delta3, delta4, delta5, delta6, delta7, delta8, delta9, delta10 = symbols(&#34;delta0, delta1, delta2, delta3, delta4, delta5, delta6, delta7, delta8, delta9, delta10&#34;, real=True)
+epsilon0, epsilon1, epsilon2, epsilon3, epsilon4, epsilon5, epsilon6, epsilon7, epsilon8, epsilon9, epsilon10 = symbols(&#34;epsilon0, epsilon1, epsilon2, epsilon3, epsilon4, epsilon5, epsilon6, epsilon7, epsilon8, epsilon9, epsilon10&#34;, real=True)
+zeta0, zeta1, zeta2, zeta3, zeta4, zeta5, zeta6, zeta7, zeta8, zeta9, zeta10 = symbols(&#34;zeta0, zeta1, zeta2, zeta3, zeta4, zeta5, zeta6, zeta7, zeta8, zeta9, zeta10&#34;, real=True)
+eta0, eta1, eta2, eta3, eta4, eta5, eta6, eta7, eta8, eta9, eta10 = symbols(&#34;eta0, eta1, eta2, eta3, eta4, eta5, eta6, eta7, eta8, eta9, eta10&#34;, real=True)
+theta0, theta1, theta2, theta3, theta4, theta5, theta6, theta7, theta8, theta9, theta10 = symbols(&#34;theta0, theta1, theta2, theta3, theta4, theta5, theta6, theta7, theta8, theta9, theta10&#34;, real=True)
+iota0, iota1, iota2, iota3, iota4, iota5, iota6, iota7, iota8, iota9, iota10 = symbols(&#34;iota0, iota1, iota2, iota3, iota4, iota5, iota6, iota7, iota8, iota9, iota10&#34;, real=True)
+kappa0, kappa1, kappa2, kappa3, kappa4, kappa5, kappa6, kappa7, kappa8, kappa9, kappa10 = symbols(&#34;kappa0, kappa1, kappa2, kappa3, kappa4, kappa5, kappa6, kappa7, kappa8, kappa9, kappa10&#34;, real=True)
+lamda0, lamda1, lamda2, lamda3, lamda4, lamda5, lamda6, lamda7, lamda8, lamda9, lamda10 = symbols(&#34;lamda0, lamda1, lamda2, lamda3, lamda4, lamda5, lamda6, lamda7, lamda8, lamda9, lamda10&#34;, real=True)
+mu0, mu1, mu2, mu3, mu4, mu5, mu6, mu7, mu8, mu9, mu10 = symbols(&#34;mu0, mu1, mu2, mu3, mu4, mu5, mu6, mu7, mu8, mu9, mu10&#34;, real=True)
+nu0, nu1, nu2, nu3, nu4, nu5, nu6, nu7, nu8, nu9, nu10 = symbols(&#34;nu0, nu1, nu2, nu3, nu4, nu5, nu6, nu7, nu8, nu9, nu10&#34;, real=True)
+xi0, xi1, xi2, xi3, xi4, xi5, xi6, xi7, xi8, xi9, xi10 = symbols(&#34;xi0, xi1, xi2, xi3, xi4, xi5, xi6, xi7, xi8, xi9, xi10&#34;, real=True)
+omicron0, omicron1, omicron2, omicron3, omicron4, omicron5, omicron6, omicron7, omicron8, omicron9, omicron10 = symbols(&#34;omicron0, omicron1, omicron2, omicron3, omicron4, omicron5, omicron6, omicron7, omicron8, omicron9, omicron10&#34;, real=True)
+pi0, pi1, pi2, pi3, pi4, pi5, pi6, pi7, pi8, pi9, pi10 = symbols(&#34;pi0, pi1, pi2, pi3, pi4, pi5, pi6, pi7, pi8, pi9, pi10&#34;, real=True)
+rho0, rho1, rho2, rho3, rho4, rho5, rho6, rho7, rho8, rho9, rho10 = symbols(&#34;rho0, rho1, rho2, rho3, rho4, rho5, rho6, rho7, rho8, rho9, rho10&#34;, real=True)
+sigma0, sigma1, sigma2, sigma3, sigma4, sigma5, sigma6, sigma7, sigma8, sigma9, sigma10 = symbols(&#34;sigma0, sigma1, sigma2, sigma3, sigma4, sigma5, sigma6, sigma7, sigma8, sigma9, sigma10&#34;, real=True)
+tau0, tau1, tau2, tau3, tau4, tau5, tau6, tau7, tau8, tau9, tau10 = symbols(&#34;tau0, tau1, tau2, tau3, tau4, tau5, tau6, tau7, tau8, tau9, tau10&#34;, real=True)
+upsilon0, upsilon1, upsilon2, upsilon3, upsilon4, upsilon5, upsilon6, upsilon7, upsilon8, upsilon9, upsilon10 = symbols(&#34;upsilon0, upsilon1, upsilon2, upsilon3, upsilon4, upsilon5, upsilon6, upsilon7, upsilon8, upsilon9, upsilon10&#34;, real=True)
+phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7, phi8, phi9, phi10 = symbols(&#34;phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7, phi8, phi9, phi10&#34;, real=True)
+chi0, chi1, chi2, chi3, chi4, chi5, chi6, chi7, chi8, chi9, chi10 = symbols(&#34;chi0, chi1, chi2, chi3, chi4, chi5, chi6, chi7, chi8, chi9, chi10&#34;, real=True)
+psi0, psi1, psi2, psi3, psi4, psi5, psi6, psi7, psi8, psi9, psi10 = symbols(&#34;psi0, psi1, psi2, psi3, psi4, psi5, psi6, psi7, psi8, psi9, psi10&#34;, real=True)
+omega0, omega1, omega2, omega3, omega4, omega5, omega6, omega7, omega8, omega9, omega10 = symbols(&#34;omega0, omega1, omega2, omega3, omega4, omega5, omega6, omega7, omega8, omega9, omega10&#34;, real=True)</code></pre>
 </details>
 </section>
 <section>

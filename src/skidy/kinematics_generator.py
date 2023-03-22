@@ -3182,7 +3182,25 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
         if self.WDEE == zeros(6,1) and WDEE is not Ellipsis: self.WDEE = WDEE
         if self.W2DEE == zeros(6,1) and W2DEE is not Ellipsis: self.W2DEE = W2DEE
         
-    def _time_derivative(self, expression, level = 1):
+    def _time_derivative(self, expression: sympy.Expr, level: int=1) -> sympy.Expr:
+        """Generate time derivative of expression by substituting 
+        generalized vectors with time dependent functions,
+        let sympy calculate the time derivative, and resubstitute the 
+        generalized vectors.
+
+        Used for unit testing.
+        
+        Warning: This does not support external wrenches yet.
+
+        Args:
+            expression (sympy.Expr): 
+                expression dependent on generalized vectors.
+            level (int, optional): 
+                Order of derivative to evaluate. Defaults to 1.
+
+        Returns:
+            sympy.Expr: Derived expression.
+        """
         # generate dynamic symbols as substitutes
         startindex = 1
         if self.n > 1:
