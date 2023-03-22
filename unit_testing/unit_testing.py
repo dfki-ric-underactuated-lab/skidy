@@ -29,51 +29,53 @@ except (ImportError,ModuleNotFoundError):
 delete_generated_code = True # False deactivates cleanup functions
 
 def prepare(cls):
-    cls.s = skidy.SymbolicKinDyn()
+    cls.skd = skidy.SymbolicKinDyn()
     cls.q1, cls.q2 = symbols("q1 q2")
     cls.dq1, cls.dq2 = symbols("dq1 dq2")
     cls.ddq1, cls.ddq2 = symbols("ddq1 ddq2")
+    cls.dddq1, cls.dddq2 = symbols("dddq1 dddq2")
+    cls.ddddq1, cls.ddddq2 = symbols("ddddq1 ddddq2")
 
     
     cls.m1, cls.m2, cls.I1, cls.I2 = symbols("m1 m2 I1 I2", real=1, constant=1)
     cls.cg1, cls.cg2, cls.g = symbols("cg1 cg2 g", real=1, constant=1)
     cls.L1, cls.L2 = symbols("L1 L2", real=1, constant=1)
     
-    cls.s.config_representation = "spatial"
+    cls.skd.config_representation = "spatial"
     
-    cls.s.gravity_vector = Matrix([0, cls.g, 0])
+    cls.skd.gravity_vector = Matrix([0, cls.g, 0])
 
     # Joint screw coordinates in spatial representation
 
-    cls.s.joint_screw_coord = []
+    cls.skd.joint_screw_coord = []
     e1 = Matrix([0, 0, 1])  # joint axis of revolute joint
     y1 = Matrix([0, 0, 0])  # Vector to joint axis from inertial Frame
     # Joint screw coordinates in spatial representation
-    cls.s.joint_screw_coord.append(Matrix([e1, y1.cross(e1)]))
+    cls.skd.joint_screw_coord.append(Matrix([e1, y1.cross(e1)]))
 
     e2 = Matrix([0, 0, 1])  # joint axis of revolute joint
     y2 = Matrix([cls.L1, 0, 0])  # Vector to joint axis from inertial Frame
     # Joint screw coordinates in spatial representation
-    cls.s.joint_screw_coord.append(Matrix([e2, y2.cross(e2)]))
+    cls.skd.joint_screw_coord.append(Matrix([e2, y2.cross(e2)]))
 
     # Reference configurations of bodies (i.e. of spatial reference frames)
     r1 = Matrix([0, 0, 0])
     r2 = Matrix([cls.L1, 0, 0])
 
-    cls.s.body_ref_config = []
-    cls.s.body_ref_config.append(Matrix(Identity(3)).row_join(
+    cls.skd.body_ref_config = []
+    cls.skd.body_ref_config.append(Matrix(Identity(3)).row_join(
         r1).col_join(Matrix([0, 0, 0, 1]).T))
-    cls.s.body_ref_config.append(Matrix(Identity(3)).row_join(
+    cls.skd.body_ref_config.append(Matrix(Identity(3)).row_join(
         r2).col_join(Matrix([0, 0, 0, 1]).T))
 
     # End-effector configuration wrt last link body fixed frame in the chain
     re = Matrix([cls.L2, 0, 0])
-    cls.s.ee = Matrix(Identity(3)).row_join(re).col_join(Matrix([0, 0, 0, 1]).T)
+    cls.skd.ee = Matrix(Identity(3)).row_join(re).col_join(Matrix([0, 0, 0, 1]).T)
 
     # # Joint screw coordinates in body-fixed representation computed from screw coordinates in IFR
-    # cls.s.joint_screw_coord = []
-    # cls.s.joint_screw_coord.append(SE3AdjInvMatrix(cls.s.A[0])*cls.s.Y[0])
-    # cls.s.joint_screw_coord.append(SE3AdjInvMatrix(cls.s.A[1])*cls.s.Y[1])
+    # cls.skd.joint_screw_coord = []
+    # cls.skd.joint_screw_coord.append(SE3AdjInvMatrix(cls.skd.A[0])*cls.skd.Y[0])
+    # cls.skd.joint_screw_coord.append(SE3AdjInvMatrix(cls.skd.A[1])*cls.skd.Y[1])
 
     # Mass-Inertia parameters
     cg1 = Matrix([cls.L1, 0, 0]).T
@@ -81,21 +83,23 @@ def prepare(cls):
     I1 = cls.m1*cls.L1**2
     I2 = cls.m2*cls.L2**2
 
-    cls.s.Mb = []
-    cls.s.Mb.append(mass_matrix_mixed_data(cls.m1, I1*Identity(3), cg1))
-    cls.s.Mb.append(mass_matrix_mixed_data(cls.m2, I2*Identity(3), cg2))
+    cls.skd.Mb = []
+    cls.skd.Mb.append(mass_matrix_mixed_data(cls.m1, I1*Identity(3), cg1))
+    cls.skd.Mb.append(mass_matrix_mixed_data(cls.m2, I2*Identity(3), cg2))
 
     # Declaring generalised vectors
     cls.q = Matrix([cls.q1, cls.q2])
     cls.qd = Matrix([cls.dq1, cls.dq2])
     cls.q2d = Matrix([cls.ddq1, cls.ddq2])
+    cls.q3d = Matrix([cls.dddq1, cls.dddq2])
+    cls.q4d = Matrix([cls.ddddq1, cls.ddddq2])
         
 
 class abstractFKinTest():
     def testfkin(self):
         self.assertEqual(
             simplify(
-                self.s.fkin
+                self.skd.fkin
                 - Matrix([[cos(self.q1+self.q2), 
                         -sin(self.q1+self.q2),
                         0,
@@ -113,7 +117,7 @@ class abstractFKinTest():
     def testJ(self):
         self.assertEqual(
             simplify(
-                self.s.J
+                self.skd.J
                 - Matrix([[0,0],
                         [0,0],
                         [1,0],
@@ -133,7 +137,7 @@ class abstractFKinTest():
     def testJb_ee(self):
         self.assertEqual(
             simplify(
-                self.s.Jb_ee
+                self.skd.Jb_ee
                 -Matrix([[0,0],
                         [0,0],
                         [1,1],
@@ -147,7 +151,7 @@ class abstractFKinTest():
     def testJh_ee(self):
         self.assertEqual(
             simplify(
-                self.s.Jh_ee
+                self.skd.Jh_ee
                 - Matrix([[0,0],
                         [0,0],
                         [1,1],
@@ -163,7 +167,7 @@ class abstractFKinTest():
     def testJb(self):
         self.assertEqual(
             simplify(
-                self.s.Jb
+                self.skd.Jb
                 -Matrix([[0,0],
                         [0,0],
                         [1,1],
@@ -177,7 +181,7 @@ class abstractFKinTest():
     def testJh(self):
         self.assertEqual(
             simplify(
-                self.s.Jh
+                self.skd.Jh
                 - Matrix([[0,0],
                         [0,0],
                         [1,1],
@@ -191,7 +195,7 @@ class abstractFKinTest():
     def testJdot(self):
         self.assertEqual(
             simplify(
-                self.s.Jdot
+                self.skd.Jdot
                 - Matrix([[0,0],
                         [0,0],
                         [0,0],
@@ -211,7 +215,7 @@ class abstractFKinTest():
     def testVbd_BFn(self):
         self.assertEqual(
             simplify(
-                self.s.Vbd_BFn 
+                self.skd.Vbd_BFn 
                 -Matrix([[0],
                         [0],
                         [self.ddq1+self.ddq2],
@@ -225,7 +229,7 @@ class abstractFKinTest():
     
     def testVhd_BFn(self):
         self.assertEqual(
-            simplify(self.s.Vhd_BFn -
+            simplify(self.skd.Vhd_BFn -
             Matrix([[0],
                     [0],
                     [self.ddq1+self.ddq2],
@@ -237,7 +241,7 @@ class abstractFKinTest():
     
     def testVb_ee(self):
         self.assertEqual(
-            simplify(self.s.Vb_ee -
+            simplify(self.skd.Vb_ee -
             Matrix([[0],
                     [0],
                     [self.dq1+self.dq2],
@@ -250,7 +254,7 @@ class abstractFKinTest():
     
     def testVh_ee(self):
         self.assertEqual(
-            simplify(self.s.Vh_ee -
+            simplify(self.skd.Vh_ee -
             Matrix([[0],
                     [0],
                     [self.dq1+self.dq2],
@@ -267,7 +271,7 @@ class abstractFKinTest():
     
     def testVbd_ee(self):
         self.assertEqual(
-            simplify(self.s.Vbd_ee-
+            simplify(self.skd.Vbd_ee-
             Matrix([[0],
                     [0],
                     [self.ddq1+self.ddq2],
@@ -281,7 +285,7 @@ class abstractFKinTest():
         
     def testVhd_ee(self):
         self.assertEqual(
-            simplify(simplify(self.s.Vhd_ee)-
+            simplify(simplify(self.skd.Vhd_ee)-
             Matrix([[0],
                     [0],
                     [self.ddq1+self.ddq2],
@@ -308,7 +312,7 @@ class abstractFKinTest():
     def testJb_ee_dot(self):
         self.assertEqual(
             simplify(
-                self.s.Jb_ee_dot
+                self.skd.Jb_ee_dot
                 -Matrix([[0,0],
                         [0,0],
                         [0,0],
@@ -320,7 +324,7 @@ class abstractFKinTest():
         
     def testJh_ee_dot(self):
         self.assertEqual(
-            simplify(self.s.Jh_ee_dot-
+            simplify(self.skd.Jh_ee_dot-
             Matrix([[0,0],
                     [0,0],
                     [0,0],
@@ -339,7 +343,7 @@ class abstractFKinTest():
         
     def testJh_dot(self):
         self.assertEqual(
-            simplify(self.s.Jh_dot-
+            simplify(self.skd.Jh_dot-
             Matrix([[0,0],
                     [0,0],
                     [0,0],
@@ -352,7 +356,7 @@ class abstractFKinTest():
     def testJb_dot(self):
         self.assertEqual(
             simplify(
-                self.s.Jb_dot
+                self.skd.Jb_dot
                 -Matrix([[0,0],
                         [0,0],
                         [0,0],
@@ -367,21 +371,21 @@ class TestFKin(abstractFKinTest, unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         prepare(cls)
-        T = cls.s.closed_form_kinematics_body_fixed(cls.q,cls.qd,cls.q2d,True,False,False)
+        T = cls.skd.closed_form_kinematics_body_fixed(cls.q,cls.qd,cls.q2d,True,False,False)
 
 
 class TestFKin_parallel(abstractFKinTest, unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         prepare(cls)
-        T = cls.s.closed_form_kinematics_body_fixed(cls.q,cls.qd,cls.q2d,True,False,True)
+        T = cls.skd.closed_form_kinematics_body_fixed(cls.q,cls.qd,cls.q2d,True,False,True)
 
 
 class AbstractInvDyn():
     
     def testM(self):
         self.assertEqual(
-            simplify(self.s.M-
+            simplify(self.skd.M-
             Matrix([[self.L1**2*self.m1
                      + self.L1**2*self.m2
                      + self.L2**2*self.m2
@@ -395,7 +399,7 @@ class AbstractInvDyn():
     def testJ(self):
         self.assertEqual(
             simplify(
-                self.s.J
+                self.skd.J
                 - Matrix([[0,0],
                          [0,0],
                          [1,0],
@@ -414,7 +418,7 @@ class AbstractInvDyn():
     
     def testC(self):
         self.assertEqual(
-            self.s.simplify(self.s.C-
+            self.skd.simplify(self.skd.C-
             Matrix([[-2*self.L1*self.L2*self.dq2*self.m2*sin(self.q2),
                      -self.L1*self.L2*self.dq2*self.m2*sin(self.q2)],
                     [self.L1*self.L2*self.m2*sin(self.q2)*(self.dq1-self.dq2),
@@ -424,7 +428,7 @@ class AbstractInvDyn():
         
     def testQgrav(self):
         self.assertEqual(
-            self.s.simplify(self.s.Qgrav-
+            self.skd.simplify(self.skd.Qgrav-
             Matrix([[self.g*(self.L2*self.m2*cos(self.q1+self.q2)
                              +self.L1*self.m1*cos(self.q1)
                              +self.L1*self.m2*cos(self.q1))],
@@ -449,7 +453,79 @@ class AbstractInvDyn():
                               + self.g*cos(self.q1+self.q2)
                               + self.L1*self.ddq1*cos(self.q2))       
         self.assertEqual(
-            simplify(self.s.Q - Matrix([Q1,Q2])),
+            simplify(self.skd.Q - Matrix([Q1,Q2])),
+            zeros(2,1)
+        )
+        
+    def testMd(self):
+        self.assertEqual(
+            simplify(
+                self.skd.Md
+                - self.skd._time_derivative(self.skd.M, level=1)
+            ),
+            zeros(2,2)
+        )
+
+    def testCd(self):
+        self.assertEqual(
+            simplify(
+                self.skd.Cd
+                - self.skd._time_derivative(self.skd.C, level=1)
+            ),
+            zeros(2,2)
+        )
+
+    def testQdgrav(self):
+        self.assertEqual(
+            simplify(
+                self.skd.Qdgrav
+                - self.skd._time_derivative(self.skd.Qgrav, level=1)
+            ),
+            zeros(2,1)
+        )
+
+    def testQd(self):
+        self.assertEqual(
+            simplify(
+                self.skd.Qd
+                - self.skd._time_derivative(self.skd.Q, level=1)
+            ),
+            zeros(2,1)
+        )
+
+    def testM2d(self):
+        self.assertEqual(
+            simplify(
+                self.skd.M2d
+                - self.skd._time_derivative(self.skd.M, level=2)
+            ),
+            zeros(2,2)
+        )
+
+    def testC2d(self):
+        self.assertEqual(
+            simplify(
+                self.skd.C2d
+                - self.skd._time_derivative(self.skd.C, level=2)
+            ),
+            zeros(2,2)
+        )
+
+    def testQ2dgrav(self):
+        self.assertEqual(
+            simplify(
+                self.skd.Q2dgrav
+                - self.skd._time_derivative(self.skd.Qgrav, level=2)
+            ),
+            zeros(2,1)
+        )
+
+    def testQ2d(self):
+        self.assertEqual(
+            simplify(
+                self.skd.Q2d
+                - self.skd._time_derivative(self.skd.Q, level=2)
+            ),
             zeros(2,1)
         )
 
@@ -458,22 +534,22 @@ class TestInvDyn(AbstractInvDyn,unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         prepare(cls)
-        Q = cls.s.closed_form_inv_dyn_body_fixed(cls.q,cls.qd,cls.q2d,WEE=zeros(6,1),
+        Q = cls.skd.closed_form_inv_dyn_body_fixed(cls.q,cls.qd,cls.q2d,cls.q3d,cls.q4d,WEE=zeros(6,1),
                                                  simplify=True,cse=False,parallel=False)
 
 
 class TestInvDynParallel(AbstractInvDyn,unittest.TestCase):
     @classmethod
-    def setUpClass(self):
-        prepare(self)
-        Q = self.s.closed_form_inv_dyn_body_fixed(self.q,self.qd,self.q2d,WEE=zeros(6,1),
+    def setUpClass(cls):
+        prepare(cls)
+        Q = cls.skd.closed_form_inv_dyn_body_fixed(cls.q,cls.qd,cls.q2d,cls.q3d,cls.q4d,WEE=zeros(6,1),
                                                   simplify=True,cse=False,parallel=True)
 
 
 class TestKinGen(unittest.TestCase):
     
     # def setUp(self):
-        # self.s = skidy.SymbolicKinDyn()
+        # self.skd = skidy.SymbolicKinDyn()
     
     def testInertiaMatrix(self):
         self.assertEqual(
@@ -976,17 +1052,17 @@ class TestGeneratedPythonCode(AbstractGeneratedCodeTests,unittest.TestCase):
         parallel=random.choice([True, False])
                 
         
-        cls.s.closed_form_kinematics_body_fixed(
+        cls.skd.closed_form_kinematics_body_fixed(
             q = cls.q, qd=cls.qd,q2d=cls.q2d,
             simplify=simplify_ex,cse=cse,parallel=parallel)
-        cls.s.closed_form_inv_dyn_body_fixed(
+        cls.skd.closed_form_inv_dyn_body_fixed(
             q=cls.q, qd=cls.qd, q2d=cls.q2d, WEE=zeros(6,1),
             simplify=simplify_ex,cse=cse,parallel=parallel)
         
         folder = os.path.join(dirname(__file__),"generated_code")
         cls.folder = folder
         
-        cls.s.generate_code(python=True,C=False,Matlab=False,cython=False,latex=False,
+        cls.skd.generate_code(python=True,C=False,Matlab=False,cython=False,latex=False,
                             folder=folder, use_global_vars=True, name="testplant")
         
         cls.L1 = random.random()
@@ -1021,17 +1097,17 @@ class TestGeneratedCythonCode(AbstractGeneratedCodeTests,unittest.TestCase):
         parallel=random.choice([True, False])
                 
         
-        cls.s.closed_form_kinematics_body_fixed(
+        cls.skd.closed_form_kinematics_body_fixed(
             q = cls.q, qd=cls.qd,q2d=cls.q2d,
             simplify=simplify_ex,cse=cse,parallel=parallel)
-        cls.s.closed_form_inv_dyn_body_fixed(
+        cls.skd.closed_form_inv_dyn_body_fixed(
             q=cls.q, qd=cls.qd, q2d=cls.q2d, WEE=zeros(6,1),
             simplify=simplify_ex,cse=cse,parallel=parallel)
         
         folder = os.path.join(dirname(__file__),"generated_code")
         cls.folder = folder
         
-        cls.s.generate_code(python=False,C=False,Matlab=False,cython=True,latex=False,
+        cls.skd.generate_code(python=False,C=False,Matlab=False,cython=True,latex=False,
                             folder=folder, use_global_vars=True, name="testplant")
         
         cls.L1 = random.random()
@@ -1068,17 +1144,17 @@ class TestGeneratedMatlabCode(AbstractGeneratedCodeTests,unittest.TestCase):
         parallel=random.choice([True, False])
                 
         
-        cls.s.closed_form_kinematics_body_fixed(
+        cls.skd.closed_form_kinematics_body_fixed(
             q = cls.q, qd=cls.qd,q2d=cls.q2d,
             simplify=simplify_ex,cse=cse,parallel=parallel)
-        cls.s.closed_form_inv_dyn_body_fixed(
+        cls.skd.closed_form_inv_dyn_body_fixed(
             q=cls.q, qd=cls.qd, q2d=cls.q2d, WEE=zeros(6,1),
             simplify=simplify_ex,cse=cse,parallel=parallel)
         
         folder = os.path.join(dirname(__file__),"generated_code")
         cls.folder = folder
         
-        cls.s.generate_code(python=False,C=False,Matlab=True,cython=False,latex=False,
+        cls.skd.generate_code(python=False,C=False,Matlab=True,cython=False,latex=False,
                             folder=folder, use_global_vars=True, name="testplant")
         
         cls.L1 = random.random()
