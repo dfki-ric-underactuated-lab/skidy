@@ -19,6 +19,8 @@ from sympy.printing.numpy import NumPyPrinter
 from sympy.simplify.cse_main import numbered_symbols
 from sympy.simplify.fu import fu
 from sympy.utilities.codegen import codegen
+import sympy.physics.mechanics
+
 from urdf_parser_py.urdf import URDF
 
 from skidy.matrices import (SE3AdjInvMatrix, SE3AdjMatrix,
@@ -1559,7 +1561,7 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
                 ad[i*6:i*6+6, i*6:i*6+6] = q2d[i] * SE3adMatrix(self.X[i])
 
             # Third order Forward Kinematics
-            V2d = J*q3d - A*ad*V
+            V2d = J*q3d - A*ad*V - 2*A*a*Vd - A*a*a*V
                         
             #  First time derivative of Block diagonal matrix b (6n x 6n) 
             # used in Coriolis matrix
@@ -2213,7 +2215,8 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
             # Third order Forward Kinematics
             self._set_value_as_process(
                 "V2d", 
-                lambda: self._get_value("J")*q3d - A*ad*self._get_value("V"))
+                lambda: self._get_value("J")*q3d - A*ad*self._get_value("V")
+                - 2*A*a*self._get_value("Vd") - A*a*a*self._get_value("V"))
                         
             #  First time derivative of Block diagonal matrix b (6n x 6n) 
             # used in Coriolis matrix
@@ -3178,3 +3181,38 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
         if self.WEE == zeros(6,1) and WEE is not Ellipsis: self.WEE = WEE
         if self.WDEE == zeros(6,1) and WDEE is not Ellipsis: self.WDEE = WDEE
         if self.W2DEE == zeros(6,1) and W2DEE is not Ellipsis: self.W2DEE = W2DEE
+        
+    def _time_derivative(self, expression, level = 1):
+        # generate dynamic symbols as substitutes
+        startindex = 1
+        if self.n > 1:
+            subq = Matrix(sympy.physics.mechanics.dynamicsymbols(
+                " ".join(f"subq{i}" for i in range(startindex,startindex+self.n))))
+            subqd =  subq.diff()
+            subq2d = subqd.diff() 
+            subq3d = subq2d.diff() 
+            subq4d = subq3d.diff() 
+        else:
+            subq = Matrix([sympy.physics.mechanics.dynamicsymbols(
+                " ".join(f"subq{i}" for i in range(startindex,startindex+self.n)))])
+            subqd =  subq.diff()
+            subq2d = subqd.diff() 
+            subq3d = subq2d.diff() 
+            subq4d = subq3d.diff()
+        # substitute
+        expression = (expression.subs(zip(self.q,subq))
+                                .subs(zip(self.qd,subqd))
+                                .subs(zip(self.q2d,subq2d))
+                                .subs(zip(self.q3d,subq3d))
+                                .subs(zip(self.q4d,subq4d)))
+        # derivative
+        for _ in range(level):
+            expression = expression.diff("t")
+        # resubstitute
+        expression = (expression.subs(zip(subq4d,self.q4d))
+                                .subs(zip(subq3d,self.q3d))
+                                .subs(zip(subq2d,self.q2d))
+                                .subs(zip(subqd,self.qd))
+                                .subs(zip(subq,self.q))
+                                )
+        return expression
