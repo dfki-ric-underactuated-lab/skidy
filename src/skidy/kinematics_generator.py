@@ -644,6 +644,7 @@ class _AbstractCodeGeneration():
                 doc.packages.append(NoEscape(r"\usepackage[a4paper,top=2cm,bottom=2cm,left=2.5cm,right=2.5cm,marginparwidth=1.75cm]{geometry}"))
             doc.packages.append(NoEscape(r"\usepackage{amsmath}"))
             doc.packages.append(NoEscape(r"\usepackage{graphicx}"))
+            doc.packages.append(NoEscape(r"\usepackage{breqn}[breakdepth={100}]"))
             
             doc.preamble.append(Command("title", "Equations of Motion"))
             doc.preamble.append(Command("author", "Author: SymbolicKinDyn"))
@@ -682,15 +683,34 @@ class _AbstractCodeGeneration():
                                 ("dtheta", r"\\dot \\theta")
                                 ]
                 with doc.create(Section(regex.sub("_"," ",names[i]))):
-                    eq = LatexPrinter().doprint(expressions[i])
-                    for pat, repl in replacements:
-                        eq = regex.sub(pat, repl, eq)
-                    # doc.append(NoEscape(r"\begin{footnotesize}"))
-                    doc.append(NoEscape(r"\[ \resizebox{\ifdim\width>\columnwidth\columnwidth\else\width\fi}{!}{$%"))
-                    doc.append(NoEscape(r"\boldsymbol{"f"{letter}""} = "f"{eq}"))
-                    doc.append(NoEscape(r"$} \]"))
+                    maxlen = 0
+                    for row in range(expressions[i].shape[0]):
+                        length = 0
+                        for column in range(expressions[i].shape[1]):
+                             length += len(regex.sub(r"(\\left|\\right|\{|\}|\\|_|\^|dot|ddot| |begin|matrix)","",str(expressions[i][row,column])))
+                        maxlen = max(maxlen, length)
+                    if maxlen < 120+int(landscape)*100:
+                        eq = LatexPrinter().doprint(expressions[i])
+                        for pat, repl in replacements:
+                            eq = regex.sub(pat, repl, eq)
+                        # doc.append(NoEscape(r"\begin{footnotesize}"))
+                        doc.append(NoEscape(r"\[ \resizebox{\ifdim\width>\columnwidth\columnwidth\else\width\fi}{!}{$%"))
+                        doc.append(NoEscape(r"\boldsymbol{"f"{letter}""} = "f"{eq}"))
+                        doc.append(NoEscape(r"$} \]"))
+                    else:
+                        doc.append(NoEscape(r"\begin{dgroup*}"))
+                        for row in range(expressions[i].shape[0]):
+                            for column in range(expressions[i].shape[1]):
+                                eq = LatexPrinter().doprint(expressions[i][row,column])
+                                for pat, repl in replacements:
+                                    eq = regex.sub(pat, repl, eq)
+                                doc.append(NoEscape(r"\begin{dmath*}"))
+                                doc.append(NoEscape(f"{letter}_"+"{"+f"{row+1}{','+str(column+1) if expressions[i].shape[1]>1 else ''}" + "}" + " = " + f"{eq}"))
+                                doc.append(NoEscape(r"\end{dmath*}"))
+                        doc.append(NoEscape(r"\end{dgroup*}"))
+                        
                     # doc.append(NoEscape(r"\end{footnotesize}"))
-                    doc.append("\n")
+                    # doc.append("\n")
             
             # save tex file and compile pdf
             doc.generate_pdf(os.path.join(folder, "latex",name), clean_tex=False)
