@@ -1289,6 +1289,42 @@ class TestYamlParser(unittest.TestCase):
                 translation: {}
             """
         ),
+        dedent( # [[4x4]] transfomation matrix
+            """
+            ee:
+              - {}
+            """
+        ),
+        dedent( # [[3,3]] SO3 pose, [3] translation
+            """
+            ee:
+              - rotation:
+                  {}
+                translation: {}
+            """    
+        ),
+        dedent( # [3] rpy, [3] translation
+            """
+            ee:
+              - rotation:
+                  rpy: {}
+                translation: {}
+            """    
+        ),
+        dedent( # [6] xyzrpy
+            """
+            ee:
+              - xyzrpy: {}
+            """    
+        ),
+        dedent( # [4] quaternion, [3] translation
+            """
+            ee:
+              - rotation:
+                  Q: {}
+                translation: {}
+            """    
+        )
     ]
     mass_inertia = [
         dedent( # [[6x6]] matrix
@@ -1366,6 +1402,18 @@ class TestYamlParser(unittest.TestCase):
         ee = [
             self.ee[0].format([0,0,1],"a","[x,y,z]"), # axis, angle, translation
             self.ee[1].format([0,0,1],"a","[x,y,z]"), # axis, angle, translation
+            self.ee[2].format("[[cos(a),-sin(a),0,x],"
+                                           " [sin(a),cos(a),0,y],"
+                                           " [0,0,1,z],"
+                                           " [0,0,0,1]]"), # SE3
+            self.ee[3].format("[[cos(a),-sin(a),0],"
+                                           " [sin(a),cos(a),0],"
+                                           " [0,0,1]]",
+                                           "[x,y,z]"), # SO3, translation
+            self.ee[4].format("[0,0,a]","[x,y,z]"), # rpy, translation
+            self.ee[5].format("[x,y,z,0,0,a]"), # xyzrpy
+            self.ee[6].format("[cos(a/2),0,0,sin(a/2)]","[x,y,z]"), # Q, translation
+            
         ]
         mb = [
             self.mass_inertia[0].format(dedent(
@@ -1428,7 +1476,7 @@ class TestYamlParser(unittest.TestCase):
                 self.assertEqual(skd.simplify(skd.body_ref_config[0]), 
                                   transformation_matrix(SO3Exp([0,0,1],symbols("a")),Matrix(["x","y","z"])))
             with self.subTest("ee"):
-                self.assertEqual(skd.ee, transformation_matrix(SO3Exp([0,0,1],symbols("a")),Matrix(["x","y","z"])))
+                self.assertEqual(skd.simplify(skd.ee), transformation_matrix(SO3Exp([0,0,1],symbols("a")),Matrix(["x","y","z"])))
             with self.subTest("mass_inertia"):
                 self.assertEqual(skd.simplify(skd.Mb[0]-Matrix(parse_expr(dedent("""\
                     [[   Ixx1,    Ixy1,    Ixz1,       0, -cz1*m1,  cy1*m1],
