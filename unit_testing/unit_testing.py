@@ -1,6 +1,8 @@
 import unittest
+import unittest.mock
 import sys
 import os
+from textwrap import dedent
 import shutil
 import warnings
 from os.path import dirname
@@ -11,7 +13,8 @@ from skidy import (SE3AdjInvMatrix, SE3AdjMatrix,
                                   inertia_matrix, transformation_matrix, 
                                   mass_matrix_mixed_data, rpy_to_matrix, 
                                   xyz_rpy_to_matrix)
-from sympy import Matrix, cos, sin, symbols, Identity, simplify, zeros
+from skidy.parser import robot_from_yaml, robot_from_json, robot_from_urdf
+from sympy import Matrix, cos, sin, symbols, Identity, simplify, zeros, parse_expr
 import random
 import numpy as np
 
@@ -1177,7 +1180,283 @@ class TestGeneratedMatlabCode(AbstractGeneratedCodeTests,unittest.TestCase):
         except:
             pass
 
+class TestYamlParser(unittest.TestCase):
+    start = "---\n"
+    parent = dedent(
+        """
+        parent:
+          - {}
+        """)
+    child = dedent(
+        """
+        child:
+          - {}
+        """)
+    support = dedent(
+        """
+        support:
+          - {}
+        """
+    )
+    gravity = "gravity: {}\n"
+    representation = "representation: {}"
+    joint_screw_coord = [
+        dedent(# [3] axis [3] vec
+            """
+            joint_screw_coord:
+              - type: revolute
+                axis: {}
+                vec: {}
+            """
+        ),
+        dedent(# [3] prismatic axis
+            """
+            joint_screw_coord:
+              - type: prismatic
+                axis: {} 
+            """
+        ),
+        dedent(# [6] list of 6 (whole vector)
+            """
+            joint_screw_coord:
+              - {}
+            """
+        )        
+    ]
+    body_ref_config = [
+        dedent( # [[4x4]] transfomation matrix
+            """
+            body_ref_config:
+              - {}
+            """
+        ),
+        dedent( # [3] axis, float angle, [3] translation
+            """
+            body_ref_config:
+              - rotation:
+                  axis: {}
+                  angle: {}
+                translation: {}
+            """    
+        ),
+        dedent( # [[3,3]] SO3 pose, [3] translation
+            """
+            body_ref_config:
+              - rotation:
+                  {}
+                translation: {}
+            """    
+        ),
+        dedent( # [3] rpy, [3] translation
+            """
+            body_ref_config:
+              - rotation:
+                  rpy: {}
+                translation: {}
+            """    
+        ),
+        dedent( # [6] xyzrpy
+            """
+            body_ref_config:
+              - xyzrpy: {}
+            """    
+        ),
+        dedent( # [4] quaternion, [3] translation
+            """
+            body_ref_config:
+              - rotation:
+                  Q: {}
+                translation: {}
+            """    
+        )
+    ]
+    ee = [
+        dedent( # [3] axis, float angle, [3] translation
+            """
+            ee:
+              rotation:
+                axis: {}
+                angle: {}
+              translation: {}
+            """
+        ),
+        dedent( # [3] axis, float angle, [3] translation
+            """
+            ee:
+              - rotation:
+                  axis: {}
+                  angle: {}
+                translation: {}
+            """
+        ),
+    ]
+    mass_inertia = [
+        dedent( # [[6x6]] matrix
+            """
+            mass_inertia:
+              - {}
+            """
+        ),
+        # float, [[3x3]] inertia matrix, [3] com
+        # or: float, [6] inertia values, [3] com
+        # or: float, float, [3] com
+        dedent(
+            """
+            mass_inertia:
+              - mass: {}
+                inertia: {}
+                com: {}
+            """
+        ),
+        dedent( # float, 6 x float, [3] com
+            """
+            mass_inertia:
+              - mass: {}
+                inertia:
+                  Ixx: {}
+                  Ixy: {}
+                  Ixz: {}
+                  Iyy: {}
+                  Iyz: {}
+                  Izz: {}
+                com: {}
+            """
+        ),
+        dedent( # float, int index, bool, [3] com
+            """
+            mass_inertia:
+              - mass: {}
+                inertia:
+                  index: {}
+                  pointmass: {}
+                com: {}
+            """
+        ),
+    ]
+    q = "q: [q1]\n"
+    qd = "qd: [dq1]\n"
+    q2d = "q2d: [ddq1]\n"
+    q3d = "q3d: [dddq1]\n"
+    q4d = "q4d: [ddddq1]\n"
+    WEE = "WEE: [Mx,My,Mz,Fx,Fy,Fz]\n"
+    WDEE = "WDEE: [dMx,dMy,dMz,dFx,dFy,dFz]\n"
+    W2DEE = "W2DEE: [ddMx,ddMy,ddMz,ddFx,ddFy,ddFz]\n"
 
+    def testYamlParser(self):
+        joint_screw = [
+            self.joint_screw_coord[0].format([0,0,1],[0,0,0]),
+            # self.joint_screw_coord[1].format([0,0,1]),
+            self.joint_screw_coord[2].format([0,0,1,0,0,0]),
+        ]
+        
+        body_ref = [
+            self.body_ref_config[0].format("[[cos(a),-sin(a),0,x],"
+                                           " [sin(a),cos(a),0,y],"
+                                           " [0,0,1,z],"
+                                           " [0,0,0,1]]"), # SE3
+            self.body_ref_config[1].format([0,0,1],"a","[x,y,z]"), # axis, angle, translation
+            self.body_ref_config[2].format("[[cos(a),-sin(a),0],"
+                                           " [sin(a),cos(a),0],"
+                                           " [0,0,1]]",
+                                           "[x,y,z]"), # SO3, translation
+            self.body_ref_config[3].format("[0,0,a]","[x,y,z]"), # rpy, translation
+            self.body_ref_config[4].format("[x,y,z,0,0,a]"), # xyzrpy
+            self.body_ref_config[5].format("[cos(a/2),0,0,sin(a/2)]","[x,y,z]"), # Q, translation
+            ]
+        ee = [
+            self.ee[0].format([0,0,1],"a","[x,y,z]"), # axis, angle, translation
+            self.ee[1].format([0,0,1],"a","[x,y,z]"), # axis, angle, translation
+        ]
+        mb = [
+            self.mass_inertia[0].format(dedent(
+                """\
+                [[   Ixx1,    Ixy1,    Ixz1,       0, -cz1*m1,  cy1*m1],
+                 [   Ixy1,    Iyy1,    Iyz1,  cz1*m1,       0, -cx1*m1],
+                 [   Ixz1,    Iyz1,    Izz1, -cy1*m1,  cx1*m1,       0],
+                 [      0,  cz1*m1, -cy1*m1,      m1,       0,       0],
+                 [-cz1*m1,       0,  cx1*m1,       0,      m1,       0],
+                 [ cy1*m1, -cx1*m1,       0,       0,       0,      m1]]""")), #(6,6) matrix
+            self.mass_inertia[1].format("m1","[[Ixx1,Ixy1,Ixz1],"
+                                             " [Ixy1,Iyy1,Iyz1],"
+                                             " [Ixz1,Iyz1,Izz1]]",
+                                        "[cx1,cy1,cz1]"), # m, I, com
+            self.mass_inertia[1].format("m1","[Ixx1,Ixy1,Ixz1,Iyy1,Iyz1,Izz1]", "[cx1,cy1,cz1]"), # m, [Ixyz], com
+            # self.mass_inertia[1].format("m1","I1", "[cx1,cy1,cz1]"), # m, x * 1, com
+            self.mass_inertia[2].format("m1","Ixx1","Ixy1","Ixz1","Iyy1","Iyz1","Izz1", "[cx1,cy1,cz1]"), # m, Ixx, Ixy, ..., Izz, com
+            self.mass_inertia[3].format("m1",1,False,"[cx1,cy1,cz1]"), # m, index, pointmass, com
+        ]
+        for i in range(max(len(joint_screw),len(body_ref),len(ee),len(mb))):    
+            file = "\n".join([
+                self.start,
+                self.parent.format(0),
+                self.child.format([]),
+                self.support.format([1]),
+                self.gravity.format("[0,0,g]"),
+                self.representation.format("spatial"),
+                joint_screw[i%len(joint_screw)],
+                body_ref[i%len(body_ref)],
+                ee[i%len(ee)],
+                mb[i%len(mb)],
+                self.q,
+                self.qd,
+                self.q2d,
+                self.q3d,
+                self.q4d,
+                self.WEE,
+                self.WDEE,
+                self.W2DEE
+            ])
+            with unittest.mock.patch(
+                'builtins.open',
+                new=unittest.mock.mock_open(read_data=file),
+                create=True
+            ) as mock_file:
+                skd = robot_from_yaml("robot.yaml")
+            with self.subTest("parent"):
+                self.assertEqual(skd.parent, [0])
+            with self.subTest("child"):
+                self.assertEqual(skd.child, [[]])
+            with self.subTest("support"):
+                self.assertEqual(skd.support, [[1]])
+            with self.subTest("gravity_vector"):
+                self.assertEqual(skd.gravity_vector,[0,0,symbols("g")])
+            with self.subTest("config_representation"):
+                self.assertEqual(skd.config_representation, "spatial")
+            with self.subTest("joint_screw_coord"):
+                self.assertEqual(skd.joint_screw_coord, [Matrix([0,0,1,0,0,0])])
+            with self.subTest("body_ref_config"):
+                self.assertEqual(skd.simplify(skd.body_ref_config[0]), 
+                                  transformation_matrix(SO3Exp([0,0,1],symbols("a")),Matrix(["x","y","z"])))
+            with self.subTest("ee"):
+                self.assertEqual(skd.ee, transformation_matrix(SO3Exp([0,0,1],symbols("a")),Matrix(["x","y","z"])))
+            with self.subTest("mass_inertia"):
+                self.assertEqual(skd.simplify(skd.Mb[0]-Matrix(parse_expr(dedent("""\
+                    [[   Ixx1,    Ixy1,    Ixz1,       0, -cz1*m1,  cy1*m1],
+                    [   Ixy1,    Iyy1,    Iyz1,  cz1*m1,       0, -cx1*m1],
+                    [   Ixz1,    Iyz1,    Izz1, -cy1*m1,  cx1*m1,       0],
+                    [      0,  cz1*m1, -cy1*m1,      m1,       0,       0],
+                    [-cz1*m1,       0,  cx1*m1,       0,      m1,       0],
+                    [ cy1*m1, -cx1*m1,       0,       0,       0,      m1]]"""
+                    )))),
+                    zeros(6,6)
+                )
+            with self.subTest("q"):
+                self.assertEqual(skd.q, Matrix([["q1"]]))
+            with self.subTest("qd"):
+                self.assertEqual(skd.qd, Matrix([["dq1"]]))
+            with self.subTest("q2d"):
+                self.assertEqual(skd.q2d, Matrix([["ddq1"]]))
+            with self.subTest("q3d"):
+                self.assertEqual(skd.q3d, Matrix([["dddq1"]]))
+            with self.subTest("q4d"):
+                self.assertEqual(skd.q4d, Matrix([["ddddq1"]]))
+            with self.subTest("WEE"):
+                self.assertEqual(skd.WEE, Matrix([*symbols("Mx,My,Mz,Fx,Fy,Fz")]))
+            with self.subTest("WDEE"):
+                self.assertEqual(skd.WDEE, Matrix([*symbols("dMx,dMy,dMz,dFx,dFy,dFz")]))
+            with self.subTest("W2DEE"):
+                self.assertEqual(skd.W2DEE, Matrix([*symbols("ddMx,ddMy,ddMz,ddFx,ddFy,ddFz")]))
+            
 
 
 
