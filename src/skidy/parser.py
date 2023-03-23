@@ -149,21 +149,24 @@ def dict_parser(d: dict) -> SymbolicKinDyn:
     
     if "ee" not in d:
         raise KeyError("ee not found")
-            
+    
+    # if leading - is used in ee yaml we have a list we dont want. 
+    if type(d["ee"]) is list and len(d["ee"]) == 1:
+            d["ee"] = d["ee"][0]
     if type(d["ee"]) is list:
         ee = Matrix(d["ee"])
     elif type(d["ee"]) is dict:
-        if "xyzrpy" in br:
-            ee = xyz_rpy_to_matrix(br["xyzrpy"])
+        if "xyzrpy" in d["ee"]:
+            ee = xyz_rpy_to_matrix(d["ee"]["xyzrpy"])
         else:
             t = d["ee"]["translation"] if "translation" in d["ee"] else [0,0,0]
             if "rotation" in d["ee"]:
                 if type(d["ee"]["rotation"]) is dict:
-                    if "Q" in br["rotation"]:
-                        r = quaternion_to_matrix(br["rotation"]["Q"])
-                    elif "rpy" in br["rotation"]:
-                        r = rpy_to_matrix(br["rotation"]["rpy"])
-                    elif "axis" in br["rotation"]:
+                    if "Q" in d["ee"]["rotation"]:
+                        r = quaternion_to_matrix(d["ee"]["rotation"]["Q"])
+                    elif "rpy" in d["ee"]["rotation"]:
+                        r = rpy_to_matrix(d["ee"]["rotation"]["rpy"])
+                    elif "axis" in d["ee"]["rotation"]:
                         axis = d["ee"]["rotation"]["axis"] if "axis" in d["ee"]["rotation"] else [0,0,1]
                         angle = d["ee"]["rotation"]["angle"] if "angle" in d["ee"]["rotation"] else 0
                         r = SO3Exp(Matrix(axis),angle)
