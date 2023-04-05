@@ -1044,7 +1044,16 @@ class AbstractGeneratedCodeTests:
                 plant.inverse_dynamics(q1,q2,dq1,dq2,ddq1,ddq2),
                 np.array([[Q1],[Q2]])
             ))
-    
+
+class TestMatrixConversions(unittest.TestCase):
+    def test_matrix_to_rpy(self):
+        rpy = np.array([random.random(), random.random(), random.random()])
+        self.assertTrue(
+            np.allclose(
+                skidy.matrices.matrix_to_rpy(skidy.rpy_to_matrix(rpy)),
+                rpy
+            )
+        )
 class TestGeneratedPythonCode(AbstractGeneratedCodeTests,unittest.TestCase):
     @classmethod
     def setUpClass(cls):
