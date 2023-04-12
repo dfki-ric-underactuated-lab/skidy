@@ -512,7 +512,7 @@ To start the code generation process use:
 python3 -m skidy [options] path/to/robot.yaml
 ```
 
-In the options you have to specify what kind of code (python `-p`, Matlab `-m`, C `-C`, latex `-l`) you'd like to generate and whether the equations should be simplified `-s`.
+In the options you have to specify what kind of code (python `-p`, Matlab `-m`, C `-C`, julia `-j`, cython `--cython`, latex `-l`) you'd like to generate and whether the equations should be simplified `-s`.
 
 Use
 
@@ -1007,8 +1007,8 @@ skd.generate_code(python=True, C=False, Matlab=False, latex=False,
                  name="plant", project="Project")
 ```
 
-Generate Python, Matlab, C (C99) and/or LaTeX code from the generated equations.
-Note that this can take time, especially for non-simplified equations and complex robots.
+Generate Python, Matlab, C (C99), Julia, Cython and/or LaTeX code from the generated equations.
+Note that this can take some time, especially for non-simplified equations and complex robots.
 
 ### 2.3. URDF
 
@@ -1200,7 +1200,7 @@ skd.generate_code(python=True, C=False, Matlab=False, latex=False,
                  name="plant", project="Project")
 ```
 
-Generate Python, Matlab, C (C99) and/or LaTeX code from the generated equations.
+Generate Python, Matlab, C (C99), Julia, Cython and/or LaTeX code from the generated equations.
 Note that this can take time, especially for non-simplified equations and complex robots.
 
 ## 3. Unit testing

@@ -177,21 +177,24 @@ def dict_parser(d: dict) -&gt; SymbolicKinDyn:
     
     if &#34;ee&#34; not in d:
         raise KeyError(&#34;ee not found&#34;)
-            
+    
+    # if leading - is used in ee yaml we have a list we dont want. 
+    if type(d[&#34;ee&#34;]) is list and len(d[&#34;ee&#34;]) == 1:
+            d[&#34;ee&#34;] = d[&#34;ee&#34;][0]
     if type(d[&#34;ee&#34;]) is list:
         ee = Matrix(d[&#34;ee&#34;])
     elif type(d[&#34;ee&#34;]) is dict:
-        if &#34;xyzrpy&#34; in br:
-            ee = xyz_rpy_to_matrix(br[&#34;xyzrpy&#34;])
+        if &#34;xyzrpy&#34; in d[&#34;ee&#34;]:
+            ee = xyz_rpy_to_matrix(d[&#34;ee&#34;][&#34;xyzrpy&#34;])
         else:
             t = d[&#34;ee&#34;][&#34;translation&#34;] if &#34;translation&#34; in d[&#34;ee&#34;] else [0,0,0]
             if &#34;rotation&#34; in d[&#34;ee&#34;]:
                 if type(d[&#34;ee&#34;][&#34;rotation&#34;]) is dict:
-                    if &#34;Q&#34; in br[&#34;rotation&#34;]:
-                        r = quaternion_to_matrix(br[&#34;rotation&#34;][&#34;Q&#34;])
-                    elif &#34;rpy&#34; in br[&#34;rotation&#34;]:
-                        r = rpy_to_matrix(br[&#34;rotation&#34;][&#34;rpy&#34;])
-                    elif &#34;axis&#34; in br[&#34;rotation&#34;]:
+                    if &#34;Q&#34; in d[&#34;ee&#34;][&#34;rotation&#34;]:
+                        r = quaternion_to_matrix(d[&#34;ee&#34;][&#34;rotation&#34;][&#34;Q&#34;])
+                    elif &#34;rpy&#34; in d[&#34;ee&#34;][&#34;rotation&#34;]:
+                        r = rpy_to_matrix(d[&#34;ee&#34;][&#34;rotation&#34;][&#34;rpy&#34;])
+                    elif &#34;axis&#34; in d[&#34;ee&#34;][&#34;rotation&#34;]:
                         axis = d[&#34;ee&#34;][&#34;rotation&#34;][&#34;axis&#34;] if &#34;axis&#34; in d[&#34;ee&#34;][&#34;rotation&#34;] else [0,0,1]
                         angle = d[&#34;ee&#34;][&#34;rotation&#34;][&#34;angle&#34;] if &#34;angle&#34; in d[&#34;ee&#34;][&#34;rotation&#34;] else 0
                         r = SO3Exp(Matrix(axis),angle)
@@ -724,21 +727,24 @@ def robot_from_urdf(path: str, symbolic: bool=True, cse: bool=False,
     
     if &#34;ee&#34; not in d:
         raise KeyError(&#34;ee not found&#34;)
-            
+    
+    # if leading - is used in ee yaml we have a list we dont want. 
+    if type(d[&#34;ee&#34;]) is list and len(d[&#34;ee&#34;]) == 1:
+            d[&#34;ee&#34;] = d[&#34;ee&#34;][0]
     if type(d[&#34;ee&#34;]) is list:
         ee = Matrix(d[&#34;ee&#34;])
     elif type(d[&#34;ee&#34;]) is dict:
-        if &#34;xyzrpy&#34; in br:
-            ee = xyz_rpy_to_matrix(br[&#34;xyzrpy&#34;])
+        if &#34;xyzrpy&#34; in d[&#34;ee&#34;]:
+            ee = xyz_rpy_to_matrix(d[&#34;ee&#34;][&#34;xyzrpy&#34;])
         else:
             t = d[&#34;ee&#34;][&#34;translation&#34;] if &#34;translation&#34; in d[&#34;ee&#34;] else [0,0,0]
             if &#34;rotation&#34; in d[&#34;ee&#34;]:
                 if type(d[&#34;ee&#34;][&#34;rotation&#34;]) is dict:
-                    if &#34;Q&#34; in br[&#34;rotation&#34;]:
-                        r = quaternion_to_matrix(br[&#34;rotation&#34;][&#34;Q&#34;])
-                    elif &#34;rpy&#34; in br[&#34;rotation&#34;]:
-                        r = rpy_to_matrix(br[&#34;rotation&#34;][&#34;rpy&#34;])
-                    elif &#34;axis&#34; in br[&#34;rotation&#34;]:
+                    if &#34;Q&#34; in d[&#34;ee&#34;][&#34;rotation&#34;]:
+                        r = quaternion_to_matrix(d[&#34;ee&#34;][&#34;rotation&#34;][&#34;Q&#34;])
+                    elif &#34;rpy&#34; in d[&#34;ee&#34;][&#34;rotation&#34;]:
+                        r = rpy_to_matrix(d[&#34;ee&#34;][&#34;rotation&#34;][&#34;rpy&#34;])
+                    elif &#34;axis&#34; in d[&#34;ee&#34;][&#34;rotation&#34;]:
                         axis = d[&#34;ee&#34;][&#34;rotation&#34;][&#34;axis&#34;] if &#34;axis&#34; in d[&#34;ee&#34;][&#34;rotation&#34;] else [0,0,1]
                         angle = d[&#34;ee&#34;][&#34;rotation&#34;][&#34;angle&#34;] if &#34;angle&#34; in d[&#34;ee&#34;][&#34;rotation&#34;] else 0
                         r = SO3Exp(Matrix(axis),angle)

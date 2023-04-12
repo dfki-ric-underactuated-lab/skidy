@@ -13,12 +13,12 @@ import sympy
 from pylatex import Command, Document, NoEscape, Section
 from sympy import (Identity, Matrix, MutableDenseMatrix, cancel, ccode, 
                    factor, lambdify, nsimplify, octave_code, pi, powsimp,
-                   symbols, zeros)
+                   symbols, zeros, julia_code)
 from sympy.printing.latex import LatexPrinter
 from sympy.printing.numpy import NumPyPrinter
 from sympy.simplify.cse_main import numbered_symbols
 from sympy.simplify.fu import fu
-from sympy.utilities.codegen import codegen
+from sympy.utilities.codegen import codegen, JuliaCodeGen
 import sympy.physics.mechanics
 
 from urdf_parser_py.urdf import URDF
@@ -133,7 +133,7 @@ class _AbstractCodeGeneration():
         return all_expressions
 
     def generate_code(self, python: bool=False, C: bool=False, Matlab: bool=False, 
-                      cython: bool=False, latex: bool=False, landscape: bool=False,
+                      cython: bool=False, julia: bool=False, latex: bool=False, landscape: bool=False,
                       folder: str="./generated_code", use_global_vars: bool=True, 
                       name: str="plant", project: str="Project") -> None:
         """Generate code from generated expressions. 
@@ -151,6 +151,8 @@ class _AbstractCodeGeneration():
                 Generate Matlab/Octave code. Defaults to False.
             cython (bool, optional):
                 Generate cython code. Defaults to False.
+            julia (bool, optional):
+                Generate julia code. Defaults to False.
             latex (bool, optional):
                 Generate latex code with all equations and generate pdf from it. 
                 Defaults to False.
@@ -543,6 +545,67 @@ class _AbstractCodeGeneration():
                     f.writelines(c_definitions)
                 
             print("Done")
+
+        if julia:
+            print("Generate julia code")
+            if not os.path.exists(os.path.join(folder, "julia")):
+                os.mkdir(os.path.join(folder, "julia"))
+
+            jcg = JuliaCodeGen(project=project)
+            if use_global_vars:
+                routines = [jcg.routine(names[i],
+                                        expressions[i],
+                                        self._sort_variables(
+                                            (self.var_syms 
+                                             | self.optional_var_syms)
+                                            & expressions[i].free_symbols),
+                                        global_vars=constant_syms) 
+                            for i in range(len(expressions))]
+                
+                # save assinged parameters to beginning of julia file
+                j_definitions = []
+                
+                if not_assigned_syms:
+                    j_definitions.append("# Please assign values\n")
+                    for var in sorted([str(i) for i in not_assigned_syms]):
+                        if var == "g":
+                            j_definitions.append(f"{var} = 9.81\n")
+                        else:
+                            j_definitions.append(f"{var} = 0\n")
+                
+                for var in sorted([str(i) for i in self.assignment_dict]):
+                    val = julia_code(self.assignment_dict[symbols(var)])
+                    j_definitions.append(f"{var} = {val}\n")
+
+
+                # append cse expressions
+                for var in sorted([str(j) for j in self.subex_dict], key=lambda x: int(regex.findall("(?<=sub)\d*",x)[0])):
+                    val = julia_code(self.subex_dict[symbols(var)])
+                    j_definitions.append(f"{var} = {val}\n")
+
+                j_constans = "".join(j_definitions)
+            else:
+                routines = [jcg.routine(names[i],
+                                        expressions[i],
+                                        self._sort_variables(
+                                            expressions[i].free_symbols),
+                                        global_vars=None) 
+                            for i in range(len(expressions))]
+                j_constans = ""
+                
+            j_name, j_code = jcg.write(routines,name, header=False)[0]
+            j_code = j_constans + "\n" + j_code
+            
+            # ensure operator ^ instead of **
+            j_code = j_code.replace("**","^")
+            
+            # write code files
+            with open(os.path.join(folder, "julia", j_name), "w+") as f:
+                f.write(j_code)
+            
+            print("Done")
+
+
 
         if Matlab:
             # create folder

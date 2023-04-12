@@ -23,6 +23,7 @@ def main() -> None:
     parser.add_argument("-p", "--python", action="store_true", help="generate python code")
     parser.add_argument("-C","--C", action="store_true", help="generate C code")
     parser.add_argument("-m","--matlab", action="store_true", help="generate Matlab/Octave code")
+    parser.add_argument("-j","--julia", action="store_true", help="generate julia code")
     parser.add_argument("-l","--latex", action="store_true", help="generate LaTeX code and pdf")
     parser.add_argument("--cython", action="store_true", help="generate Cython code")
     parser.add_argument("--no-kinematics", action="store_true", help="skip generation of kinematics equations.")
@@ -88,7 +89,12 @@ def main() -> None:
         
         if args.name == "": args.name = name
         
-        if not args.python and not args.C and not args.matlab and not args.latex and not args.cython:
+        if (not args.python 
+            and not args.C 
+            and not args.matlab 
+            and not args.julia 
+            and not args.latex 
+            and not args.cython):
             raise ValueError("Please provide at least one programming language in which I should generate code.")
         
         if ext in {".yaml",".YAML","yml"}:
@@ -111,11 +117,22 @@ def main() -> None:
             raise ValueError("File extension not recognized.")
         
         if not args.no_kinematics:
-            skd.closed_form_kinematics_body_fixed(simplify=args.simplify, cse=args.cse, parallel=args.serial)
+            skd.closed_form_kinematics_body_fixed(
+                simplify=args.simplify, cse=args.cse, parallel=args.serial)
         if not args.no_dynamics:
-            skd.closed_form_inv_dyn_body_fixed(simplify=args.simplify, cse=args.cse, parallel=args.serial)
+            skd.closed_form_inv_dyn_body_fixed(
+                simplify=args.simplify, cse=args.cse, parallel=args.serial)
     
-        skd.generate_code(python=args.python, C=args.C, Matlab=args.matlab, cython=args.cython, latex=args.latex, folder=args.folder, use_global_vars=True, name=args.name, project=args.project)
+        skd.generate_code(python=args.python, 
+                          C=args.C, 
+                          Matlab=args.matlab, 
+                          cython=args.cython, 
+                          julia=args.julia, 
+                          latex=args.latex, 
+                          folder=args.folder, 
+                          use_global_vars=True, 
+                          name=args.name, 
+                          project=args.project)
 
 
 if __name__ == "__main__":

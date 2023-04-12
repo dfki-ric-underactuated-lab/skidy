@@ -41,12 +41,12 @@ import sympy
 from pylatex import Command, Document, NoEscape, Section
 from sympy import (Identity, Matrix, MutableDenseMatrix, cancel, ccode, 
                    factor, lambdify, nsimplify, octave_code, pi, powsimp,
-                   symbols, zeros)
+                   symbols, zeros, julia_code)
 from sympy.printing.latex import LatexPrinter
 from sympy.printing.numpy import NumPyPrinter
 from sympy.simplify.cse_main import numbered_symbols
 from sympy.simplify.fu import fu
-from sympy.utilities.codegen import codegen
+from sympy.utilities.codegen import codegen, JuliaCodeGen
 import sympy.physics.mechanics
 
 from urdf_parser_py.urdf import URDF
@@ -161,7 +161,7 @@ class _AbstractCodeGeneration():
         return all_expressions
 
     def generate_code(self, python: bool=False, C: bool=False, Matlab: bool=False, 
-                      cython: bool=False, latex: bool=False, landscape: bool=False,
+                      cython: bool=False, julia: bool=False, latex: bool=False, landscape: bool=False,
                       folder: str=&#34;./generated_code&#34;, use_global_vars: bool=True, 
                       name: str=&#34;plant&#34;, project: str=&#34;Project&#34;) -&gt; None:
         &#34;&#34;&#34;Generate code from generated expressions. 
@@ -179,6 +179,8 @@ class _AbstractCodeGeneration():
                 Generate Matlab/Octave code. Defaults to False.
             cython (bool, optional):
                 Generate cython code. Defaults to False.
+            julia (bool, optional):
+                Generate julia code. Defaults to False.
             latex (bool, optional):
                 Generate latex code with all equations and generate pdf from it. 
                 Defaults to False.
@@ -572,6 +574,67 @@ class _AbstractCodeGeneration():
                 
             print(&#34;Done&#34;)
 
+        if julia:
+            print(&#34;Generate julia code&#34;)
+            if not os.path.exists(os.path.join(folder, &#34;julia&#34;)):
+                os.mkdir(os.path.join(folder, &#34;julia&#34;))
+
+            jcg = JuliaCodeGen(project=project)
+            if use_global_vars:
+                routines = [jcg.routine(names[i],
+                                        expressions[i],
+                                        self._sort_variables(
+                                            (self.var_syms 
+                                             | self.optional_var_syms)
+                                            &amp; expressions[i].free_symbols),
+                                        global_vars=constant_syms) 
+                            for i in range(len(expressions))]
+                
+                # save assinged parameters to beginning of julia file
+                j_definitions = []
+                
+                if not_assigned_syms:
+                    j_definitions.append(&#34;# Please assign values\n&#34;)
+                    for var in sorted([str(i) for i in not_assigned_syms]):
+                        if var == &#34;g&#34;:
+                            j_definitions.append(f&#34;{var} = 9.81\n&#34;)
+                        else:
+                            j_definitions.append(f&#34;{var} = 0\n&#34;)
+                
+                for var in sorted([str(i) for i in self.assignment_dict]):
+                    val = julia_code(self.assignment_dict[symbols(var)])
+                    j_definitions.append(f&#34;{var} = {val}\n&#34;)
+
+
+                # append cse expressions
+                for var in sorted([str(j) for j in self.subex_dict], key=lambda x: int(regex.findall(&#34;(?&lt;=sub)\d*&#34;,x)[0])):
+                    val = julia_code(self.subex_dict[symbols(var)])
+                    j_definitions.append(f&#34;{var} = {val}\n&#34;)
+
+                j_constans = &#34;&#34;.join(j_definitions)
+            else:
+                routines = [jcg.routine(names[i],
+                                        expressions[i],
+                                        self._sort_variables(
+                                            expressions[i].free_symbols),
+                                        global_vars=None) 
+                            for i in range(len(expressions))]
+                j_constans = &#34;&#34;
+                
+            j_name, j_code = jcg.write(routines,name, header=False)[0]
+            j_code = j_constans + &#34;\n&#34; + j_code
+            
+            # ensure operator ^ instead of **
+            j_code = j_code.replace(&#34;**&#34;,&#34;^&#34;)
+            
+            # write code files
+            with open(os.path.join(folder, &#34;julia&#34;, j_name), &#34;w+&#34;) as f:
+                f.write(j_code)
+            
+            print(&#34;Done&#34;)
+
+
+
         if Matlab:
             # create folder
             if not os.path.exists(os.path.join(folder, &#34;matlab&#34;)):
@@ -672,6 +735,7 @@ class _AbstractCodeGeneration():
                 doc.packages.append(NoEscape(r&#34;\usepackage[a4paper,top=2cm,bottom=2cm,left=2.5cm,right=2.5cm,marginparwidth=1.75cm]{geometry}&#34;))
             doc.packages.append(NoEscape(r&#34;\usepackage{amsmath}&#34;))
             doc.packages.append(NoEscape(r&#34;\usepackage{graphicx}&#34;))
+            doc.packages.append(NoEscape(r&#34;\usepackage{breqn}[breakdepth={100}]&#34;))
             
             doc.preamble.append(Command(&#34;title&#34;, &#34;Equations of Motion&#34;))
             doc.preamble.append(Command(&#34;author&#34;, &#34;Author: SymbolicKinDyn&#34;))
@@ -710,15 +774,34 @@ class _AbstractCodeGeneration():
                                 (&#34;dtheta&#34;, r&#34;\\dot \\theta&#34;)
                                 ]
                 with doc.create(Section(regex.sub(&#34;_&#34;,&#34; &#34;,names[i]))):
-                    eq = LatexPrinter().doprint(expressions[i])
-                    for pat, repl in replacements:
-                        eq = regex.sub(pat, repl, eq)
-                    # doc.append(NoEscape(r&#34;\begin{footnotesize}&#34;))
-                    doc.append(NoEscape(r&#34;\[ \resizebox{\ifdim\width&gt;\columnwidth\columnwidth\else\width\fi}{!}{$%&#34;))
-                    doc.append(NoEscape(r&#34;\boldsymbol{&#34;f&#34;{letter}&#34;&#34;} = &#34;f&#34;{eq}&#34;))
-                    doc.append(NoEscape(r&#34;$} \]&#34;))
+                    maxlen = 0
+                    for row in range(expressions[i].shape[0]):
+                        length = 0
+                        for column in range(expressions[i].shape[1]):
+                             length += len(regex.sub(r&#34;(\\left|\\right|\{|\}|\\|_|\^|dot|ddot| |begin|matrix)&#34;,&#34;&#34;,str(expressions[i][row,column])))
+                        maxlen = max(maxlen, length)
+                    if maxlen &lt; 120+int(landscape)*100:
+                        eq = LatexPrinter().doprint(expressions[i])
+                        for pat, repl in replacements:
+                            eq = regex.sub(pat, repl, eq)
+                        # doc.append(NoEscape(r&#34;\begin{footnotesize}&#34;))
+                        doc.append(NoEscape(r&#34;\[ \resizebox{\ifdim\width&gt;\columnwidth\columnwidth\else\width\fi}{!}{$%&#34;))
+                        doc.append(NoEscape(r&#34;\boldsymbol{&#34;f&#34;{letter}&#34;&#34;} = &#34;f&#34;{eq}&#34;))
+                        doc.append(NoEscape(r&#34;$} \]&#34;))
+                    else:
+                        doc.append(NoEscape(r&#34;\begin{dgroup*}&#34;))
+                        for row in range(expressions[i].shape[0]):
+                            for column in range(expressions[i].shape[1]):
+                                eq = LatexPrinter().doprint(expressions[i][row,column])
+                                for pat, repl in replacements:
+                                    eq = regex.sub(pat, repl, eq)
+                                doc.append(NoEscape(r&#34;\begin{dmath*}&#34;))
+                                doc.append(NoEscape(f&#34;{letter}_&#34;+&#34;{&#34;+f&#34;{row+1}{&#39;,&#39;+str(column+1) if expressions[i].shape[1]&gt;1 else &#39;&#39;}&#34; + &#34;}&#34; + &#34; = &#34; + f&#34;{eq}&#34;))
+                                doc.append(NoEscape(r&#34;\end{dmath*}&#34;))
+                        doc.append(NoEscape(r&#34;\end{dgroup*}&#34;))
+                        
                     # doc.append(NoEscape(r&#34;\end{footnotesize}&#34;))
-                    doc.append(&#34;\n&#34;)
+                    # doc.append(&#34;\n&#34;)
             
             # save tex file and compile pdf
             doc.generate_pdf(os.path.join(folder, &#34;latex&#34;,name), clean_tex=False)

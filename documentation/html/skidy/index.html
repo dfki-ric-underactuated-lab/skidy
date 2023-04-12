@@ -443,7 +443,7 @@ W2DEE: [ddMx,ddMy,ddMz,ddFx,ddFy,ddFz]
 To start the code generation process use:
 <pre><code class="bash">python3 -m skidy [options] path/to/robot.yaml
 </code></pre>
-In the options you have to specify what kind of code (python `-p`, Matlab `-m`, C `-C`, latex `-l`) you'd like to generate and whether the equations should be simplified `-s`.
+In the options you have to specify what kind of code (python `-p`, Matlab `-m`, C `-C`, julia `-j`, cython `--cython`, latex `-l`) you'd like to generate and whether the equations should be simplified `-s`.
 Use
 <pre><code class="bash">python3 -m skidy -h
 </code></pre>
@@ -845,8 +845,8 @@ skd.generate_code(python=True, C=False, Matlab=False, latex=False,
                  folder=&quot;./generated_code&quot;, use_global_vars=True,
                  name=&quot;plant&quot;, project=&quot;Project&quot;)
 </code></pre>
-Generate Python, Matlab, C (C99) and/or LaTeX code from the generated equations.
-Note that this can take time, especially for non-simplified equations and complex robots.
+Generate Python, Matlab, C (C99), Julia, Cython and/or LaTeX code from the generated equations.
+Note that this can take some time, especially for non-simplified equations and complex robots.
 ### 2.3. URDF
 URDF files are currently only supported in combination with a python script. But there is a function to generate a template python file, which loads your URDF. In the python file it is necessary to define:
 1. the URDF path
@@ -976,7 +976,7 @@ skd.generate_code(python=True, C=False, Matlab=False, latex=False,
                  folder=&quot;./generated_code&quot;, use_global_vars=True,
                  name=&quot;plant&quot;, project=&quot;Project&quot;)
 </code></pre>
-Generate Python, Matlab, C (C99) and/or LaTeX code from the generated equations.
+Generate Python, Matlab, C (C99), Julia, Cython and/or LaTeX code from the generated equations.
 Note that this can take time, especially for non-simplified equations and complex robots.
 ## 3. Unit testing
 To run the unit tests use:
