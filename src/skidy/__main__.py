@@ -87,7 +87,7 @@ def main() -> None:
         if not os.path.exists(path) or not os.path.isfile(path):
             raise ValueError(f"{path} is no existing file.")
         
-        if args.name == "": args.name = name
+        if args.name == "": args.name = os.path.basename(name)
         
         if (not args.python 
             and not args.C 

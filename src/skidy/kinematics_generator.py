@@ -572,16 +572,21 @@ class _AbstractCodeGeneration():
                             j_definitions.append(f"{var} = 9.81\n")
                         else:
                             j_definitions.append(f"{var} = 0\n")
-                
-                for var in sorted([str(i) for i in self.assignment_dict]):
-                    val = julia_code(self.assignment_dict[symbols(var)])
-                    j_definitions.append(f"{var} = {val}\n")
+                    j_definitions.append("\n")
 
+                if self.assignment_dict:                
+                    for var in sorted([str(i) for i in self.assignment_dict]):
+                        val = julia_code(self.assignment_dict[symbols(var)])
+                        j_definitions.append(f"{var} = {val}\n")
+                    j_definitions.append("\n")
 
                 # append cse expressions
-                for var in sorted([str(j) for j in self.subex_dict], key=lambda x: int(regex.findall("(?<=sub)\d*",x)[0])):
-                    val = julia_code(self.subex_dict[symbols(var)])
-                    j_definitions.append(f"{var} = {val}\n")
+                if self.subex_dict:
+                    j_definitions.append("# subexpressions due to cse\n")
+                    for var in sorted([str(j) for j in self.subex_dict], key=lambda x: int(regex.findall("(?<=sub)\d*",x)[0])):
+                        val = julia_code(self.subex_dict[symbols(var)])
+                        j_definitions.append(f"{var} = {val}\n")
+                    j_definitions.append("\n")
 
                 j_constans = "".join(j_definitions)
             else:
@@ -594,7 +599,7 @@ class _AbstractCodeGeneration():
                 j_constans = ""
                 
             j_name, j_code = jcg.write(routines,name, header=False)[0]
-            j_code = j_constans + "\n" + j_code
+            j_code = j_constans + j_code
             
             # ensure operator ^ instead of **
             j_code = j_code.replace("**","^")
