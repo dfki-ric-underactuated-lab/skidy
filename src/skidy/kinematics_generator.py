@@ -562,7 +562,7 @@ class _AbstractCodeGeneration():
                                         global_vars=constant_syms) 
                             for i in range(len(expressions))]
                 
-                # save assinged parameters to beginning of julia file
+                # save assigned parameters to beginning of julia file
                 j_definitions = []
                 
                 if not_assigned_syms:
@@ -588,7 +588,7 @@ class _AbstractCodeGeneration():
                         j_definitions.append(f"{var} = {val}\n")
                     j_definitions.append("\n")
 
-                j_constans = "".join(j_definitions)
+                j_constants = "".join(j_definitions)
             else:
                 routines = [jcg.routine(names[i],
                                         expressions[i],
@@ -596,10 +596,10 @@ class _AbstractCodeGeneration():
                                             expressions[i].free_symbols),
                                         global_vars=None) 
                             for i in range(len(expressions))]
-                j_constans = ""
+                j_constants = ""
                 
             j_name, j_code = jcg.write(routines,name, header=False)[0]
-            j_code = j_constans + j_code
+            j_code = j_constants + j_code
             
             # ensure operator ^ instead of **
             j_code = j_code.replace("**","^")
@@ -638,7 +638,7 @@ class _AbstractCodeGeneration():
             m_class.append(f"\tmethods\n")
             
             # init function
-            # function argumens
+            # function arguments
             var_substr = ", ".join(
                     [str(not_assigned_syms[i]) 
                      for i in range(len(not_assigned_syms))] 
