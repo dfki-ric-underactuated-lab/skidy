@@ -32,6 +32,7 @@ def main() -> None:
     parser.add_argument("--serial", "--not-parallel", action="store_false", default=True, help="don't use parallel computation")
     parser.add_argument("--name", type=str, default="", help="name of class and file. Defaults to filename")
     parser.add_argument("--project", type=str, default="Project", help="project name in C header. Defaults to 'Project'.")
+    parser.add_argument("--cache", action="store_true", help="Use LRU cache for sin and cos function in generated python and cython code to speed up calculations.")
     # parser.add_argument("--yaml",action="store_true", help="enforce yaml file")
     # parser.add_argument("--json",action="store_true", help="enforce json file")
     # parser.add_argument("--urdf",action="store_true", help="enforce urdf file")
@@ -129,6 +130,7 @@ def main() -> None:
                           cython=args.cython, 
                           julia=args.julia, 
                           latex=args.latex, 
+                          cache=args.cache,
                           folder=args.folder, 
                           use_global_vars=True, 
                           name=args.name, 

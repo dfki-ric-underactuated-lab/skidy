@@ -161,7 +161,7 @@ class _AbstractCodeGeneration():
         return all_expressions
 
     def generate_code(self, python: bool=False, C: bool=False, Matlab: bool=False, 
-                      cython: bool=False, julia: bool=False, latex: bool=False, landscape: bool=False,
+                      cython: bool=False, julia: bool=False, latex: bool=False, cache = False, landscape: bool=False,
                       folder: str=&#34;./generated_code&#34;, use_global_vars: bool=True, 
                       name: str=&#34;plant&#34;, project: str=&#34;Project&#34;) -&gt; None:
         &#34;&#34;&#34;Generate code from generated expressions. 
@@ -184,6 +184,9 @@ class _AbstractCodeGeneration():
             latex (bool, optional):
                 Generate latex code with all equations and generate pdf from it. 
                 Defaults to False.
+            cache (bool, optional):
+                Cache results sin and cos function in generated python 
+                and cython code. Defaults to False.
             landscape (bool, optional):
                 Generate LaTeX document in landscape mode to fit longer equations.
                 Defaults to False.
@@ -244,7 +247,10 @@ class _AbstractCodeGeneration():
             p = NumPyPrinter()
 
             # start python file with import
-            s = [&#34;import numpy\n\n&#34;]
+            s = [&#34;import numpy&#34;]
+            if cache:
+                s.append(&#34;from functools import lru_cache&#34;)
+            s.append(&#34;\n&#34;)
             # class name
             s.append(&#34;class &#34;+regex.sub(&#34;^\w&#34;,lambda x: x.group().upper(),name)+&#34;():&#34;)
             # define __init__ function
@@ -319,6 +325,19 @@ class _AbstractCodeGeneration():
                             + p.doprint(expressions[i]))
                 s.append(&#34;        return &#34; + names[i])
 
+            if cache:
+                s = list(map(lambda x: x.replace(&#34;numpy.sin&#34;, &#34;cached_sin&#34;), s))
+                s = list(map(lambda x: x.replace(&#34;numpy.cos&#34;, &#34;cached_cos&#34;), s))
+                
+                s.append(&#34;&#34;)
+                s.append(&#34;@lru_cache(maxsize=128)&#34;)
+                s.append(&#34;def cached_sin(x: float) -&gt; float:&#34;)
+                s.append(&#34;    return numpy.sin(x)&#34;)
+                s.append(&#34;&#34;)
+                s.append(&#34;@lru_cache(maxsize=128)&#34;)
+                s.append(&#34;def cached_cos(x: float) -&gt; float:&#34;)
+                s.append(&#34;    return numpy.cos(x)&#34;)
+                
             # replace numpy with np for better readability
             s = list(map(lambda x: x.replace(&#34;numpy.&#34;, &#34;np.&#34;), s))
             s[0] = &#34;import numpy as np\n\n&#34;
@@ -341,14 +360,19 @@ class _AbstractCodeGeneration():
 
             # start python file with import
             s = [&#34;import numpy&#34;]
-            s.append(&#34;cimport numpy\n\n&#34;)
-            
+            s.append(&#34;cimport numpy\n&#34;)
+            s.append(&#34;cimport cython\n&#34;)
+            if cache:
+                s.append(&#34;from functools import lru_cache\n&#34;)
+            s.append(&#34;&#34;)
             s.append(&#34;numpy.import_array()&#34;)
-            s.append(&#34;DTYPE = numpy.float64&#34;)
-            s.append(&#34;ctypedef numpy.float64_t DTYPE_t&#34;)
+            # s.append(&#34;DTYPE = numpy.float64&#34;)
+            # s.append(&#34;ctypedef numpy.float64_t DTYPE_t&#34;)
             
             s.append(&#34;\n&#34;)
             # class name
+            s.append(&#34;@cython.boundscheck(False)&#34;)
+            s.append(&#34;@cython.wraparound(False)&#34;)
             s.append(&#34;cdef class &#34;+regex.sub(&#34;^\w&#34;,lambda x: x.group().upper(),name)+&#34;():&#34;)
             s.append(&#34;    cdef public double %s\n&#34;%(
                 &#34;, &#34;.join(
@@ -412,8 +436,12 @@ class _AbstractCodeGeneration():
                 const_syms = self._sort_variables(
                     set(constant_syms).intersection(
                         expressions[i].free_symbols))
+                s.append(&#34;&#34;) # empty line
+                s.append(&#34;    @cython.boundscheck(False)&#34;)
+                s.append(&#34;    @cython.wraparound(False)&#34;)
                 if len(var_syms) &gt; 0 or len(optional_var_syms) &gt; 0:
-                    s.append(f&#34;\n    cpdef &#34;+names[i]+&#34;(self, %s):&#34; % (
+                    # s.append(f&#34;    cpdef double[:,::1] &#34;+names[i]+&#34;(self, %s):&#34; % (
+                    s.append(f&#34;    cpdef numpy.ndarray[double, ndim={len(expressions[i].shape)}] &#34;+names[i]+&#34;(self, %s):&#34; % (
                     # s.append(f&#34;\n    cpdef np.ndarray[DTYPE_t,ndim={len(expressions[i].shape)}] &#34;+names[i]+&#34;(self, %s):&#34; % (
                         &#34;, &#34;.join([&#34;double &#34;+str(var_syms[i]) 
                                    for i in range(len(var_syms))]
@@ -421,34 +449,52 @@ class _AbstractCodeGeneration():
                                      for i in range(len(optional_var_syms))])))
 
                 else:
-                    s.append(&#34;\n    cpdef &#34;+names[i]+&#34;(self):&#34;)
+                    s.append(f&#34;    cpdef numpy.ndarray[double, ndim={len(expressions[i].shape)}] &#34;+names[i]+&#34;(self):&#34;)
                 
-                s.append(f&#34;        cdef numpy.ndarray[DTYPE_t,ndim={len(expressions[i].shape)}] &#34;
-                         + names[i])
-                if const_syms:
-                    ex_string = regex.sub(f&#34;(?&lt;=\W|^)(?={&#39;|&#39;.join([str(i) for i in const_syms])}(\W|\Z))&#34;,&#34;self.&#34;,p.doprint(expressions[i]))
-                    # replace integer with floats
-                    ex_string = regex.sub(&#34;(?&lt;=(\W|^)(?&lt;!\.)\d+)(?!\.)(?=\W|\Z)&#34;,&#34;.0&#34;, ex_string) 
-                    s.append(&#34;        &#34;
-                            + names[i] 
-                            + &#34; = &#34; 
-                            + ex_string)
-                            #  + regex.sub(&#34;(?&lt;=((?&lt;=[^\.])\W)\d+)(?=\W)(?!\.)&#34;,&#34;.0&#34;,regex.sub(f&#34;(?&lt;=\W|^)(?={&#39;|&#39;.join([str(i) for i in const_syms])}(\W|\Z))&#34;,&#34;self.&#34;,p.doprint(expressions[i]))))
-                else:
-                    ex_string = p.doprint(expressions[i])
-                    # replace integer with floats
-                    ex_string = regex.sub(&#34;(?&lt;=(\W|^)(?&lt;!\.)\d+)(?!\.)(?=\W|\Z)&#34;,&#34;.0&#34;, ex_string) 
-                    s.append(&#34;        &#34;
-                            + names[i] 
-                            + &#34; = &#34; 
-                            + ex_string)
-                    
+                # s.append(f&#34;        cdef double[:,::1] {names[i]} = numpy.empty({expressions[i].shape}, dtype=double)&#34;)
+                s.append(f&#34;        cdef numpy.ndarray[double, ndim={len(expressions[i].shape)}] {names[i]} = numpy.empty({expressions[i].shape}, dtype=np.double)&#34;)
+                for j in range(expressions[i].shape[0]):
+                    for k in range(expressions[i].shape[1]):
+                        if const_syms:
+                            # add self before const_syms
+                            ex_string = regex.sub(f&#34;(?&lt;=\W|^)(?={&#39;|&#39;.join([str(i) for i in const_syms])}(\W|\Z))&#34;,&#34;self.&#34;,p.doprint(expressions[i][j,k]))
+                            # replace integer with floats
+                            ex_string = regex.sub(&#34;(?&lt;=(\W|^)(?&lt;!\.)\d+)(?!\.)(?=\W|\Z)&#34;,&#34;.0&#34;, ex_string) 
+                            s.append(&#34;        &#34;
+                                    + names[i]
+                                    + f&#34;[{j}, {k}]&#34; 
+                                    + &#34; = &#34; 
+                                    + ex_string)
+                                    #  + regex.sub(&#34;(?&lt;=((?&lt;=[^\.])\W)\d+)(?=\W)(?!\.)&#34;,&#34;.0&#34;,regex.sub(f&#34;(?&lt;=\W|^)(?={&#39;|&#39;.join([str(i) for i in const_syms])}(\W|\Z))&#34;,&#34;self.&#34;,p.doprint(expressions[i]))))
+                        else:
+                            ex_string = p.doprint(expressions[i])
+                            # replace integer with floats
+                            ex_string = regex.sub(&#34;(?&lt;=(\W|^)(?&lt;!\.)\d+)(?!\.)(?=\W|\Z)&#34;,&#34;.0&#34;, ex_string) 
+                            s.append(&#34;        &#34;
+                                    + names[i] 
+                                    + f&#34;[{j}, {k}]&#34; 
+                                    + &#34; = &#34; 
+                                    + ex_string)
+                            
                 s.append(&#34;        return &#34; + names[i])
 
+            if cache:
+                s = list(map(lambda x: x.replace(&#34;numpy.sin&#34;, &#34;cached_sin&#34;), s))
+                s = list(map(lambda x: x.replace(&#34;numpy.cos&#34;, &#34;cached_cos&#34;), s))
+                
+                s.append(&#34;&#34;)
+                s.append(&#34;@lru_cache(maxsize=128)&#34;)
+                s.append(&#34;def cached_sin(double x):&#34;)
+                s.append(&#34;    return numpy.sin(x)&#34;)
+                s.append(&#34;&#34;)
+                s.append(&#34;@lru_cache(maxsize=128)&#34;)
+                s.append(&#34;def cached_cos(double x):&#34;)
+                s.append(&#34;    return numpy.cos(x)&#34;)
+            
             # replace numpy with np for better readability
             s = list(map(lambda x: x.replace(&#34;numpy.&#34;, &#34;np.&#34;), s))
             s[0] = &#34;import numpy as np&#34;
-            s[1] = &#34;cimport numpy as np\n\n&#34;
+            s[1] = &#34;cimport numpy as np\n&#34;
 
             # join list to string
             s = &#34;\n&#34;.join(s)
@@ -590,7 +636,7 @@ class _AbstractCodeGeneration():
                                         global_vars=constant_syms) 
                             for i in range(len(expressions))]
                 
-                # save assinged parameters to beginning of julia file
+                # save assigned parameters to beginning of julia file
                 j_definitions = []
                 
                 if not_assigned_syms:
@@ -600,18 +646,23 @@ class _AbstractCodeGeneration():
                             j_definitions.append(f&#34;{var} = 9.81\n&#34;)
                         else:
                             j_definitions.append(f&#34;{var} = 0\n&#34;)
-                
-                for var in sorted([str(i) for i in self.assignment_dict]):
-                    val = julia_code(self.assignment_dict[symbols(var)])
-                    j_definitions.append(f&#34;{var} = {val}\n&#34;)
+                    j_definitions.append(&#34;\n&#34;)
 
+                if self.assignment_dict:                
+                    for var in sorted([str(i) for i in self.assignment_dict]):
+                        val = julia_code(self.assignment_dict[symbols(var)])
+                        j_definitions.append(f&#34;{var} = {val}\n&#34;)
+                    j_definitions.append(&#34;\n&#34;)
 
                 # append cse expressions
-                for var in sorted([str(j) for j in self.subex_dict], key=lambda x: int(regex.findall(&#34;(?&lt;=sub)\d*&#34;,x)[0])):
-                    val = julia_code(self.subex_dict[symbols(var)])
-                    j_definitions.append(f&#34;{var} = {val}\n&#34;)
+                if self.subex_dict:
+                    j_definitions.append(&#34;# subexpressions due to cse\n&#34;)
+                    for var in sorted([str(j) for j in self.subex_dict], key=lambda x: int(regex.findall(&#34;(?&lt;=sub)\d*&#34;,x)[0])):
+                        val = julia_code(self.subex_dict[symbols(var)])
+                        j_definitions.append(f&#34;{var} = {val}\n&#34;)
+                    j_definitions.append(&#34;\n&#34;)
 
-                j_constans = &#34;&#34;.join(j_definitions)
+                j_constants = &#34;&#34;.join(j_definitions)
             else:
                 routines = [jcg.routine(names[i],
                                         expressions[i],
@@ -619,10 +670,10 @@ class _AbstractCodeGeneration():
                                             expressions[i].free_symbols),
                                         global_vars=None) 
                             for i in range(len(expressions))]
-                j_constans = &#34;&#34;
+                j_constants = &#34;&#34;
                 
             j_name, j_code = jcg.write(routines,name, header=False)[0]
-            j_code = j_constans + &#34;\n&#34; + j_code
+            j_code = j_constants + j_code
             
             # ensure operator ^ instead of **
             j_code = j_code.replace(&#34;**&#34;,&#34;^&#34;)
@@ -661,7 +712,7 @@ class _AbstractCodeGeneration():
             m_class.append(f&#34;\tmethods\n&#34;)
             
             # init function
-            # function argumens
+            # function arguments
             var_substr = &#34;, &#34;.join(
                     [str(not_assigned_syms[i]) 
                      for i in range(len(not_assigned_syms))] 

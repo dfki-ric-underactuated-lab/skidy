@@ -133,7 +133,7 @@ class _AbstractCodeGeneration():
         return all_expressions
 
     def generate_code(self, python: bool=False, C: bool=False, Matlab: bool=False, 
-                      cython: bool=False, julia: bool=False, latex: bool=False, landscape: bool=False,
+                      cython: bool=False, julia: bool=False, latex: bool=False, cache = False, landscape: bool=False,
                       folder: str="./generated_code", use_global_vars: bool=True, 
                       name: str="plant", project: str="Project") -> None:
         """Generate code from generated expressions. 
@@ -156,6 +156,9 @@ class _AbstractCodeGeneration():
             latex (bool, optional):
                 Generate latex code with all equations and generate pdf from it. 
                 Defaults to False.
+            cache (bool, optional):
+                Cache results sin and cos function in generated python 
+                and cython code. Defaults to False.
             landscape (bool, optional):
                 Generate LaTeX document in landscape mode to fit longer equations.
                 Defaults to False.
@@ -216,7 +219,10 @@ class _AbstractCodeGeneration():
             p = NumPyPrinter()
 
             # start python file with import
-            s = ["import numpy\n\n"]
+            s = ["import numpy"]
+            if cache:
+                s.append("from functools import lru_cache")
+            s.append("\n")
             # class name
             s.append("class "+regex.sub("^\w",lambda x: x.group().upper(),name)+"():")
             # define __init__ function
@@ -291,6 +297,19 @@ class _AbstractCodeGeneration():
                             + p.doprint(expressions[i]))
                 s.append("        return " + names[i])
 
+            if cache:
+                s = list(map(lambda x: x.replace("numpy.sin", "cached_sin"), s))
+                s = list(map(lambda x: x.replace("numpy.cos", "cached_cos"), s))
+                
+                s.append("")
+                s.append("@lru_cache(maxsize=128)")
+                s.append("def cached_sin(x: float) -> float:")
+                s.append("    return numpy.sin(x)")
+                s.append("")
+                s.append("@lru_cache(maxsize=128)")
+                s.append("def cached_cos(x: float) -> float:")
+                s.append("    return numpy.cos(x)")
+                
             # replace numpy with np for better readability
             s = list(map(lambda x: x.replace("numpy.", "np."), s))
             s[0] = "import numpy as np\n\n"
@@ -314,8 +333,10 @@ class _AbstractCodeGeneration():
             # start python file with import
             s = ["import numpy"]
             s.append("cimport numpy\n")
-            s.append("cimport cython\n\n")
-            
+            s.append("cimport cython\n")
+            if cache:
+                s.append("from functools import lru_cache\n")
+            s.append("")
             s.append("numpy.import_array()")
             # s.append("DTYPE = numpy.float64")
             # s.append("ctypedef numpy.float64_t DTYPE_t")
@@ -429,6 +450,19 @@ class _AbstractCodeGeneration():
                             
                 s.append("        return " + names[i])
 
+            if cache:
+                s = list(map(lambda x: x.replace("numpy.sin", "cached_sin"), s))
+                s = list(map(lambda x: x.replace("numpy.cos", "cached_cos"), s))
+                
+                s.append("")
+                s.append("@lru_cache(maxsize=128)")
+                s.append("def cached_sin(double x):")
+                s.append("    return numpy.sin(x)")
+                s.append("")
+                s.append("@lru_cache(maxsize=128)")
+                s.append("def cached_cos(double x):")
+                s.append("    return numpy.cos(x)")
+            
             # replace numpy with np for better readability
             s = list(map(lambda x: x.replace("numpy.", "np."), s))
             s[0] = "import numpy as np"
