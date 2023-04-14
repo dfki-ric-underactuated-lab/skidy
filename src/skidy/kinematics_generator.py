@@ -133,7 +133,8 @@ class _AbstractCodeGeneration():
         return all_expressions
 
     def generate_code(self, python: bool=False, C: bool=False, Matlab: bool=False, 
-                      cython: bool=False, julia: bool=False, latex: bool=False, cache = False, landscape: bool=False,
+                      cython: bool=False, julia: bool=False, latex: bool=False, 
+                      cache: bool=False, landscape: bool=False,
                       folder: str="./generated_code", use_global_vars: bool=True, 
                       name: str="plant", project: str="Project") -> None:
         """Generate code from generated expressions. 
