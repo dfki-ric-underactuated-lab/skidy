@@ -313,14 +313,17 @@ class _AbstractCodeGeneration():
 
             # start python file with import
             s = ["import numpy"]
-            s.append("cimport numpy\n\n")
+            s.append("cimport numpy\n")
+            s.append("cimport cython\n\n")
             
             s.append("numpy.import_array()")
-            s.append("DTYPE = numpy.float64")
-            s.append("ctypedef numpy.float64_t DTYPE_t")
+            # s.append("DTYPE = numpy.float64")
+            # s.append("ctypedef numpy.float64_t DTYPE_t")
             
             s.append("\n")
             # class name
+            s.append("@cython.boundscheck(False)")
+            s.append("@cython.wraparound(False)")
             s.append("cdef class "+regex.sub("^\w",lambda x: x.group().upper(),name)+"():")
             s.append("    cdef public double %s\n"%(
                 ", ".join(
@@ -384,8 +387,12 @@ class _AbstractCodeGeneration():
                 const_syms = self._sort_variables(
                     set(constant_syms).intersection(
                         expressions[i].free_symbols))
+                s.append("") # empty line
+                s.append("    @cython.boundscheck(False)")
+                s.append("    @cython.wraparound(False)")
                 if len(var_syms) > 0 or len(optional_var_syms) > 0:
-                    s.append(f"\n    cpdef "+names[i]+"(self, %s):" % (
+                    # s.append(f"    cpdef double[:,::1] "+names[i]+"(self, %s):" % (
+                    s.append(f"    cpdef numpy.ndarray[double, ndim={len(expressions[i].shape)}] "+names[i]+"(self, %s):" % (
                     # s.append(f"\n    cpdef np.ndarray[DTYPE_t,ndim={len(expressions[i].shape)}] "+names[i]+"(self, %s):" % (
                         ", ".join(["double "+str(var_syms[i]) 
                                    for i in range(len(var_syms))]
@@ -393,34 +400,39 @@ class _AbstractCodeGeneration():
                                      for i in range(len(optional_var_syms))])))
 
                 else:
-                    s.append("\n    cpdef "+names[i]+"(self):")
+                    s.append(f"    cpdef numpy.ndarray[double, ndim={len(expressions[i].shape)}] "+names[i]+"(self):")
                 
-                s.append(f"        cdef numpy.ndarray[DTYPE_t,ndim={len(expressions[i].shape)}] "
-                         + names[i])
-                if const_syms:
-                    ex_string = regex.sub(f"(?<=\W|^)(?={'|'.join([str(i) for i in const_syms])}(\W|\Z))","self.",p.doprint(expressions[i]))
-                    # replace integer with floats
-                    ex_string = regex.sub("(?<=(\W|^)(?<!\.)\d+)(?!\.)(?=\W|\Z)",".0", ex_string) 
-                    s.append("        "
-                            + names[i] 
-                            + " = " 
-                            + ex_string)
-                            #  + regex.sub("(?<=((?<=[^\.])\W)\d+)(?=\W)(?!\.)",".0",regex.sub(f"(?<=\W|^)(?={'|'.join([str(i) for i in const_syms])}(\W|\Z))","self.",p.doprint(expressions[i]))))
-                else:
-                    ex_string = p.doprint(expressions[i])
-                    # replace integer with floats
-                    ex_string = regex.sub("(?<=(\W|^)(?<!\.)\d+)(?!\.)(?=\W|\Z)",".0", ex_string) 
-                    s.append("        "
-                            + names[i] 
-                            + " = " 
-                            + ex_string)
-                    
+                # s.append(f"        cdef double[:,::1] {names[i]} = numpy.empty({expressions[i].shape}, dtype=double)")
+                s.append(f"        cdef numpy.ndarray[double, ndim={len(expressions[i].shape)}] {names[i]} = numpy.empty({expressions[i].shape}, dtype=np.double)")
+                for j in range(expressions[i].shape[0]):
+                    for k in range(expressions[i].shape[1]):
+                        if const_syms:
+                            # add self before const_syms
+                            ex_string = regex.sub(f"(?<=\W|^)(?={'|'.join([str(i) for i in const_syms])}(\W|\Z))","self.",p.doprint(expressions[i][j,k]))
+                            # replace integer with floats
+                            ex_string = regex.sub("(?<=(\W|^)(?<!\.)\d+)(?!\.)(?=\W|\Z)",".0", ex_string) 
+                            s.append("        "
+                                    + names[i]
+                                    + f"[{j}, {k}]" 
+                                    + " = " 
+                                    + ex_string)
+                                    #  + regex.sub("(?<=((?<=[^\.])\W)\d+)(?=\W)(?!\.)",".0",regex.sub(f"(?<=\W|^)(?={'|'.join([str(i) for i in const_syms])}(\W|\Z))","self.",p.doprint(expressions[i]))))
+                        else:
+                            ex_string = p.doprint(expressions[i])
+                            # replace integer with floats
+                            ex_string = regex.sub("(?<=(\W|^)(?<!\.)\d+)(?!\.)(?=\W|\Z)",".0", ex_string) 
+                            s.append("        "
+                                    + names[i] 
+                                    + f"[{j}, {k}]" 
+                                    + " = " 
+                                    + ex_string)
+                            
                 s.append("        return " + names[i])
 
             # replace numpy with np for better readability
             s = list(map(lambda x: x.replace("numpy.", "np."), s))
             s[0] = "import numpy as np"
-            s[1] = "cimport numpy as np\n\n"
+            s[1] = "cimport numpy as np\n"
 
             # join list to string
             s = "\n".join(s)
