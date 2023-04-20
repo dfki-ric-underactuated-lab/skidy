@@ -102,7 +102,7 @@ class abstractFKinTest():
     def testfkin(self):
         self.assertEqual(
             simplify(
-                self.skd.fkin
+                (self.skd.fkin if type(self.skd.fkin) is not list else self.skd.fkin[0])
                 - Matrix([[cos(self.q1+self.q2), 
                         -sin(self.q1+self.q2),
                         0,
@@ -140,7 +140,7 @@ class abstractFKinTest():
     def testJb_ee(self):
         self.assertEqual(
             simplify(
-                self.skd.Jb_ee
+                (self.skd.Jb_ee if type(self.skd.Jb_ee) is not list else self.skd.Jb_ee[0]) 
                 -Matrix([[0,0],
                         [0,0],
                         [1,1],
@@ -154,7 +154,7 @@ class abstractFKinTest():
     def testJh_ee(self):
         self.assertEqual(
             simplify(
-                self.skd.Jh_ee
+                (self.skd.Jh_ee if type(self.skd.Jh_ee) is not list else self.skd.Jh_ee[0])
                 - Matrix([[0,0],
                         [0,0],
                         [1,1],
@@ -170,7 +170,7 @@ class abstractFKinTest():
     def testJb(self):
         self.assertEqual(
             simplify(
-                self.skd.Jb
+                (self.skd.Jb if type(self.skd.Jb) is not list else self.skd.Jb[0])
                 -Matrix([[0,0],
                         [0,0],
                         [1,1],
@@ -184,7 +184,7 @@ class abstractFKinTest():
     def testJh(self):
         self.assertEqual(
             simplify(
-                self.skd.Jh
+                (self.skd.Jh if type(self.skd.Jh) is not list else self.skd.Jh[0])
                 - Matrix([[0,0],
                         [0,0],
                         [1,1],
@@ -218,7 +218,7 @@ class abstractFKinTest():
     def testVbd_BFn(self):
         self.assertEqual(
             simplify(
-                self.skd.Vbd_BFn 
+                (self.skd.Vbd_BFn if type(self.skd.Vbd_BFn) is not list else self.skd.Vbd_BFn[0])
                 -Matrix([[0],
                         [0],
                         [self.ddq1+self.ddq2],
@@ -232,81 +232,91 @@ class abstractFKinTest():
     
     def testVhd_BFn(self):
         self.assertEqual(
-            simplify(self.skd.Vhd_BFn -
-            Matrix([[0],
-                    [0],
-                    [self.ddq1+self.ddq2],
-                    [-self.L1*(cos(self.q1)*self.dq1**2 + self.ddq1*sin(self.q1))],
-                    [-self.L1*(sin(self.q1)*self.dq1**2 - self.ddq1*cos(self.q1))],
-                    [0]])),
+            simplify(
+                (self.skd.Vhd_BFn if type(self.skd.Vhd_BFn) is not list else self.skd.Vhd_BFn[0])
+                -Matrix([[0],
+                         [0],
+                         [self.ddq1+self.ddq2],
+                         [-self.L1*(cos(self.q1)*self.dq1**2 + self.ddq1*sin(self.q1))],
+                         [-self.L1*(sin(self.q1)*self.dq1**2 - self.ddq1*cos(self.q1))],
+                         [0]])
+                ),
             zeros(6,1)
         )
     
     def testVb_ee(self):
         self.assertEqual(
-            simplify(self.skd.Vb_ee -
-            Matrix([[0],
-                    [0],
-                    [self.dq1+self.dq2],
-                    [self.L1*self.dq1*sin(self.q2)],
-                    [self.L2*(self.dq1+self.dq2) + self.L1*self.dq1*cos(self.q2)],
-                    [0]])),
+            simplify(
+                (self.skd.Vb_ee if type(self.skd.Vb_ee) is not list else self.skd.Vb_ee[0])
+                -Matrix([[0],
+                         [0],
+                         [self.dq1+self.dq2],
+                         [self.L1*self.dq1*sin(self.q2)],
+                         [self.L2*(self.dq1+self.dq2) + self.L1*self.dq1*cos(self.q2)],
+                         [0]])
+            ),
             zeros(6,1)
         )
     
     
     def testVh_ee(self):
         self.assertEqual(
-            simplify(self.skd.Vh_ee -
-            Matrix([[0],
-                    [0],
-                    [self.dq1+self.dq2],
-                    [- self.L2*self.dq1*sin(self.q1 + self.q2) 
-                     - self.L2*self.dq2*sin(self.q1 + self.q2) 
-                     - self.L1*self.dq1*sin(self.q1)],
-                    [self.L2*self.dq1*cos(self.q1 + self.q2) 
-                     + self.L2*self.dq2*cos(self.q1 + self.q2) 
-                     + self.L1*self.dq1*cos(self.q1)],
-                    [0]])),
+            simplify(
+                (self.skd.Vh_ee if type(self.skd.Vh_ee) is not list else self.skd.Vh_ee[0])
+                -Matrix([[0],
+                         [0],
+                         [self.dq1+self.dq2],
+                         [- self.L2*self.dq1*sin(self.q1 + self.q2) 
+                          - self.L2*self.dq2*sin(self.q1 + self.q2) 
+                          - self.L1*self.dq1*sin(self.q1)],
+                         [self.L2*self.dq1*cos(self.q1 + self.q2) 
+                          + self.L2*self.dq2*cos(self.q1 + self.q2) 
+                          + self.L1*self.dq1*cos(self.q1)],
+                         [0]])
+            ),
             zeros(6,1)
         )
     
     
     def testVbd_ee(self):
         self.assertEqual(
-            simplify(self.skd.Vbd_ee-
-            Matrix([[0],
-                    [0],
-                    [self.ddq1+self.ddq2],
-                    [self.L1*(self.ddq1*sin(self.q2) + self.dq1*self.dq2*cos(self.q2))],
-                    [self.L1*(self.ddq1*cos(self.q2) - self.dq1*self.dq2*sin(self.q2))
-                     +self.L2*(self.ddq1+self.ddq2)],
-                    [0]])),
+            simplify(
+                (self.skd.Vbd_ee if type(self.skd.Vbd_ee) is not list else self.skd.Vbd_ee[0])
+                -Matrix([[0],
+                         [0],
+                         [self.ddq1+self.ddq2],
+                         [self.L1*(self.ddq1*sin(self.q2) + self.dq1*self.dq2*cos(self.q2))],
+                         [self.L1*(self.ddq1*cos(self.q2) - self.dq1*self.dq2*sin(self.q2))
+                          +self.L2*(self.ddq1+self.ddq2)],
+                         [0]])
+            ),
             zeros(6,1)
         )
         
         
     def testVhd_ee(self):
         self.assertEqual(
-            simplify(simplify(self.skd.Vhd_ee)-
-            Matrix([[0],
-                    [0],
-                    [self.ddq1+self.ddq2],
-                    [- self.L2*self.dq1**2*cos(self.q1 + self.q2) 
-                     - self.L2*self.dq2**2*cos(self.q1 + self.q2) 
-                     - self.L1*self.dq1**2*cos(self.q1) 
-                     - self.L2*self.ddq1*sin(self.q1 + self.q2) 
-                     - self.L2*self.ddq2*sin(self.q1 + self.q2) 
-                     - self.L1*self.ddq1*sin(self.q1) 
-                     - 2*self.L2*self.dq1*self.dq2*cos(self.q1 + self.q2)],
-                    [self.L2*self.ddq1*cos(self.q1 + self.q2) 
-                     - self.L2*self.dq2**2*sin(self.q1 + self.q2) 
-                     - self.L1*self.dq1**2*sin(self.q1) 
-                     - self.L2*self.dq1**2*sin(self.q1 + self.q2) 
-                     + self.L2*self.ddq2*cos(self.q1 + self.q2) 
-                     + self.L1*self.ddq1*cos(self.q1) 
-                     - 2*self.L2*self.dq1*self.dq2*sin(self.q1 + self.q2)],
-                    [0]])),
+            simplify(
+                simplify(self.skd.Vhd_ee if type(self.skd.Vhd_ee) is not list else self.skd.Vhd_ee[0])
+                -Matrix([[0],
+                         [0],
+                         [self.ddq1+self.ddq2],
+                         [- self.L2*self.dq1**2*cos(self.q1 + self.q2) 
+                          - self.L2*self.dq2**2*cos(self.q1 + self.q2) 
+                          - self.L1*self.dq1**2*cos(self.q1) 
+                          - self.L2*self.ddq1*sin(self.q1 + self.q2) 
+                          - self.L2*self.ddq2*sin(self.q1 + self.q2) 
+                          - self.L1*self.ddq1*sin(self.q1) 
+                          - 2*self.L2*self.dq1*self.dq2*cos(self.q1 + self.q2)],
+                         [self.L2*self.ddq1*cos(self.q1 + self.q2) 
+                          - self.L2*self.dq2**2*sin(self.q1 + self.q2) 
+                          - self.L1*self.dq1**2*sin(self.q1) 
+                          - self.L2*self.dq1**2*sin(self.q1 + self.q2) 
+                          + self.L2*self.ddq2*cos(self.q1 + self.q2) 
+                          + self.L1*self.ddq1*cos(self.q1) 
+                          - 2*self.L2*self.dq1*self.dq2*sin(self.q1 + self.q2)],
+                         [0]])
+            ),
             zeros(6,1)
         )
         
@@ -315,7 +325,7 @@ class abstractFKinTest():
     def testJb_ee_dot(self):
         self.assertEqual(
             simplify(
-                self.skd.Jb_ee_dot
+                (self.skd.Jb_ee_dot if type(self.skd.Jb_ee_dot) is not list else self.skd.Jb_ee_dot[0])
                 -Matrix([[0,0],
                         [0,0],
                         [0,0],
@@ -327,39 +337,43 @@ class abstractFKinTest():
         
     def testJh_ee_dot(self):
         self.assertEqual(
-            simplify(self.skd.Jh_ee_dot-
-            Matrix([[0,0],
-                    [0,0],
-                    [0,0],
-                    [-self.L2*self.dq1*cos(self.q1 + self.q2) 
-                     - self.L2*self.dq2*cos(self.q1 + self.q2) 
-                     - self.L1*self.dq1*cos(self.q1), 
-                     -self.L2*cos(self.q1 + self.q2)*(self.dq1 + self.dq2)],
-                    [-self.L2*self.dq1*sin(self.q1 + self.q2) 
-                     - self.L2*self.dq2*sin(self.q1 + self.q2) 
-                     - self.L1*self.dq1*sin(self.q1), 
-                     -self.L2*sin(self.q1 + self.q2)*(self.dq1 + self.dq2)],
-                    [0,0]])),
+            simplify(
+                (self.skd.Jh_ee_dot if type(self.skd.Jh_ee_dot) is not list else self.skd.Jh_ee_dot[0])
+                -Matrix([[0,0],
+                         [0,0],
+                         [0,0],
+                         [-self.L2*self.dq1*cos(self.q1 + self.q2) 
+                          - self.L2*self.dq2*cos(self.q1 + self.q2) 
+                          - self.L1*self.dq1*cos(self.q1), 
+                          -self.L2*cos(self.q1 + self.q2)*(self.dq1 + self.dq2)],
+                         [-self.L2*self.dq1*sin(self.q1 + self.q2) 
+                          - self.L2*self.dq2*sin(self.q1 + self.q2) 
+                          - self.L1*self.dq1*sin(self.q1), 
+                          -self.L2*sin(self.q1 + self.q2)*(self.dq1 + self.dq2)],
+                         [0,0]])
+            ),
             zeros(6,2)
         )
     
         
     def testJh_dot(self):
         self.assertEqual(
-            simplify(self.skd.Jh_dot-
-            Matrix([[0,0],
-                    [0,0],
-                    [0,0],
-                    [-self.L1*self.dq1*cos(self.q1),0],
-                    [-self.L1*self.dq1*sin(self.q1),0],
-                    [0,0]])),
+            simplify(
+                (self.skd.Jh_dot if type(self.skd.Jh_dot) is not list else self.skd.Jh_dot[0])
+                -Matrix([[0,0],
+                         [0,0],
+                         [0,0],
+                         [-self.L1*self.dq1*cos(self.q1),0],
+                         [-self.L1*self.dq1*sin(self.q1),0],
+                         [0,0]])
+            ),
             zeros(6,2)
         )
     
     def testJb_dot(self):
         self.assertEqual(
             simplify(
-                self.skd.Jb_dot
+                (self.skd.Jb_dot if type(self.skd.Jb_dot) is not list else self.skd.Jb_dot[0])
                 -Matrix([[0,0],
                         [0,0],
                         [0,0],
