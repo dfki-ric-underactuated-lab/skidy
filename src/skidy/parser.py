@@ -94,14 +94,15 @@ def dict_parser(d: dict) -> SymbolicKinDyn:
     parent = d["parent"] if "parent" in d else []
     child = d["child"] if "child" in d else []
     support = d["support"] if "support" in d else []
+    ee_parent = d["ee_parent"] if "ee_parent" in d else None
+    
     try:
         gravity = d["gravity"] if "gravity" in d else d["gravity_vector"]
     except KeyError:
         gravity = None
     
+    assert("joint_screw_coord" in d)
     joint_screw_coord = []
-    if "joint_screw_coord" not in d:
-        raise KeyError("joint_screw_coord not found.")
     for js in d["joint_screw_coord"]:
         if type(js) is list and len(js) == 6:
             joint_screw_coord.append(Matrix(js))
@@ -119,10 +120,10 @@ def dict_parser(d: dict) -> SymbolicKinDyn:
                 raise ValueError(f"joint type {js['type']} not supported.")
         else:
             raise ValueError("joint screw coordinates corrupted.") 
+
+    assert("body_ref_config" in d)
     
     body_ref_config = []
-    if "body_ref_config" not in d:
-        raise KeyError("body_ref_config not found")
     for br in d["body_ref_config"]:
         if type(br) is list:
             body_ref_config.append(Matrix(br))
@@ -147,14 +148,12 @@ def dict_parser(d: dict) -> SymbolicKinDyn:
                     r = Matrix(Identity(3))
                 body_ref_config.append(transformation_matrix(r,t))
     
-    if "ee" not in d:
-        raise KeyError("ee not found")
+    assert("ee" in d)
     
-    # if leading - is used in ee yaml we have a list we dont want. 
-    if type(d["ee"]) is list and len(d["ee"]) == 1:
-            d["ee"] = d["ee"][0]
-    if type(d["ee"]) is list:
+    # transformation matrix directly in ee
+    if type(d["ee"]) is list and type(d["ee"][0]) is list and type(d["ee"][0][0]) is not list:
         ee = Matrix(d["ee"])
+    # dict in directly in ee
     elif type(d["ee"]) is dict:
         if "xyzrpy" in d["ee"]:
             ee = xyz_rpy_to_matrix(d["ee"]["xyzrpy"])
@@ -175,6 +174,32 @@ def dict_parser(d: dict) -> SymbolicKinDyn:
             else:
                 r = Matrix(Identity(3))
             ee = transformation_matrix(r,t)
+    # list of ee
+    elif type(d["ee"]) is list:
+        ee = []
+        for eei in d["ee"]:
+            if type(eei) is list:
+                ee.append(Matrix(eei))
+            elif type(eei) is dict:
+                if "xyzrpy" in eei:
+                    ee.append(xyz_rpy_to_matrix(eei["xyzrpy"]))                
+                else:
+                    t = eei["translation"] if "translation" in eei else [0,0,0]
+                    if "rotation" in eei:
+                        if type(eei["rotation"]) is dict:
+                            if "Q" in eei["rotation"]:
+                                r = quaternion_to_matrix(eei["rotation"]["Q"])
+                            elif "rpy" in eei["rotation"]:
+                                r = rpy_to_matrix(eei["rotation"]["rpy"])
+                            elif "axis" in eei["rotation"]:
+                                axis = eei["rotation"]["axis"] if "axis" in eei["rotation"] else [0,0,1]
+                                angle = eei["rotation"]["angle"] if "angle" in eei["rotation"] else 0
+                                r = SO3Exp(Matrix(axis),angle)
+                        else:
+                            r = Matrix(eei["rotation"])
+                    else:
+                        r = Matrix(Identity(3))
+                    ee.append(transformation_matrix(r,t))        
     else:
         raise ValueError(f"ee {d['ee']} cannot be processed.")
     
@@ -236,16 +261,38 @@ def dict_parser(d: dict) -> SymbolicKinDyn:
     qd = Matrix(d["qd"]) if "qd" in d else None        
     q2d = Matrix(d["q2d"]) if "q2d" in d else None        
     q3d = Matrix(d["q3d"]) if "q3d" in d else None        
-    q4d = Matrix(d["q4d"]) if "q4d" in d else None        
-    WEE = Matrix(d["WEE"]) if "WEE" in d else zeros(6,1)        
-    WDEE = Matrix(d["WDEE"]) if "WDEE" in d else zeros(6,1)        
-    W2DEE = Matrix(d["W2DEE"]) if "W2DEE" in d else zeros(6,1)        
+    q4d = Matrix(d["q4d"]) if "q4d" in d else None
+    if "WEE" in d:
+        assert(type(d["WEE"] is list))
+        if type(d["WEE"][0]) is list:
+            WEE = [Matrix(w) for w in d["WEE"]]
+        else:
+            WEE = Matrix(d["WEE"])
+    else:
+        WEE = zeros(6,1)        
+    if "WDEE" in d:
+        assert(type(d["WDEE"] is list))
+        if type(d["WDEE"][0]) is list:
+            WDEE = [Matrix(w) for w in d["WDEE"]]
+        else:
+            WDEE = Matrix(d["WDEE"])
+    else:
+        WDEE = zeros(6,1)        
+    if "W2DEE" in d:
+        assert(type(d["W2DEE"] is list))
+        if type(d["W2DEE"][0]) is list:
+            W2DEE = [Matrix(w) for w in d["W2DEE"]]
+        else:
+            W2DEE = Matrix(d["W2DEE"])
+    else:
+        W2DEE = zeros(6,1)        
     
     skd = SymbolicKinDyn(gravity_vector=gravity,ee=ee,
                          body_ref_config=body_ref_config,
                          joint_screw_coord=joint_screw_coord,
                          config_representation=config_representation, 
-                         Mb=Mb, parent=parent, support=support, child=child,
+                         Mb=Mb, parent=parent, support=support, 
+                         child=child, ee_parent=ee_parent,
                          q=q,qd=qd,q2d=q2d,q3d=q3d,q4d=q4d,
                          WEE=WEE, WDEE=WDEE, W2DEE=W2DEE)
     return skd
@@ -272,7 +319,7 @@ def generate_template_yaml(path: str="edit_me.yaml", structure: str = None,
         if not dof:
            dof = len(structure)
         else:
-            # fill structure with r until length mathes dof
+            # fill structure with r until length matches dof
             while len(structure) < dof:
                 structure += "r"
             
@@ -293,6 +340,9 @@ def generate_template_yaml(path: str="edit_me.yaml", structure: str = None,
         y.append("support:")
         for i in range(dof):
             y.append(f"  - [{','.join([str(j) for j in range(1,i+2)])}]")
+        y.append("")
+        
+        y.append(f"ee_parent: {dof}")
         y.append("")
         
     y.append("gravity: [0,0,-g]")
@@ -328,10 +378,10 @@ def generate_template_yaml(path: str="edit_me.yaml", structure: str = None,
         y.append("")
     
     y.append("ee:")
-    y.append("  rotation:")
-    y.append("    axis: [0,0,1]")
-    y.append("    angle: 0")
-    y.append("  translation: [0,0,0]")
+    y.append("  - rotation:")
+    y.append("      axis: [0,0,1]")
+    y.append("      angle: 0")
+    y.append("    translation: [0,0,0]")
     y.append("")
     
     y.append("mass_inertia:")
@@ -460,6 +510,9 @@ def generate_template_python(path:str="edit_me.py", structure:str=None, dof:int=
             p.append(f"           [{','.join([str(j) for j in range(1,i+2)])}]{',' if dof > i+1 else ']'}")
         p.append("")
         
+        p.append(f"ee_parent = {dof}")
+        p.append("")
+        
     if urdf:
         p.append("urdfpath = '/path/to/urdf' # TODO: change me!")
         p.append("")
@@ -520,6 +573,7 @@ def generate_template_python(path:str="edit_me.py", structure:str=None, dof:int=
             p.append("                     parent=parent,")
             p.append("                     child=child,")
             p.append("                     support=support,")
+            p.append("                     ee_parent=ee_parent,")
     p.append("                     )")
     p.append("")
     if urdf:

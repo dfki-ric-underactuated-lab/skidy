@@ -1277,7 +1277,24 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
             W2DEE = self.W2DEE
         
         self._save_vectors(q, qd, q2d, q3d, q4d, WEE, WDEE, W2DEE)
-            
+        self.n = len(q)
+        
+        # prepare ee link selection
+        if self.ee_parent is None:
+            self.ee_parent = [self.n]
+        if type(self.ee_parent) is not list: self.ee_parent = [self.ee_parent]
+        self.n_ee = len(self.ee_parent)
+        if self.n_ee > 1:
+            if type(WEE) is list and len(WEE) > 1:
+                assert(len(WEE) == len(self.ee_parent))
+            if type(WDEE) is list and len(WDEE) > 1:
+                assert(len(WDEE) == len(self.ee_parent))
+            if type(W2DEE) is list and len(W2DEE) > 1:
+                assert(len(W2DEE) == len(self.ee_parent)) 
+        if type(WEE) is not list: WEE = [WEE]
+        if type(WDEE) is not list: WDEE = [WDEE]
+        if type(W2DEE) is not list: W2DEE = [W2DEE]
+        
         if parallel:
             self._closed_form_inv_dyn_body_fixed_parallel(
                 q, qd, q2d, q3d, q4d, WEE, WDEE, W2DEE, simplify, cse)
@@ -1351,7 +1368,7 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
                 fkin[i] = self.simplify(fkin[i], cse)
             elif cse:
                 fkin[i] = self._cse_expression(fkin[i])    
-        self.fkin = fkin
+        self.fkin = fkin if len(fkin)>1 else fkin[0]
         
         if self.J is not None:
             J = self.J
@@ -1448,14 +1465,14 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
                 Jh_ee[i] = self._cse_expression(Jh_ee[i])
                 Jh[i] = self._cse_expression(Jh[i])
             
-        self.Vb_BFn = Vb_BFn
-        self.Vh_BFn = Vh_BFn
-        self.Vb_ee = Vb_ee
-        self.Vh_ee = Vh_ee
-        self.Jh_ee = Jh_ee
-        self.Jb_ee = Jb_ee
-        self.Jh = Jh
-        self.Jb = Jb
+        self.Vb_BFn = Vb_BFn if len(Vb_BFn)>1 else Vb_BFn[0]
+        self.Vh_BFn = Vh_BFn if len(Vh_BFn)>1 else Vh_BFn[0]
+        self.Vb_ee = Vb_ee if len(Vb_ee)>1 else Vb_ee[0]
+        self.Vh_ee = Vh_ee if len(Vh_ee)>1 else Vh_ee[0]
+        self.Jh_ee = Jh_ee if len(Jh_ee)>1 else Jh_ee[0]
+        self.Jb_ee = Jb_ee if len(Jb_ee)>1 else Jb_ee[0]
+        self.Jh = Jh if len(Jh)>1 else Jh[0]
+        self.Jb = Jb if len(Jb)>1 else Jb[0]
         
         # Acceleration computations
         if self._a is not None:
@@ -1556,14 +1573,14 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
             elif cse:
                 Jh_ee_dot[i] = self._cse_expression(Jh_ee_dot[i])
         
-        self.Vbd_BFn = Vbd_BFn
-        self.Vhd_BFn = Vhd_BFn
-        self.Vbd_ee = Vbd_ee
-        self.Vhd_ee = Vhd_ee
-        self.Jb_dot = Jb_dot
-        self.Jb_ee_dot = Jb_ee_dot
-        self.Jh_dot = Jh_dot
-        self.Jh_ee_dot = Jh_ee_dot
+        self.Vbd_BFn = Vbd_BFn if len(Vbd_BFn)>1 else Vbd_BFn[0]
+        self.Vhd_BFn = Vhd_BFn if len(Vhd_BFn)>1 else Vhd_BFn[0]
+        self.Vbd_ee = Vbd_ee if len(Vbd_ee)>1 else Vbd_ee[0]
+        self.Vhd_ee = Vhd_ee if len(Vhd_ee)>1 else Vhd_ee[0]
+        self.Jb_dot = Jb_dot if len(Jb_dot)>1 else Jb_dot[0]
+        self.Jb_ee_dot = Jb_ee_dot if len(Jb_ee_dot)>1 else Jb_ee_dot[0]
+        self.Jh_dot = Jh_dot if len(Jh_dot)>1 else Jh_dot[0]
+        self.Jh_ee_dot = Jh_ee_dot if len(Jh_ee_dot)>1 else Jh_ee_dot[0]
 
         for e in self._get_expressions():
             self.all_symbols.update(e.free_symbols)
@@ -1626,9 +1643,12 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
         self.var_syms.update(q2d.free_symbols)
         if q3d: self.var_syms.update(q3d.free_symbols)
         if q4d: self.var_syms.update(q4d.free_symbols)
-        self.optional_var_syms.update(WEE.free_symbols)
-        self.optional_var_syms.update(WDEE.free_symbols)
-        self.optional_var_syms.update(W2DEE.free_symbols)
+        for W in WEE:
+            self.optional_var_syms.update(W.free_symbols)
+        for WD in WDEE:
+            self.optional_var_syms.update(WD.free_symbols)
+        for W2D in W2DEE:
+            self.optional_var_syms.update(W2D.free_symbols)
 
         self.n = len(q)
 
@@ -1719,7 +1739,8 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
         # External Wrench
         Wext = zeros(6*self.n, 1)
         # WEE (t) is the time varying wrench on the EE link.
-        Wext[-6:, 0] = WEE
+        for i in range(self.n_ee):
+            Wext[6*(self.ee_parent[i]-1):6*self.ee_parent[i], 0] = WEE[i if len(WEE) == self.n_ee else 0] # TODO: ee idx
         Qext = J.T * Wext
 
         # Generalized forces Q
@@ -1777,7 +1798,8 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
             
             # First time derivative of External Wrench
             Wdext = zeros(6*self.n,1)
-            Wdext[-6:,0] = WDEE
+            for i in range(self.n_ee):
+                Wdext[6*(self.ee_parent[i]-1):6*self.ee_parent[i], 0] = WDEE[i if len(WDEE) == self.n_ee else 0]
             Qdext = J.T*(Wdext - (A*a).T * Wext)
             
             # Qd = M*q3d + (Md + C)*q2d + Cd*qd  # without gravity 
@@ -1836,7 +1858,8 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
 
             # Second time derivative of External Wrench
             W2dext = zeros(6*self.n,1)
-            W2dext[-6:,0] = W2DEE
+            for i in range(self.n_ee):
+                W2dext[6*(self.ee_parent[i]-1):6*self.ee_parent[i], 0] = W2DEE[i if len(W2DEE) == self.n_ee else 0]
             Q2dext = J.T*(W2dext - 2*(A*a).T*Wdext + (2*(A*a*A*a).T - (A*ad).T - (A*a*a).T)*Wext)
             
             # Second time derivative of generalized forces
@@ -2178,6 +2201,25 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
         self.Jh_ee_dot = [self._get_value(f"Jh_ee_dot{i}") for i in range(self.n_ee)]
         self.Jb_ee_dot = [self._get_value(f"Jb_ee_dot{i}") for i in range(self.n_ee)]
 
+        if self.n_ee == 1:
+            self.fkin = self.fkin[0] 
+            self.Jb = self.Jb[0] 
+            self.Jh = self.Jh[0] 
+            self.Vb_ee = self.Vb_ee[0] 
+            self.Vh_ee = self.Vh_ee[0] 
+            self.Jb_ee = self.Jb_ee[0] 
+            self.Jh_ee = self.Jh_ee[0] 
+            self.Vh_BFn = self.Vh_BFn[0] 
+            self.Vb_BFn = self.Vb_BFn[0] 
+            self.Vhd_BFn = self.Vhd_BFn[0] 
+            self.Vbd_BFn = self.Vbd_BFn[0] 
+            self.Vhd_ee = self.Vhd_ee[0] 
+            self.Vbd_ee = self.Vbd_ee[0] 
+            self.Jh_dot = self.Jh_dot[0] 
+            self.Jb_dot = self.Jb_dot[0] 
+            self.Jh_ee_dot = self.Jh_ee_dot[0] 
+            self.Jb_ee_dot = self.Jb_ee_dot[0] 
+        
         try:
             while True:
                 self.subex_dict.update(
@@ -2270,10 +2312,13 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
         self.var_syms.update(q2d.free_symbols)
         if q3d: self.var_syms.update(q3d.free_symbols)
         if q4d: self.var_syms.update(q4d.free_symbols)
-        self.optional_var_syms.update(WEE.free_symbols)
-        self.optional_var_syms.update(WDEE.free_symbols)
-        self.optional_var_syms.update(W2DEE.free_symbols)
-
+        for W in WEE:
+            self.optional_var_syms.update(W.free_symbols)
+        for WD in WDEE:
+            self.optional_var_syms.update(WD.free_symbols)
+        for W2D in W2DEE:
+            self.optional_var_syms.update(W2D.free_symbols)
+        
         self.n = len(q)
         self.queue_dict["subex_dict"] = Queue()
 
@@ -2374,7 +2419,8 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
         # External Wrench
         Wext = zeros(6*self.n, 1)
         # WEE (t) is the time varying wrench on the EE link.
-        Wext[-6:, 0] = WEE
+        for i in range(self.n_ee):
+                Wext[6*(self.ee_parent[i]-1):6*self.ee_parent[i], 0] = WEE[i if len(WEE) == self.n_ee else 0]
         self._set_value_as_process(
             "Qext", lambda: self._get_value("J").T * Wext)
 
@@ -2450,7 +2496,8 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
             
             # First time derivative of External Wrench
             Wdext = zeros(6*self.n,1)
-            Wdext[-6:,0] = WDEE
+            for i in range(self.n_ee):
+                Wdext[6*(self.ee_parent[i]-1):6*self.ee_parent[i], 0] = WDEE[i if len(WDEE) == self.n_ee else 0]
             self._set_value_as_process(
                 "Qdext",
                 lambda: self._get_value("J").T*(Wdext - (A*a).T * Wext))
@@ -2534,7 +2581,8 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
 
             # Second time derivative of External Wrench
             W2dext = zeros(6*self.n,1)
-            W2dext[-6:,0] = W2DEE
+            for i in range(self.n_ee):
+                W2dext[6*(self.ee_parent[i]-1):6*self.ee_parent[i], 0] = W2DEE[i if len(W2DEE) == self.n_ee else 0]
             self._set_value_as_process(
                 "Q2dext",
                 lambda: self._get_value("J").T
