@@ -1188,7 +1188,7 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
             self.ee_parent = [self.n]
         if type(self.ee) is not list: self.ee = [self.ee]
         if type(self.ee_parent) is not list: self.ee_parent = [self.ee_parent]
-        assert(len(self.ee == self.ee_parent))    
+        assert(len(self.ee) == len(self.ee_parent))    
         self.n_ee = len(self.ee_parent)
         
         if parallel:
@@ -1344,23 +1344,15 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
         else:    
             FK_C, A = self._calc_A_matrix(q)
         
-        if type(self.ee) is list:
-            fkin = [None]*self.n_ee
-            for i in range(self.n_ee):
-                fkin[i] = FK_C[self.ee_parent[i]-1]*self.ee[i]
-                if simplify:
-                    fkin[i] = self.simplify(fkin[i], cse)
-                elif cse:
-                    fkin[i] = self._cse_expression(fkin[i])    
-            self.fkin = fkin
-        else:    
-            fkin = FK_C[self.ee_parent-1]*self.ee
+        fkin = [None]*self.n_ee
+        for i in range(self.n_ee):
+            fkin[i] = FK_C[self.ee_parent[i]-1]*self.ee[i]
             if simplify:
-                fkin = self.simplify(fkin, cse)
+                fkin[i] = self.simplify(fkin[i], cse)
             elif cse:
-                fkin = self._cse_expression(fkin)    
-            self.fkin = fkin
-
+                fkin[i] = self._cse_expression(fkin[i])    
+        self.fkin = fkin
+        
         if self.J is not None:
             J = self.J
             V = self._V
@@ -1383,162 +1375,88 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
             V = J*qd
             self._V = V
 
-        if type(self.ee) is list:
-            R_i = [None]*self.n_ee
-            R_BFn = [None]*self.n_ee
-            Vb_BFn = [None]*self.n_ee
-            Vh_BFn = [None]*self.n_ee
-            Vb_ee = [None]*self.n_ee
-            Vh_ee = [None]*self.n_ee
-            Jh_ee = [None]*self.n_ee
-            Jb_ee = [None]*self.n_ee
-            Jh = [None]*self.n_ee
-            Jb = [None]*self.n_ee
-            for i in range(self.n_ee):
-                # Different Jacobians
-                R_i[i] = Matrix(fkin[i][:3, :3]).row_join(
-                    zeros(3, 1)).col_join(Matrix([0, 0, 0, 1]).T)
-                if simplify:  # fastens later simplifications
-                    R_i[i] = self.simplify(R_i[i], cse)
-                elif cse:
-                    R_i[i] = self._cse_expression(R_i[i])
-                
-                R_BFn[i] = Matrix(FK_C[self.ee_parent[i]-1][:3, :3]).row_join(
-                    zeros(3, 1)).col_join(Matrix([0, 0, 0, 1]).T)
-
-                # Body fixed Jacobian of last moving body 
-                # (This may not correspond to end-effector frame)
-                Jb[i] = J[6*(self.ee_parent[i]-1):6*self.ee_parent[i], :] # used to be [-6:,:]
-                if simplify:
-                    Jb[i] = self.simplify(Jb[i], cse)
-                elif cse:
-                    Jb[i] = self._cse_expression(Jb[i])
-
-                Vb_BFn[i] = Jb[i]*qd  # Body fixed twist of last moving body
-                if simplify:
-                    Vb_BFn[i] = self.simplify(Vb_BFn[i], cse)
-                elif cse:
-                    Vb_BFn[i] = self._cse_expression(Vb_BFn[i])
-                Vh_BFn[i] = SE3AdjMatrix(R_BFn[i])*Vb_BFn[i]
-                if simplify:
-                    Vh_BFn[i] = self.simplify(Vh_BFn[i], cse)
-                elif cse:
-                    Vh_BFn[i] = self._cse_expression(Vh_BFn[i])
-                
-                # Body fixed twist of end-effector frame
-                Vb_ee[i] = SE3AdjMatrix(SE3Inv(self.ee[i]))*Vb_BFn[i]
-                if simplify:
-                    Vb_ee[i] = self.simplify(Vb_ee[i], cse)
-                elif cse:
-                    Vb_ee[i] = self._cse_expression(Vb_ee[i])
-                # Hybrid twist of end-effector frame
-                Vh_ee[i] = SE3AdjMatrix(R_i[i])*Vb_ee[i]
-                if simplify:
-                    Vh_ee[i] = self.simplify(Vh_ee[i], cse)
-                elif cse:
-                    Vh_ee[i] = self._cse_expression(Vh_ee[i])
-
-                # Body fixed Jacobian of end-effector frame
-                Jb_ee[i] = SE3AdjMatrix(SE3Inv(self.ee[i]))*Jb[i]
-                if simplify:
-                    Jb_ee[i] = self.simplify(Jb_ee[i], cse)
-                elif cse:
-                    Jb_ee[i] = self._cse_expression(Jb_ee[i])
-
-                # Hybrid Jacobian of end-effector frame
-                Jh_ee[i] = SE3AdjMatrix(R_i[i])*Jb_ee[i]
-                # Hybrid Jacobian of last moving body
-                Jh[i] = SE3AdjMatrix(R_i[i])*Jb[i]  
-
-                if simplify:
-                    Jh_ee[i] = self.simplify(Jh_ee[i], cse)
-                    Jh[i] = self.simplify(Jh[i], cse)
-                elif cse:
-                    Jh_ee[i] = self._cse_expression(Jh_ee[i])
-                    Jh[i] = self._cse_expression(Jh[i])
-                
-            self.Vb_BFn = Vb_BFn
-            self.Vh_BFn = Vh_BFn
-            self.Vb_ee = Vb_ee
-            self.Vh_ee = Vh_ee
-            self.Jh_ee = Jh_ee
-            self.Jb_ee = Jb_ee
-            self.Jh = Jh
-            self.Jb = Jb
-            
-        else:
+        R_i = [None]*self.n_ee
+        R_BFn = [None]*self.n_ee
+        Vb_BFn = [None]*self.n_ee
+        Vh_BFn = [None]*self.n_ee
+        Vb_ee = [None]*self.n_ee
+        Vh_ee = [None]*self.n_ee
+        Jh_ee = [None]*self.n_ee
+        Jb_ee = [None]*self.n_ee
+        Jh = [None]*self.n_ee
+        Jb = [None]*self.n_ee
+        for i in range(self.n_ee):
             # Different Jacobians
-            R_i = Matrix(fkin[:3, :3]).row_join(
+            R_i[i] = Matrix(fkin[i][:3, :3]).row_join(
                 zeros(3, 1)).col_join(Matrix([0, 0, 0, 1]).T)
             if simplify:  # fastens later simplifications
-                R_i = self.simplify(R_i, cse)
+                R_i[i] = self.simplify(R_i[i], cse)
             elif cse:
-                R_i = self._cse_expression(R_i)
+                R_i[i] = self._cse_expression(R_i[i])
             
-            R_BFn = Matrix(FK_C[self.ee_parent-1][:3, :3]).row_join(
+            R_BFn[i] = Matrix(FK_C[self.ee_parent[i]-1][:3, :3]).row_join(
                 zeros(3, 1)).col_join(Matrix([0, 0, 0, 1]).T)
 
             # Body fixed Jacobian of last moving body 
             # (This may not correspond to end-effector frame)
-            Jb = J[6*(self.ee_parent-1):6*self.ee_parent, :] # used to be [-6:,:]
+            Jb[i] = J[6*(self.ee_parent[i]-1):6*self.ee_parent[i], :] # used to be [-6:,:]
             if simplify:
-                Jb = self.simplify(Jb, cse)
+                Jb[i] = self.simplify(Jb[i], cse)
             elif cse:
-                Jb = self._cse_expression(Jb)
+                Jb[i] = self._cse_expression(Jb[i])
 
-            Vb_BFn = Jb*qd  # Body fixed twist of last moving body
+            Vb_BFn[i] = Jb[i]*qd  # Body fixed twist of last moving body
             if simplify:
-                Vb_BFn = self.simplify(Vb_BFn, cse)
+                Vb_BFn[i] = self.simplify(Vb_BFn[i], cse)
             elif cse:
-                Vb_BFn = self._cse_expression(Vb_BFn)
-            Vh_BFn = SE3AdjMatrix(R_BFn)*Vb_BFn
+                Vb_BFn[i] = self._cse_expression(Vb_BFn[i])
+            Vh_BFn[i] = SE3AdjMatrix(R_BFn[i])*Vb_BFn[i]
             if simplify:
-                Vh_BFn = self.simplify(Vh_BFn, cse)
+                Vh_BFn[i] = self.simplify(Vh_BFn[i], cse)
             elif cse:
-                Vh_BFn = self._cse_expression(Vh_BFn)
-            self.Vb_BFn = Vb_BFn
-            self.Vh_BFn = Vh_BFn
-
+                Vh_BFn[i] = self._cse_expression(Vh_BFn[i])
+            
             # Body fixed twist of end-effector frame
-            Vb_ee = SE3AdjMatrix(SE3Inv(self.ee))*Vb_BFn
+            Vb_ee[i] = SE3AdjMatrix(SE3Inv(self.ee[i]))*Vb_BFn[i]
             if simplify:
-                Vb_ee = self.simplify(Vb_ee, cse)
+                Vb_ee[i] = self.simplify(Vb_ee[i], cse)
             elif cse:
-                Vb_ee = self._cse_expression(Vb_ee)
+                Vb_ee[i] = self._cse_expression(Vb_ee[i])
             # Hybrid twist of end-effector frame
-            Vh_ee = SE3AdjMatrix(R_i)*Vb_ee
+            Vh_ee[i] = SE3AdjMatrix(R_i[i])*Vb_ee[i]
             if simplify:
-                Vh_ee = self.simplify(Vh_ee, cse)
+                Vh_ee[i] = self.simplify(Vh_ee[i], cse)
             elif cse:
-                Vh_ee = self._cse_expression(Vh_ee)
-
-            self.Vb_ee = Vb_ee
-            self.Vh_ee = Vh_ee
+                Vh_ee[i] = self._cse_expression(Vh_ee[i])
 
             # Body fixed Jacobian of end-effector frame
-            Jb_ee = SE3AdjMatrix(SE3Inv(self.ee))*Jb
+            Jb_ee[i] = SE3AdjMatrix(SE3Inv(self.ee[i]))*Jb[i]
             if simplify:
-                Jb_ee = self.simplify(Jb_ee, cse)
+                Jb_ee[i] = self.simplify(Jb_ee[i], cse)
             elif cse:
-                Jb_ee = self._cse_expression(Jb_ee)
+                Jb_ee[i] = self._cse_expression(Jb_ee[i])
 
             # Hybrid Jacobian of end-effector frame
-            Jh_ee = SE3AdjMatrix(R_i)*Jb_ee
+            Jh_ee[i] = SE3AdjMatrix(R_i[i])*Jb_ee[i]
             # Hybrid Jacobian of last moving body
-            Jh = SE3AdjMatrix(R_i)*Jb  
+            Jh[i] = SE3AdjMatrix(R_i[i])*Jb[i]  
 
             if simplify:
-                Jh_ee = self.simplify(Jh_ee, cse)
-                Jh = self.simplify(Jh, cse)
+                Jh_ee[i] = self.simplify(Jh_ee[i], cse)
+                Jh[i] = self.simplify(Jh[i], cse)
             elif cse:
-                Jh_ee = self._cse_expression(Jh_ee)
-                Jh = self._cse_expression(Jh)
-
-            self.Jh_ee = Jh_ee
-            self.Jb_ee = Jb_ee
-            self.Jh = Jh
-            self.Jb = Jb
-
+                Jh_ee[i] = self._cse_expression(Jh_ee[i])
+                Jh[i] = self._cse_expression(Jh[i])
+            
+        self.Vb_BFn = Vb_BFn
+        self.Vh_BFn = Vh_BFn
+        self.Vb_ee = Vb_ee
+        self.Vh_ee = Vh_ee
+        self.Jh_ee = Jh_ee
+        self.Jb_ee = Jb_ee
+        self.Jh = Jh
+        self.Jb = Jb
+        
         # Acceleration computations
         if self._a is not None:
             a = self._a
@@ -1564,165 +1482,88 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
 
         Vbd = J*q2d - A*a*V
 
-        if type(self.ee) is list:
-            Vbd_BFn = [None]*self.n_ee
-            Vhd_BFn = [None]*self.n_ee
-            Vbd_ee = [None]*self.n_ee
-            Vhd_ee = [None]*self.n_ee
-            Jb_dot = [None]*self.n_ee
-            Jb_ee_dot = [None]*self.n_ee
-            Jh_dot = [None]*self.n_ee
-            Jh_ee_dot = [None]*self.n_ee
-            for i in range(self.n_ee):
-                # Hybrid acceleration of the last body
-                Vbd_BFn[i] = Vbd[6*(self.ee_parent[i]-1):6*self.ee_parent[i], :] # used to be [-6:,:]
-                if simplify:
-                    Vbd_BFn[i] = self.simplify(Vbd_BFn[i], cse)
-                elif cse:
-                    Vbd_BFn[i] = self._cse_expression(Vbd_BFn[i])
-                # Hybrid twist of end-effector frame 
-                # TODO: check comments
-                Vhd_BFn[i] = (SE3AdjMatrix(R_BFn[i])*Vbd_BFn[i] 
-                        + SE3adMatrix(Matrix(Vh_BFn[i][:3, :])
-                                            .col_join(Matrix([0, 0, 0])))
-                        * SE3AdjMatrix(R_BFn[i])*Vb_BFn[i])  
-
-                if simplify:
-                    Vhd_BFn[i] = self.simplify(Vhd_BFn[i], cse)
-                elif cse:
-                    Vhd_BFn[i] = self._cse_expression(Vhd_BFn[i])
-
-                # Body fixed twist of end-effector frame
-                # Hybrid acceleration of the EE
-                Vbd_ee[i] = SE3AdjMatrix(SE3Inv(self.ee[i]))*Vbd_BFn[i]
-                if simplify:
-                    Vbd_ee[i] = self.simplify(Vbd_ee[i], cse)
-                elif cse:
-                    Vbd_ee[i] = self._cse_expression(Vbd_ee[i])
-                # Hybrid twist of end-effector frame
-                Vhd_ee[i] = SE3AdjMatrix(R_i[i])*Vbd_ee[i] + SE3adMatrix(Matrix(
-                    Vh_ee[i][:3, :]).col_join(Matrix([0, 0, 0])))*\
-                        SE3AdjMatrix(R_i[i])*Vb_ee[i]  
-                if simplify:
-                    Vhd_ee[i] = self.simplify(Vhd_ee[i], cse)
-                elif cse:
-                    Vhd_ee[i] = self._cse_expression(Vhd_ee[i])
-
-                # Body Jacobian time derivative
-
-                # For the last moving body
-                Jb_dot[i] = Jdot[6*(self.ee_parent[i]-1):6*self.ee_parent[i], :] # used to be [-6:,:]
-
-                # For the EE
-                Jb_ee_dot[i] = SE3AdjMatrix(SE3Inv(self.ee[i]))*Jb_dot[i]
-                if simplify:
-                    Jb_ee_dot[i] = self.simplify(Jb_ee_dot[i], cse)
-                elif cse:
-                    Jb_ee_dot[i] = self._cse_expression(Jb_ee_dot[i])
-
-                # Hybrid Jacobian time derivative
-                # For the last moving body
-                Jh_dot[i] = (SE3AdjMatrix(R_BFn[i])*Jb_dot[i] 
-                        + SE3adMatrix(Matrix(Vh_BFn[i][:3, :]).col_join(Matrix([0, 0, 0])))
-                        *SE3AdjMatrix(R_BFn[i])*Jb[i])
-                if simplify:
-                    Jh_dot[i] = self.simplify(Jh_dot[i], cse)
-                elif cse:
-                    Jh_dot[i] = self._cse_expression(Jh_dot[i])
-
-                # For the EE
-                Jh_ee_dot[i] = (SE3AdjMatrix(R_i[i])*Jb_ee_dot[i] 
-                            + SE3adMatrix(Matrix(Vh_ee[i][:3, :]).col_join(Matrix([0, 0, 0])))
-                            * SE3AdjMatrix(R_i[i])*Jb_ee[i])
-                if simplify:
-                    Jh_ee_dot[i] = self.simplify(Jh_ee_dot[i], cse)
-                elif cse:
-                    Jh_ee_dot[i] = self._cse_expression(Jh_ee_dot[i])
-            
-            self.Vbd_BFn = Vbd_BFn
-            self.Vhd_BFn = Vhd_BFn
-            self.Vbd_ee = Vbd_ee
-            self.Vhd_ee = Vhd_ee
-            self.Jb_dot = Jb_dot
-            self.Jb_ee_dot = Jb_ee_dot
-            self.Jh_dot = Jh_dot
-            self.Jh_ee_dot = Jh_ee_dot
-
-        else:
+        Vbd_BFn = [None]*self.n_ee
+        Vhd_BFn = [None]*self.n_ee
+        Vbd_ee = [None]*self.n_ee
+        Vhd_ee = [None]*self.n_ee
+        Jb_dot = [None]*self.n_ee
+        Jb_ee_dot = [None]*self.n_ee
+        Jh_dot = [None]*self.n_ee
+        Jh_ee_dot = [None]*self.n_ee
+        for i in range(self.n_ee):
             # Hybrid acceleration of the last body
-            Vbd_BFn = Vbd[6*(self.ee_parent-1):6*self.ee_parent, :] # used to be [-6:,:]
+            Vbd_BFn[i] = Vbd[6*(self.ee_parent[i]-1):6*self.ee_parent[i], :] # used to be [-6:,:]
             if simplify:
-                Vbd_BFn = self.simplify(Vbd_BFn, cse)
+                Vbd_BFn[i] = self.simplify(Vbd_BFn[i], cse)
             elif cse:
-                Vbd_BFn = self._cse_expression(Vbd_BFn)
+                Vbd_BFn[i] = self._cse_expression(Vbd_BFn[i])
             # Hybrid twist of end-effector frame 
             # TODO: check comments
-            Vhd_BFn = (SE3AdjMatrix(R_BFn)*Vbd_BFn 
-                    + SE3adMatrix(Matrix(Vh_BFn[:3, :])
+            Vhd_BFn[i] = (SE3AdjMatrix(R_BFn[i])*Vbd_BFn[i] 
+                    + SE3adMatrix(Matrix(Vh_BFn[i][:3, :])
                                         .col_join(Matrix([0, 0, 0])))
-                    * SE3AdjMatrix(R_BFn)*Vb_BFn)  
+                    * SE3AdjMatrix(R_BFn[i])*Vb_BFn[i])  
 
             if simplify:
-                Vhd_BFn = self.simplify(Vhd_BFn, cse)
+                Vhd_BFn[i] = self.simplify(Vhd_BFn[i], cse)
             elif cse:
-                Vhd_BFn = self._cse_expression(Vhd_BFn)
-
-            self.Vbd_BFn = Vbd_BFn
-            self.Vhd_BFn = Vhd_BFn
+                Vhd_BFn[i] = self._cse_expression(Vhd_BFn[i])
 
             # Body fixed twist of end-effector frame
             # Hybrid acceleration of the EE
-            Vbd_ee = SE3AdjMatrix(SE3Inv(self.ee))*Vbd_BFn
+            Vbd_ee[i] = SE3AdjMatrix(SE3Inv(self.ee[i]))*Vbd_BFn[i]
             if simplify:
-                Vbd_ee = self.simplify(Vbd_ee, cse)
+                Vbd_ee[i] = self.simplify(Vbd_ee[i], cse)
             elif cse:
-                Vbd_ee = self._cse_expression(Vbd_ee)
+                Vbd_ee[i] = self._cse_expression(Vbd_ee[i])
             # Hybrid twist of end-effector frame
-            Vhd_ee = SE3AdjMatrix(R_i)*Vbd_ee + SE3adMatrix(Matrix(
-                Vh_ee[:3, :]).col_join(Matrix([0, 0, 0])))*\
-                    SE3AdjMatrix(R_i)*Vb_ee  
+            Vhd_ee[i] = SE3AdjMatrix(R_i[i])*Vbd_ee[i] + SE3adMatrix(Matrix(
+                Vh_ee[i][:3, :]).col_join(Matrix([0, 0, 0])))*\
+                    SE3AdjMatrix(R_i[i])*Vb_ee[i]  
             if simplify:
-                Vhd_ee = self.simplify(Vhd_ee, cse)
+                Vhd_ee[i] = self.simplify(Vhd_ee[i], cse)
             elif cse:
-                Vhd_ee = self._cse_expression(Vhd_ee)
-
-            self.Vbd_ee = Vbd_ee
-            self.Vhd_ee = Vhd_ee
+                Vhd_ee[i] = self._cse_expression(Vhd_ee[i])
 
             # Body Jacobian time derivative
 
             # For the last moving body
-            Jb_dot = Jdot[6*(self.ee_parent-1):6*self.ee_parent, :] # used to be [-6:,:]
-            self.Jb_dot = Jb_dot
+            Jb_dot[i] = Jdot[6*(self.ee_parent[i]-1):6*self.ee_parent[i], :] # used to be [-6:,:]
 
             # For the EE
-            Jb_ee_dot = SE3AdjMatrix(SE3Inv(self.ee))*Jb_dot
+            Jb_ee_dot[i] = SE3AdjMatrix(SE3Inv(self.ee[i]))*Jb_dot[i]
             if simplify:
-                Jb_ee_dot = self.simplify(Jb_ee_dot, cse)
+                Jb_ee_dot[i] = self.simplify(Jb_ee_dot[i], cse)
             elif cse:
-                Jb_ee_dot = self._cse_expression(Jb_ee_dot)
-            self.Jb_ee_dot = Jb_ee_dot
+                Jb_ee_dot[i] = self._cse_expression(Jb_ee_dot[i])
 
             # Hybrid Jacobian time derivative
             # For the last moving body
-            Jh_dot = (SE3AdjMatrix(R_BFn)*Jb_dot 
-                    + SE3adMatrix(Matrix(Vh_BFn[:3, :]).col_join(Matrix([0, 0, 0])))
-                    *SE3AdjMatrix(R_BFn)*Jb)
+            Jh_dot[i] = (SE3AdjMatrix(R_BFn[i])*Jb_dot[i] 
+                    + SE3adMatrix(Matrix(Vh_BFn[i][:3, :]).col_join(Matrix([0, 0, 0])))
+                    *SE3AdjMatrix(R_BFn[i])*Jb[i])
             if simplify:
-                Jh_dot = self.simplify(Jh_dot, cse)
+                Jh_dot[i] = self.simplify(Jh_dot[i], cse)
             elif cse:
-                Jh_dot = self._cse_expression(Jh_dot)
-            self.Jh_dot = Jh_dot
+                Jh_dot[i] = self._cse_expression(Jh_dot[i])
 
             # For the EE
-            Jh_ee_dot = (SE3AdjMatrix(R_i)*Jb_ee_dot 
-                        + SE3adMatrix(Matrix(Vh_ee[:3, :]).col_join(Matrix([0, 0, 0])))
-                        * SE3AdjMatrix(R_i)*Jb_ee)
+            Jh_ee_dot[i] = (SE3AdjMatrix(R_i[i])*Jb_ee_dot[i] 
+                        + SE3adMatrix(Matrix(Vh_ee[i][:3, :]).col_join(Matrix([0, 0, 0])))
+                        * SE3AdjMatrix(R_i[i])*Jb_ee[i])
             if simplify:
-                Jh_ee_dot = self.simplify(Jh_ee_dot, cse)
+                Jh_ee_dot[i] = self.simplify(Jh_ee_dot[i], cse)
             elif cse:
-                Jh_ee_dot = self._cse_expression(Jh_ee_dot)
-            self.Jh_ee_dot = Jh_ee_dot
+                Jh_ee_dot[i] = self._cse_expression(Jh_ee_dot[i])
+        
+        self.Vbd_BFn = Vbd_BFn
+        self.Vhd_BFn = Vhd_BFn
+        self.Vbd_ee = Vbd_ee
+        self.Vhd_ee = Vhd_ee
+        self.Jb_dot = Jb_dot
+        self.Jb_ee_dot = Jb_ee_dot
+        self.Jh_dot = Jh_dot
+        self.Jh_ee_dot = Jh_ee_dot
 
         for e in self._get_expressions():
             self.all_symbols.update(e.free_symbols)
@@ -2083,20 +1924,12 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
         else:    
             FK_C, A = self._calc_A_matrix(q)
         
-        if type(self.ee) is list:
-            for i in range(self.n_ee):
-                self._set_value(f"fkin{i}", FK_C[self.ee_parent[i]-1]*self.ee[i])
-                if simplify:
-                    self._start_simplification_process(f"fkin{i}", cse)
-                elif cse:
-                    self._start_cse_process(f"fkin{i}")    
-        else:
-            self._set_value("fkin", FK_C[self.ee_parent-1]*self.ee)
+        for i in range(self.n_ee):
+            self._set_value(f"fkin{i}", FK_C[self.ee_parent[i]-1]*self.ee[i])
             if simplify:
-                self._start_simplification_process("fkin", cse)
+                self._start_simplification_process(f"fkin{i}", cse)
             elif cse:
-                self._start_cse_process("fkin")
-
+                self._start_cse_process(f"fkin{i}")
 
         if self.J is not None:
             self._set_value("J", self.J)
@@ -2117,164 +1950,84 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
             # System twist (6n x 1)
             self._set_value_as_process("V", lambda: self._get_value("J")*qd)
 
-        if type(self.ee) is list:
-            for i in range(self.n_ee):
-                # Different Jacobians
-                self._set_value_as_process(
-                    f"R_i{i}", 
-                    lambda: 
-                        Matrix(self._get_value(f"fkin{i}")[:3, :3])
-                        .row_join(zeros(3, 1))
-                        .col_join(Matrix([0, 0, 0, 1]).T)
-                    )
-
-                if simplify:  # fastens later simplifications
-                    self._start_simplification_process(f"R_i{i}", cse)
-                elif cse:
-                    self._start_cse_process(f"R_i{i}")
-
-                self._set_value(f"R_BFn{i}", Matrix(FK_C[self.ee_parent[i]-1][:3, :3]).row_join(
-                    zeros(3, 1)).col_join(Matrix([0, 0, 0, 1]).T)) 
-
-                # Body fixed Jacobian of last moving body 
-                # (This may not correspond to end-effector frame)
-                self._set_value_as_process(
-                    f"Jb{i}", 
-                    lambda: self._get_value("J")[6*(self.ee_parent[i]-1):6*self.ee_parent[i], :])
-                if simplify:
-                    self._start_simplification_process(f"Jb{i}", cse)
-                elif cse:
-                    self._start_cse_process(f"Jb{i}")
-
-                self._set_value_as_process(f"Vb_BFn{i}", lambda: self._get_value(f"Jb{i}")*qd)
-                # Body fixed twist of last moving body
-                if simplify:
-                    self._start_simplification_process(f"Vb_BFn{i}", cse)
-                elif cse:
-                    self._start_cse_process(f"Vb_BFn{i}")
-
-                self._set_value_as_process(f"Vh_BFn{i}", lambda: SE3AdjMatrix(
-                    self._get_value(f"R_BFn{i}"))*self._get_value(f"Vb_BFn{i}"))
-                if simplify:
-                    self._start_simplification_process(f"Vh_BFn{i}", cse)
-                elif cse:
-                    self._start_cse_process(f"Vh_BFn{i}")
-
-                # Body fixed twist of end-effector frame
-                self._set_value_as_process(f"Vb_ee{i}", lambda: SE3AdjMatrix(
-                    SE3Inv(self.ee[i]))*self._get_value(f"Vb_BFn{i}"))
-                if simplify:
-                    self._start_simplification_process(f"Vb_ee{i}", cse)
-                elif cse:
-                    self._start_cse_process(f"Vb_ee{i}")
-                # Hybrid twist of end-effector frame
-                self._set_value_as_process(f"Vh_ee{i}", lambda: SE3AdjMatrix(
-                    self._get_value(f"R_i{i}"))*self._get_value(f"Vb_ee{i}"))
-                if simplify:
-                    self._start_simplification_process(f"Vh_ee{i}", cse)
-                elif cse:
-                    self._start_cse_process(f"Vh_ee{i}")
-
-                # Body fixed Jacobian of end-effector frame
-                self._set_value_as_process(f"Jb_ee{i}", lambda: SE3AdjMatrix(
-                    SE3Inv(self.ee[i]))*self._get_value(f"Jb{i}"))
-                if simplify:
-                    self._start_simplification_process(f"Jb_ee{i}", cse)
-                elif cse:
-                    self._start_cse_process(f"Jb_ee{i}")
-
-                # Hybrid Jacobian of end-effector frame
-                self._set_value_as_process(f"Jh_ee{i}", lambda: SE3AdjMatrix(
-                    self._get_value(f"R_i{i}"))*self._get_value(f"Jb_ee{i}"))
-                # Hybrid Jacobian of last moving body
-                self._set_value_as_process(f"Jh{i}", lambda: SE3AdjMatrix(
-                    self._get_value(f"R_i{i}"))*self._get_value(f"Jb{i}"))
-
-                if simplify:
-                    self._start_simplification_process(f"Jh_ee{i}", cse)
-                    self._start_simplification_process(f"Jh{i}", cse)
-                elif cse:
-                    self._start_cse_process(f"Jh_ee{i}")
-                    self._start_cse_process(f"Jh{i}")
-
-        else:
+        for i in range(self.n_ee):
             # Different Jacobians
             self._set_value_as_process(
-                "R_i", 
+                f"R_i{i}", 
                 lambda: 
-                    Matrix(self._get_value("fkin")[:3, :3])
+                    Matrix(self._get_value(f"fkin{i}")[:3, :3])
                     .row_join(zeros(3, 1))
                     .col_join(Matrix([0, 0, 0, 1]).T)
                 )
 
             if simplify:  # fastens later simplifications
-                self._start_simplification_process("R_i", cse)
+                self._start_simplification_process(f"R_i{i}", cse)
             elif cse:
-                self._start_cse_process("R_i")
+                self._start_cse_process(f"R_i{i}")
 
-            self._set_value("R_BFn", Matrix(FK_C[self.ee_parent-1][:3, :3]).row_join(
+            self._set_value(f"R_BFn{i}", Matrix(FK_C[self.ee_parent[i]-1][:3, :3]).row_join(
                 zeros(3, 1)).col_join(Matrix([0, 0, 0, 1]).T)) 
 
             # Body fixed Jacobian of last moving body 
             # (This may not correspond to end-effector frame)
             self._set_value_as_process(
-                "Jb", 
-                lambda: self._get_value("J")[6*(self.ee_parent-1):6*self.ee_parent, :])
+                f"Jb{i}", 
+                lambda: self._get_value("J")[6*(self.ee_parent[i]-1):6*self.ee_parent[i], :])
             if simplify:
-                self._start_simplification_process("Jb", cse)
+                self._start_simplification_process(f"Jb{i}", cse)
             elif cse:
-                self._start_cse_process("Jb")
+                self._start_cse_process(f"Jb{i}")
 
-            self._set_value_as_process("Vb_BFn", lambda: self._get_value("Jb")*qd)
+            self._set_value_as_process(f"Vb_BFn{i}", lambda: self._get_value(f"Jb{i}")*qd)
             # Body fixed twist of last moving body
             if simplify:
-                self._start_simplification_process("Vb_BFn", cse)
+                self._start_simplification_process(f"Vb_BFn{i}", cse)
             elif cse:
-                self._start_cse_process("Vb_BFn")
+                self._start_cse_process(f"Vb_BFn{i}")
 
-            self._set_value_as_process("Vh_BFn", lambda: SE3AdjMatrix(
-                self._get_value("R_BFn"))*self._get_value("Vb_BFn"))
+            self._set_value_as_process(f"Vh_BFn{i}", lambda: SE3AdjMatrix(
+                self._get_value(f"R_BFn{i}"))*self._get_value(f"Vb_BFn{i}"))
             if simplify:
-                self._start_simplification_process("Vh_BFn", cse)
+                self._start_simplification_process(f"Vh_BFn{i}", cse)
             elif cse:
-                self._start_cse_process("Vh_BFn")
+                self._start_cse_process(f"Vh_BFn{i}")
 
             # Body fixed twist of end-effector frame
-            self._set_value_as_process("Vb_ee", lambda: SE3AdjMatrix(
-                SE3Inv(self.ee))*self._get_value("Vb_BFn"))
+            self._set_value_as_process(f"Vb_ee{i}", lambda: SE3AdjMatrix(
+                SE3Inv(self.ee[i]))*self._get_value(f"Vb_BFn{i}"))
             if simplify:
-                self._start_simplification_process("Vb_ee", cse)
+                self._start_simplification_process(f"Vb_ee{i}", cse)
             elif cse:
-                self._start_cse_process("Vb_ee")
+                self._start_cse_process(f"Vb_ee{i}")
             # Hybrid twist of end-effector frame
-            self._set_value_as_process("Vh_ee", lambda: SE3AdjMatrix(
-                self._get_value("R_i"))*self._get_value("Vb_ee"))
+            self._set_value_as_process(f"Vh_ee{i}", lambda: SE3AdjMatrix(
+                self._get_value(f"R_i{i}"))*self._get_value(f"Vb_ee{i}"))
             if simplify:
-                self._start_simplification_process("Vh_ee", cse)
+                self._start_simplification_process(f"Vh_ee{i}", cse)
             elif cse:
-                self._start_cse_process("Vh_ee")
+                self._start_cse_process(f"Vh_ee{i}")
 
             # Body fixed Jacobian of end-effector frame
-            self._set_value_as_process("Jb_ee", lambda: SE3AdjMatrix(
-                SE3Inv(self.ee))*self._get_value("Jb"))
+            self._set_value_as_process(f"Jb_ee{i}", lambda: SE3AdjMatrix(
+                SE3Inv(self.ee[i]))*self._get_value(f"Jb{i}"))
             if simplify:
-                self._start_simplification_process("Jb_ee", cse)
+                self._start_simplification_process(f"Jb_ee{i}", cse)
             elif cse:
-                self._start_cse_process("Jb_ee")
+                self._start_cse_process(f"Jb_ee{i}")
 
             # Hybrid Jacobian of end-effector frame
-            self._set_value_as_process("Jh_ee", lambda: SE3AdjMatrix(
-                self._get_value("R_i"))*self._get_value("Jb_ee"))
+            self._set_value_as_process(f"Jh_ee{i}", lambda: SE3AdjMatrix(
+                self._get_value(f"R_i{i}"))*self._get_value(f"Jb_ee{i}"))
             # Hybrid Jacobian of last moving body
-            self._set_value_as_process("Jh", lambda: SE3AdjMatrix(
-                self._get_value("R_i"))*self._get_value("Jb"))
+            self._set_value_as_process(f"Jh{i}", lambda: SE3AdjMatrix(
+                self._get_value(f"R_i{i}"))*self._get_value(f"Jb{i}"))
 
             if simplify:
-                self._start_simplification_process("Jh_ee", cse)
-                self._start_simplification_process("Jh", cse)
+                self._start_simplification_process(f"Jh_ee{i}", cse)
+                self._start_simplification_process(f"Jh{i}", cse)
             elif cse:
-                self._start_cse_process("Jh_ee")
-                self._start_cse_process("Jh")
+                self._start_cse_process(f"Jh_ee{i}")
+                self._start_cse_process(f"Jh{i}")
 
         # Acceleration computations
         if self._a is not None:
@@ -2302,247 +2055,128 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
         self._set_value_as_process("Vbd", lambda: self._get_value(
             "J")*q2d - A*self._get_value("a")*self._get_value("V"))
 
-        if type(self.ee) is list:
-            for i in range(self.n_ee):
-                # Hybrid acceleration of the last body
-                self._set_value_as_process(
-                    f"Vbd_BFn{i}", lambda: self._get_value("Vbd")[6*(self.ee_parent[i]-1):6*self.ee_parent[i], :])
-
-                if simplify:
-                    self._start_simplification_process(f"Vbd_BFn{i}", cse)
-                elif cse:
-                    self._start_cse_process(f"Vbd_BFn{i}")
-
-                # Hybrid twist of end-effector frame
-                self._set_value_as_process(
-                    f"Vhd_BFn{i}", 
-                    lambda: 
-                        SE3AdjMatrix(self._get_value(f"R_BFn{i}"))
-                        * self._get_value(f"Vbd_BFn{i}") 
-                        + SE3adMatrix(Matrix(self._get_value(f"Vh_BFn{i}")[:3, :])
-                                        .col_join(Matrix([0, 0, 0])))
-                        * SE3AdjMatrix(self._get_value(f"R_BFn{i}"))
-                        * self._get_value(f"Vb_BFn{i}")
-                    )
-
-                if simplify:
-                    self._start_simplification_process(f"Vhd_BFn{i}", cse)
-                elif cse:
-                    self._start_cse_process(f"Vhd_BFn{i}")
-
-                # Body fixed twist of end-effector frame
-                # Hybrid acceleration of the EE
-                self._set_value_as_process(f"Vbd_ee{i}", lambda: SE3AdjMatrix(
-                    SE3Inv(self.ee[i]))*self._get_value(f"Vbd_BFn{i}"))
-                if simplify:
-                    self._start_simplification_process(f"Vbd_ee{i}", cse)
-                elif cse:
-                    self._start_cse_process(f"Vbd_ee{i}")
-                # Hybrid twist of end-effector frame
-                self._set_value_as_process(
-                    f"Vhd_ee{i}", 
-                    lambda: 
-                        SE3AdjMatrix(self._get_value(f"R_i{i}")) 
-                        * self._get_value(f"Vbd_ee{i}") 
-                        + SE3adMatrix(Matrix(self._get_value(f"Vh_ee{i}")[:3, :])
-                                        .col_join(Matrix([0, 0, 0])))
-                        * SE3AdjMatrix(self._get_value(f"R_i{i}"))
-                        * self._get_value(f"Vb_ee{i}")
-                    )  # Hybrid twist of end-effector frame
-
-                if simplify:
-                    self._start_simplification_process(f"Vhd_ee{i}", cse)
-                elif cse:
-                    self._start_cse_process(f"Vhd_ee{i}")
-
-                # Body Jacobian time derivative
-
-                # For the last moving body
-                self._set_value_as_process(
-                    f"Jb_dot{i}", lambda: self._get_value("Jdot")[6*(self.ee_parent[i]-1):6*self.ee_parent[i], :])
-
-                # For the EE
-                self._set_value_as_process(f"Jb_ee_dot{i}", lambda: SE3AdjMatrix(
-                    SE3Inv(self.ee[i]))*self._get_value(f"Jb_dot{i}"))
-                if simplify:
-                    self._start_simplification_process(f"Jb_ee_dot{i}", cse)
-                elif cse:
-                    self._start_cse_process(f"Jb_ee_dot{i}")
-
-                # Hybrid Jacobian time derivative
-                # For the last moving body
-                self._set_value_as_process(
-                    f"Jh_dot{i}", 
-                    lambda: 
-                        SE3AdjMatrix(self._get_value(f"R_BFn{i}"))
-                        * self._get_value(f"Jb_dot{i}") 
-                        + SE3adMatrix(Matrix(self._get_value(f"Vh_BFn{i}")[:3, :])
-                                        .col_join(Matrix([0, 0, 0])))
-                        * SE3AdjMatrix(self._get_value(f"R_BFn{i}"))
-                        * self._get_value(f"Jb{i}")
-                    )
-                if simplify:
-                    self._start_simplification_process(f"Jh_dot{i}", cse)
-                elif cse:
-                    self._start_cse_process(f"Jh_dot{i}")
-
-                # For the EE
-                self._set_value_as_process(
-                    f"Jh_ee_dot{i}", 
-                    lambda: 
-                        SE3AdjMatrix(self._get_value(f"R_i{i}"))
-                        * self._get_value(f"Jb_ee_dot{i}") 
-                        + SE3adMatrix(Matrix(self._get_value(f"Vh_ee{i}")[:3, :])
-                                        .col_join(Matrix([0, 0, 0])))
-                        * SE3AdjMatrix(self._get_value(f"R_i{i}"))
-                        * self._get_value(f"Jb_ee{i}")
-                    )
-                if simplify:
-                    self._start_simplification_process(f"Jh_ee_dot{i}", cse)
-                elif cse:
-                    self._start_cse_process(f"Jh_ee_dot{i}")
-            
-        else:
+        for i in range(self.n_ee):
             # Hybrid acceleration of the last body
             self._set_value_as_process(
-                "Vbd_BFn", lambda: self._get_value("Vbd")[6*(self.ee_parent-1):6*self.ee_parent, :])
+                f"Vbd_BFn{i}", lambda: self._get_value("Vbd")[6*(self.ee_parent[i]-1):6*self.ee_parent[i], :])
 
             if simplify:
-                self._start_simplification_process("Vbd_BFn", cse)
+                self._start_simplification_process(f"Vbd_BFn{i}", cse)
             elif cse:
-                self._start_cse_process("Vbd_BFn")
+                self._start_cse_process(f"Vbd_BFn{i}")
 
             # Hybrid twist of end-effector frame
             self._set_value_as_process(
-                "Vhd_BFn", 
+                f"Vhd_BFn{i}", 
                 lambda: 
-                    SE3AdjMatrix(self._get_value("R_BFn"))
-                    * self._get_value("Vbd_BFn") 
-                    + SE3adMatrix(Matrix(self._get_value("Vh_BFn")[:3, :])
+                    SE3AdjMatrix(self._get_value(f"R_BFn{i}"))
+                    * self._get_value(f"Vbd_BFn{i}") 
+                    + SE3adMatrix(Matrix(self._get_value(f"Vh_BFn{i}")[:3, :])
                                     .col_join(Matrix([0, 0, 0])))
-                    * SE3AdjMatrix(self._get_value("R_BFn"))
-                    * self._get_value("Vb_BFn")
+                    * SE3AdjMatrix(self._get_value(f"R_BFn{i}"))
+                    * self._get_value(f"Vb_BFn{i}")
                 )
 
             if simplify:
-                self._start_simplification_process("Vhd_BFn", cse)
+                self._start_simplification_process(f"Vhd_BFn{i}", cse)
             elif cse:
-                self._start_cse_process("Vhd_BFn")
+                self._start_cse_process(f"Vhd_BFn{i}")
 
             # Body fixed twist of end-effector frame
             # Hybrid acceleration of the EE
-            self._set_value_as_process("Vbd_ee", lambda: SE3AdjMatrix(
-                SE3Inv(self.ee))*self._get_value("Vbd_BFn"))
+            self._set_value_as_process(f"Vbd_ee{i}", lambda: SE3AdjMatrix(
+                SE3Inv(self.ee[i]))*self._get_value(f"Vbd_BFn{i}"))
             if simplify:
-                self._start_simplification_process("Vbd_ee", cse)
+                self._start_simplification_process(f"Vbd_ee{i}", cse)
             elif cse:
-                self._start_cse_process("Vbd_ee")
+                self._start_cse_process(f"Vbd_ee{i}")
             # Hybrid twist of end-effector frame
             self._set_value_as_process(
-                "Vhd_ee", 
+                f"Vhd_ee{i}", 
                 lambda: 
-                    SE3AdjMatrix(self._get_value("R_i")) 
-                    * self._get_value("Vbd_ee") 
-                    + SE3adMatrix(Matrix(self._get_value("Vh_ee")[:3, :])
+                    SE3AdjMatrix(self._get_value(f"R_i{i}")) 
+                    * self._get_value(f"Vbd_ee{i}") 
+                    + SE3adMatrix(Matrix(self._get_value(f"Vh_ee{i}")[:3, :])
                                     .col_join(Matrix([0, 0, 0])))
-                    * SE3AdjMatrix(self._get_value("R_i"))
-                    * self._get_value("Vb_ee")
+                    * SE3AdjMatrix(self._get_value(f"R_i{i}"))
+                    * self._get_value(f"Vb_ee{i}")
                 )  # Hybrid twist of end-effector frame
 
             if simplify:
-                self._start_simplification_process("Vhd_ee", cse)
+                self._start_simplification_process(f"Vhd_ee{i}", cse)
             elif cse:
-                self._start_cse_process("Vhd_ee")
+                self._start_cse_process(f"Vhd_ee{i}")
 
             # Body Jacobian time derivative
 
             # For the last moving body
             self._set_value_as_process(
-                "Jb_dot", lambda: self._get_value("Jdot")[6*(self.ee_parent-1):6*self.ee_parent, :])
+                f"Jb_dot{i}", lambda: self._get_value("Jdot")[6*(self.ee_parent[i]-1):6*self.ee_parent[i], :])
 
             # For the EE
-            self._set_value_as_process("Jb_ee_dot", lambda: SE3AdjMatrix(
-                SE3Inv(self.ee))*self._get_value("Jb_dot"))
+            self._set_value_as_process(f"Jb_ee_dot{i}", lambda: SE3AdjMatrix(
+                SE3Inv(self.ee[i]))*self._get_value(f"Jb_dot{i}"))
             if simplify:
-                self._start_simplification_process("Jb_ee_dot", cse)
+                self._start_simplification_process(f"Jb_ee_dot{i}", cse)
             elif cse:
-                self._start_cse_process("Jb_ee_dot")
+                self._start_cse_process(f"Jb_ee_dot{i}")
 
             # Hybrid Jacobian time derivative
             # For the last moving body
             self._set_value_as_process(
-                "Jh_dot", 
+                f"Jh_dot{i}", 
                 lambda: 
-                    SE3AdjMatrix(self._get_value("R_BFn"))
-                    * self._get_value("Jb_dot") 
-                    + SE3adMatrix(Matrix(self._get_value("Vh_BFn")[:3, :])
+                    SE3AdjMatrix(self._get_value(f"R_BFn{i}"))
+                    * self._get_value(f"Jb_dot{i}") 
+                    + SE3adMatrix(Matrix(self._get_value(f"Vh_BFn{i}")[:3, :])
                                     .col_join(Matrix([0, 0, 0])))
-                    * SE3AdjMatrix(self._get_value("R_BFn"))
-                    * self._get_value("Jb")
+                    * SE3AdjMatrix(self._get_value(f"R_BFn{i}"))
+                    * self._get_value(f"Jb{i}")
                 )
             if simplify:
-                self._start_simplification_process("Jh_dot", cse)
+                self._start_simplification_process(f"Jh_dot{i}", cse)
             elif cse:
-                self._start_cse_process("Jh_dot")
+                self._start_cse_process(f"Jh_dot{i}")
 
             # For the EE
             self._set_value_as_process(
-                "Jh_ee_dot", 
+                f"Jh_ee_dot{i}", 
                 lambda: 
-                    SE3AdjMatrix(self._get_value("R_i"))
-                    * self._get_value("Jb_ee_dot") 
-                    + SE3adMatrix(Matrix(self._get_value("Vh_ee")[:3, :])
+                    SE3AdjMatrix(self._get_value(f"R_i{i}"))
+                    * self._get_value(f"Jb_ee_dot{i}") 
+                    + SE3adMatrix(Matrix(self._get_value(f"Vh_ee{i}")[:3, :])
                                     .col_join(Matrix([0, 0, 0])))
-                    * SE3AdjMatrix(self._get_value("R_i"))
-                    * self._get_value("Jb_ee")
+                    * SE3AdjMatrix(self._get_value(f"R_i{i}"))
+                    * self._get_value(f"Jb_ee{i}")
                 )
             if simplify:
-                self._start_simplification_process("Jh_ee_dot", cse)
+                self._start_simplification_process(f"Jh_ee_dot{i}", cse)
             elif cse:
-                self._start_cse_process("Jh_ee_dot")
-        
+                self._start_cse_process(f"Jh_ee_dot{i}")
+                
         self._a = self._get_value("a")
         self._V = self._get_value("V")
 
         # variables for Code Generation:
         self.J = self._get_value("J")
         self.Jdot = self._get_value("Jdot")
-        if type(self.ee) is list:
-            self.fkin = [self._get_value(f"fkin{i}") for i in range(self.n_ee)]
-            self.Jb = [self._get_value(f"Jb{i}") for i in range(self.n_ee)]
-            self.Jh = [self._get_value(f"Jh{i}") for i in range(self.n_ee)]
-            self.Vb_ee = [self._get_value(f"Vb_ee{i}") for i in range(self.n_ee)]
-            self.Vh_ee = [self._get_value(f"Vh_ee{i}") for i in range(self.n_ee)]
-            self.Jb_ee = [self._get_value(f"Jb_ee{i}") for i in range(self.n_ee)]
-            self.Jh_ee = [self._get_value(f"Jh_ee{i}") for i in range(self.n_ee)]
-            self.Vh_BFn = [self._get_value(f"Vh_BFn{i}") for i in range(self.n_ee)]
-            self.Vb_BFn = [self._get_value(f"Vb_BFn{i}") for i in range(self.n_ee)]
-            self.Vhd_BFn = [self._get_value(f"Vhd_BFn{i}") for i in range(self.n_ee)]
-            self.Vbd_BFn = [self._get_value(f"Vbd_BFn{i}") for i in range(self.n_ee)]
-            self.Vhd_ee = [self._get_value(f"Vhd_ee{i}") for i in range(self.n_ee)]
-            self.Vbd_ee = [self._get_value(f"Vbd_ee{i}") for i in range(self.n_ee)]
-            self.Jh_dot = [self._get_value(f"Jh_dot{i}") for i in range(self.n_ee)]
-            self.Jb_dot = [self._get_value(f"Jb_dot{i}") for i in range(self.n_ee)]
-            self.Jh_ee_dot = [self._get_value(f"Jh_ee_dot{i}") for i in range(self.n_ee)]
-            self.Jb_ee_dot = [self._get_value(f"Jb_ee_dot{i}") for i in range(self.n_ee)]
-        else:
-            self.fkin = self._get_value("fkin")
-            self.Jb = self._get_value("Jb")
-            self.Jh = self._get_value("Jh")
-            self.Vb_ee = self._get_value("Vb_ee")
-            self.Vh_ee = self._get_value("Vh_ee")
-            self.Jb_ee = self._get_value("Jb_ee")
-            self.Jh_ee = self._get_value("Jh_ee")
-            self.Vh_BFn = self._get_value("Vh_BFn")
-            self.Vb_BFn = self._get_value("Vb_BFn")
-            self.Vhd_BFn = self._get_value("Vhd_BFn")
-            self.Vbd_BFn = self._get_value("Vbd_BFn")
-            self.Vhd_ee = self._get_value("Vhd_ee")
-            self.Vbd_ee = self._get_value("Vbd_ee")
-            self.Jh_dot = self._get_value("Jh_dot")
-            self.Jb_dot = self._get_value("Jb_dot")
-            self.Jh_ee_dot = self._get_value("Jh_ee_dot")
-            self.Jb_ee_dot = self._get_value("Jb_ee_dot")
+        self.fkin = [self._get_value(f"fkin{i}") for i in range(self.n_ee)]
+        self.Jb = [self._get_value(f"Jb{i}") for i in range(self.n_ee)]
+        self.Jh = [self._get_value(f"Jh{i}") for i in range(self.n_ee)]
+        self.Vb_ee = [self._get_value(f"Vb_ee{i}") for i in range(self.n_ee)]
+        self.Vh_ee = [self._get_value(f"Vh_ee{i}") for i in range(self.n_ee)]
+        self.Jb_ee = [self._get_value(f"Jb_ee{i}") for i in range(self.n_ee)]
+        self.Jh_ee = [self._get_value(f"Jh_ee{i}") for i in range(self.n_ee)]
+        self.Vh_BFn = [self._get_value(f"Vh_BFn{i}") for i in range(self.n_ee)]
+        self.Vb_BFn = [self._get_value(f"Vb_BFn{i}") for i in range(self.n_ee)]
+        self.Vhd_BFn = [self._get_value(f"Vhd_BFn{i}") for i in range(self.n_ee)]
+        self.Vbd_BFn = [self._get_value(f"Vbd_BFn{i}") for i in range(self.n_ee)]
+        self.Vhd_ee = [self._get_value(f"Vhd_ee{i}") for i in range(self.n_ee)]
+        self.Vbd_ee = [self._get_value(f"Vbd_ee{i}") for i in range(self.n_ee)]
+        self.Jh_dot = [self._get_value(f"Jh_dot{i}") for i in range(self.n_ee)]
+        self.Jb_dot = [self._get_value(f"Jb_dot{i}") for i in range(self.n_ee)]
+        self.Jh_ee_dot = [self._get_value(f"Jh_ee_dot{i}") for i in range(self.n_ee)]
+        self.Jb_ee_dot = [self._get_value(f"Jb_ee_dot{i}") for i in range(self.n_ee)]
 
         try:
             while True:
