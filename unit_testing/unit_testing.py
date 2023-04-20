@@ -1499,7 +1499,8 @@ class TestYamlParser(unittest.TestCase):
                 self.assertEqual(skd.simplify(skd.body_ref_config[0]), 
                                   transformation_matrix(SO3Exp([0,0,1],symbols("a")),Matrix(["x","y","z"])))
             with self.subTest("ee"):
-                self.assertEqual(skd.simplify(skd.ee), transformation_matrix(SO3Exp([0,0,1],symbols("a")),Matrix(["x","y","z"])))
+                self.assertEqual(skd.simplify(skd.ee if type(skd.ee) is not list else skd.ee[0]), 
+                                 transformation_matrix(SO3Exp([0,0,1],symbols("a")),Matrix(["x","y","z"])))
             with self.subTest("mass_inertia"):
                 self.assertEqual(skd.simplify(skd.Mb[0]-Matrix(parse_expr(dedent("""\
                     [[   Ixx1,    Ixy1,    Ixz1,       0, -cz1*m1,  cy1*m1],
