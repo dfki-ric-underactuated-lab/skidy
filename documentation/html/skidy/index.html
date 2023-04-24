@@ -144,6 +144,8 @@ support:
   - [1]
   - [1,2]
 
+ee_parent: 2
+
 gravity: [0,0,g]
 
 representation: spatial
@@ -168,10 +170,10 @@ body_ref_config:
     translation: [0,0,0]
 
 ee:
-  rotation:
-    axis: [0,0,1]
-    angle: 0
-  translation: [0,0,0]
+  - rotation:
+      axis: [0,0,1]
+      angle: 0
+    translation: [0,0,0]
 
 mass_inertia:
   - mass: m1
@@ -212,11 +214,14 @@ child:
 support:
   - [1]
   - [1,2]
+
+ee_parent: 2
 </code></pre>
 The parameters are generated to represent a serial robot by default. Modify parameters for tree-like structures. For serial robots these parameters are optional.
 - **parent**: list of parent links for any joint. Use 0 for World.
 - **child**: list of lists with child links for any link. Use empty list if no child is present.
 - **support**: list of lists with all support links beginning with first link including current link for any link.
+- **ee_parent**: parent joint index for end-effector link. Defaults to last link. For robots with more than one end-effector you can use a list of indices instead e.g.: `ee_parent: [1,2]`. Note, that this requires a list of end_effector transforms <code>ee</code>.
 ---
 <pre><code class="yaml">gravity: [0,0,g]
 </code></pre>
@@ -303,12 +308,13 @@ translation: [0,0,L1]
 ```
 ---
 <pre><code class="yaml">ee:
-  rotation:
-    axis: [0,0,1]
-    angle: 0
-  translation: [0,0,0]
+  - rotation:
+      axis: [0,0,1]
+      angle: 0
+    translation: [0,0,0]
 </code></pre>
-End-effector representation w.r.t. last link body frame in the chain as SE(3) transformation matrix. Here you have the same syntax options as for the body reference configuration. **Note** there is no trailing `-` as there is only one pose to be defined.
+End-effector representation w.r.t. last link body frame in the chain as SE(3) transformation matrix. Here you have the same syntax options as for the body reference configuration. For robots with more than one end-effector you can define more than one transform here. Note: in this case you have to define a list of parent joints in <code>ee\_parent</code>.
+If you have just one end-effector, you can omit the top level list (indicated by the trailing `-`).
 ---
 <pre><code class="yaml">mass_inertia:
   - mass: m1
@@ -429,7 +435,12 @@ q2d: [ddq1,ddq2]
 WEE: [0,0,0,0,0,0]
 </code></pre>
 Define symbolic generalized vectors (q, qd, q2d) and the time varying wrench on the end-effector link (WEE). Where the generalized vectors are list of length n and the wrench is a list of length 6 with symbolic values e.g.: <code>\[Mx,My,Mz,Fx,Fy,Fz]</code>.
-Add jerk and jounce here, to activate the calculation of the 1st and 2nd order derivatives of the Equation of Motion. Optionally, you can define the time derivatives of the external wrench <code>WDEE</code> and <code>W2DEE</code> here too. E.g.:
+If the robot has more than one end-effector, one wrench per end_effector has to be defined in a list instead, e.g.:
+<pre><code class="YAML">WEE: 
+  - [Mx1,My1,Mz1,Fx1,Fy1,Fz1]
+  - [Mx2,My2,Mz2,Fx2,Fy2,Fz2]
+</code></pre>
+Add jerk and jounce here, to activate the calculation of the 1st and 2nd order derivatives of the Equation of Motion. Optionally, you can define the time derivatives of the external wrench <code>WDEE</code> and <code>W2DEE</code> here accordingly. E.g.:
 <pre><code class="yaml">q: [q1,q2]
 qd: [dq1,dq2]
 q2d: [ddq1,ddq2]
@@ -485,6 +496,8 @@ child = [[1],
 support = [[1],
            [1,2]]
 
+ee_parent = 2
+
 # gravity vector
 gravity = sympy.Matrix([0,0,g])
 
@@ -521,6 +534,7 @@ skd = SymbolicKinDyn(gravity_vector=gravity,
                      parent=parent,
                      child=child,
                      support=support,
+                     ee_parent=ee_parent,
                      )
 
 # run Calculations
@@ -576,11 +590,14 @@ child = [[1],
 
 support = [[1],
            [1,2]]
+
+ee_parent = 2
 </code></pre>
 Connectivity graph of the robot. The parameters are generated to represent a serial robot by default. Modify parameters for tree-like structures. For serial robots these parameters are optional.
 - **parent**: list of parent links for any joint. Use 0 for World.
 - **child**: list of lists with child links for any link. Use empty list if no child is present.
 - **support**: list of lists with all support links beginning with first link including current link for any link.
+- **ee_parent**: parent joint index for end-effector link. Defaults to last link. For robots with more than one end-effector you can use a list of indices instead e.g.: `ee_parent = [1,2]`. Note, that this requires a list of end_effector transforms in <code>ee</code>.
 ---
 <pre><code class="python"># gravity vector
 gravity = sympy.Matrix([0,0,g])
@@ -672,6 +689,7 @@ Note that you have to import the function using <code>from <a title="skidy" href
 ee = transformation_matrix(r=SO3Exp(axis=[0,0,1],angle=0),t=[0,0,0])
 </code></pre>
 End-effector representation w.r.t. last link body frame in the chain as SE(3) transformation matrix. Here you have the same syntax options as for the body reference configuration.
+For robots with more than one end-effector you can use a list of transforms instead. This requires a list of parent joint indices for the parameter <code>ee\_parent</code>.
 ---
 <pre><code class="python"># mass_inertia parameters (6x6 sympy.Matrix per link)
 Mb = []
@@ -782,6 +800,10 @@ Optionally, you can define the time derivatives <code>WDEE</code> and <code>W2DE
 <pre><code class="python">WEE = sympy.Matrix([Mx,My,Mz,Fx,Fy,Fz])
 WDEE = sympy.Matrix([dMx,dMy,dMz,dFx,dFy,dFz])
 W2DEE = sympy.Matrix([ddMx,ddMy,ddMz,ddFx,ddFy,ddFz])
+</code></pre>
+If your robot has more than one end-effector, you have to use one external wrench per end-effector in a list, e.g.:
+<pre><code class="python">WEE = [sympy.Matrix([Mx1,My1,Mz1,Fx1,Fy1,Fz1]),
+       sympy.Matrix([Mx2,My2,Mz2,Fx2,Fy2,Fz2])]
 </code></pre>
 ---
 <pre><code class="python">skd = SymbolicKinDyn(gravity_vector=gravity,

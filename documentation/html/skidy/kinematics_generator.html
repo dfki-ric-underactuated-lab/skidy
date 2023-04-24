@@ -121,38 +121,51 @@ class _AbstractCodeGeneration():
         &#34;&#34;&#34;
         # all expressions in this dictionary can be code generated 
         # using the generate_code function.
-        all_expressions = {&#34;forward_kinematics&#34;: self.fkin,
-                           &#34;system_jacobian_matrix&#34;: self.J,
-                           &#34;body_jacobian_matrix&#34;: self.Jb,
-                           &#34;hybrid_jacobian_matrix&#34;: self.Jh,
-                           &#34;system_jacobian_dot&#34;: self.Jdot,
-                           &#34;body_twist_ee&#34;: self.Vb_ee,
-                           &#34;hybrid_twist_ee&#34;: self.Vh_ee,
-                           &#34;body_twist&#34;: self.Vb_BFn,
-                           &#34;hybrid_twist&#34;: self.Vh_BFn,
-                           &#34;body_jacobian_matrix_ee&#34;: self.Jb_ee,
-                           &#34;hybrid_jacobian_matrix_ee&#34;: self.Jh_ee,
-                           &#34;generalized_mass_inertia_matrix&#34;: self.M,
-                           &#34;coriolis_centrifugal_matrix&#34;: self.C,
-                           &#34;gravity_vector&#34;: self.Qgrav,
-                           &#34;inverse_dynamics&#34;: self.Q,
-                           &#34;hybrid_acceleration&#34;: self.Vhd_BFn,
-                           &#34;body_acceleration&#34;: self.Vbd_BFn,
-                           &#34;hybrid_acceleration_ee&#34;: self.Vhd_ee,
-                           &#34;body_acceleration_ee&#34;: self.Vbd_ee,
-                           &#34;hybrid_jacobian_matrix_dot&#34;: self.Jh_dot,
-                           &#34;body_jacobian_matrix_dot&#34;: self.Jb_dot,
-                           &#34;hybrid_jacobian_matrix_ee_dot&#34;: self.Jh_ee_dot,
-                           &#34;body_jacobian_matrix_ee_dot&#34;: self.Jb_ee_dot,
-                           &#34;generalized_mass_inertia_matrix_dot&#34;: self.Md, 
-                           &#34;coriolis_centrifugal_matrix_dot&#34;: self.Cd,
-                           &#34;gravity_vector_dot&#34;: self.Qdgrav,
-                           &#34;inverse_dynamics_dot&#34;: self.Qd,
-                           &#34;generalized_mass_inertia_matrix_ddot&#34;: self.M2d,
-                           &#34;coriolis_centrifugal_matrix_ddot&#34;: self.C2d,
-                           &#34;gravity_vector_ddot&#34;: self.Q2dgrav,
-                           &#34;inverse_dynamics_ddot&#34;: self.Q2d,
-                           }  
+        expressions = {&#34;forward_kinematics&#34;: self.fkin,
+                       &#34;system_jacobian_matrix&#34;: self.J,
+                       &#34;body_jacobian_matrix&#34;: self.Jb,
+                       &#34;hybrid_jacobian_matrix&#34;: self.Jh,
+                       &#34;system_jacobian_dot&#34;: self.Jdot,
+                       &#34;body_twist_ee&#34;: self.Vb_ee,
+                       &#34;hybrid_twist_ee&#34;: self.Vh_ee,
+                       &#34;body_twist&#34;: self.Vb_BFn,
+                       &#34;hybrid_twist&#34;: self.Vh_BFn,
+                       &#34;body_jacobian_matrix_ee&#34;: self.Jb_ee,
+                       &#34;hybrid_jacobian_matrix_ee&#34;: self.Jh_ee,
+                       &#34;generalized_mass_inertia_matrix&#34;: self.M,
+                       &#34;coriolis_centrifugal_matrix&#34;: self.C,
+                       &#34;gravity_vector&#34;: self.Qgrav,
+                       &#34;inverse_dynamics&#34;: self.Q,
+                       &#34;hybrid_acceleration&#34;: self.Vhd_BFn,
+                       &#34;body_acceleration&#34;: self.Vbd_BFn,
+                       &#34;hybrid_acceleration_ee&#34;: self.Vhd_ee,
+                       &#34;body_acceleration_ee&#34;: self.Vbd_ee,
+                       &#34;hybrid_jacobian_matrix_dot&#34;: self.Jh_dot,
+                       &#34;body_jacobian_matrix_dot&#34;: self.Jb_dot,
+                       &#34;hybrid_jacobian_matrix_ee_dot&#34;: self.Jh_ee_dot,
+                       &#34;body_jacobian_matrix_ee_dot&#34;: self.Jb_ee_dot,
+                       &#34;generalized_mass_inertia_matrix_dot&#34;: self.Md, 
+                       &#34;coriolis_centrifugal_matrix_dot&#34;: self.Cd,
+                       &#34;gravity_vector_dot&#34;: self.Qdgrav,
+                       &#34;inverse_dynamics_dot&#34;: self.Qd,
+                       &#34;generalized_mass_inertia_matrix_ddot&#34;: self.M2d,
+                       &#34;coriolis_centrifugal_matrix_ddot&#34;: self.C2d,
+                       &#34;gravity_vector_ddot&#34;: self.Q2dgrav,
+                       &#34;inverse_dynamics_ddot&#34;: self.Q2d,
+                       }  
+        
+        # deal with multiple ee
+        all_expressions = {}
+        for k, v in expressions.items():
+            if type(v) is list:
+                if len(v) &gt; 1:
+                    for i in range(len(v)):
+                        all_expressions[f&#34;{k}_{i+1}&#34;] = v[i]
+                else:
+                    all_expressions[k] = v[0]
+            else:
+                all_expressions[k] = v
+        
         # exclude expressions which are None
         if filterNone:
             filtered = {k: v for k, v in all_expressions.items()
@@ -161,7 +174,8 @@ class _AbstractCodeGeneration():
         return all_expressions
 
     def generate_code(self, python: bool=False, C: bool=False, Matlab: bool=False, 
-                      cython: bool=False, julia: bool=False, latex: bool=False, cache = False, landscape: bool=False,
+                      cython: bool=False, julia: bool=False, latex: bool=False, 
+                      cache: bool=False, landscape: bool=False,
                       folder: str=&#34;./generated_code&#34;, use_global_vars: bool=True, 
                       name: str=&#34;plant&#34;, project: str=&#34;Project&#34;) -&gt; None:
         &#34;&#34;&#34;Generate code from generated expressions. 
@@ -936,7 +950,7 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
     
     def __init__(self, 
                  gravity_vector: MutableDenseMatrix=None, 
-                 ee: MutableDenseMatrix=None, 
+                 ee: Union[MutableDenseMatrix,List[MutableDenseMatrix]]=None, 
                  body_ref_config: List[MutableDenseMatrix]=[], 
                  joint_screw_coord: List[MutableDenseMatrix]=[], 
                  config_representation: str=&#34;spatial&#34;, 
@@ -944,14 +958,15 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
                  parent: List[int]=[], 
                  support: List[List[int]]=[], 
                  child: List[List[int]]=[], 
+                 ee_parent: Union[int,List[int]]=None,
                  q:MutableDenseMatrix=None, 
                  qd: MutableDenseMatrix=None, 
                  q2d: MutableDenseMatrix=None, 
                  q3d: MutableDenseMatrix=None, 
                  q4d: MutableDenseMatrix=None, 
-                 WEE: MutableDenseMatrix=zeros(6, 1),
-                 WDEE: MutableDenseMatrix=zeros(6, 1),
-                 W2DEE: MutableDenseMatrix=zeros(6, 1),
+                 WEE: Union[MutableDenseMatrix,List[MutableDenseMatrix]]=zeros(6, 1),
+                 WDEE: Union[MutableDenseMatrix,List[MutableDenseMatrix]]=zeros(6, 1),
+                 W2DEE: Union[MutableDenseMatrix,List[MutableDenseMatrix]]=zeros(6, 1),
                  **kwargs) -&gt; None:
         &#34;&#34;&#34;SymbolicKinDyn
         Symbolic tool to compute equations of motion of serial chain 
@@ -961,9 +976,13 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
         Args:
             gravity_vector (sympy.Matrix, optional): 
                 Vector of gravity. Defaults to None.
-            ee (sympy.Matrix, optional): 
+            ee (sympy.Matrix | list of sympy.Matrix, optional): 
                 End-effector configuration with reference to last link 
-                body fixed frame in the chain. Defaults to None.
+                body fixed frame in the chain. This link can be selected 
+                manually using the parameter ee_parent. 
+                If there is more than one end-effector use a list of 
+                transforms instead.
+                Defaults to None.
             body_ref_config (list of sympy.Matrix, optional): 
                 List of reference configurations of bodies in body-fixed
                 or spatial representation, dependent on selected 
@@ -999,6 +1018,10 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
                 child links. Use empty list if no child link is present.
                 Only necessary for tree-like robot structures. 
                 Defaults to [].
+            ee_parent (int | list, optional): 
+                parent link of the end effector frame. If there is more 
+                than one end-effector, use a list of indices instead.
+                Defaults to None (= last link).
             q (sympy.Matrix, optional): 
                 (n,1) Generalized position vector. Defaults to None.
             qd (sympy.Matrix, optional): 
@@ -1009,17 +1032,23 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
                 (n,1) Generalized jerk vector. Defaults to None.
             q4d (sympy.Matrix, optional): 
                 (n,1) Generalized jounce vector. Defaults to None.
-            WEE (sympy.Matrix, optional): 
+            WEE (sympy.Matrix | list, optional): 
                 (6,1) WEE (t) = [Mx,My,Mz,Fx,Fy,Fz] is the time varying 
                 wrench on the EE link. 
+                If there is more than one end-effector, you can use a 
+                list containing all wrenches instead.
                 Defaults to zeros(6, 1).
-            WDEE (sympy.Matrix, optional): 
+            WDEE (sympy.Matrix | list, optional): 
                 (6,1) WDEE (t) = [dMx,dMy,dMz,dFx,dFy,dFz] is the derivative 
                 of the time varying wrench on the EE link. 
+                If there is more than one end-effector, you can use a 
+                list containing all wrenches instead.
                 Defaults to zeros(6, 1).
-            W2DEE (sympy.Matrix, optional): 
+            W2DEE (sympy.Matrix | list, optional): 
                 (6,1) W2DEE (t) = [ddMx,ddMy,ddMz,ddFx,ddFy,ddFz] is the 
                 2nd derivative of the time varying wrench on the EE link. 
+                If there is more than one end-effector, you can use a 
+                list containing all wrenches instead.
                 Defaults to zeros(6, 1).
             
         &#34;&#34;&#34;
@@ -1060,7 +1089,10 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
         self.parent = parent
         self.child = child
         self.support = support
-
+        
+        # costom ee link
+        self.ee_parent = ee_parent
+        
         # temporary vars
         self._FK_C = None
         self._A = None
@@ -1187,7 +1219,16 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
             else:
                 q, qd, q2d = self.q, self.qd, self.q2d
                 
-        self._save_vectors(q, qd, q2d, None, None, ..., ..., ...)    
+        self._save_vectors(q, qd, q2d, None, None, ..., ..., ...)
+        self.n = len(q)
+        
+        # prepare ee link selection
+        if self.ee_parent is None:
+            self.ee_parent = [self.n]
+        if type(self.ee) is not list: self.ee = [self.ee]
+        if type(self.ee_parent) is not list: self.ee_parent = [self.ee_parent]
+        assert(len(self.ee) == len(self.ee_parent))    
+        self.n_ee = len(self.ee_parent)
         
         if parallel:
             self._closed_form_kinematics_body_fixed_parallel(
@@ -1204,9 +1245,9 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
         q2d: MutableDenseMatrix=None, 
         q3d: MutableDenseMatrix=None, 
         q4d: MutableDenseMatrix=None, 
-        WEE: MutableDenseMatrix=..., 
-        WDEE: MutableDenseMatrix=..., 
-        W2DEE: MutableDenseMatrix=..., 
+        WEE: Union[MutableDenseMatrix,List[MutableDenseMatrix]]=..., 
+        WDEE: Union[MutableDenseMatrix,List[MutableDenseMatrix]]=..., 
+        W2DEE: Union[MutableDenseMatrix,List[MutableDenseMatrix]]=..., 
         simplify: bool=True, cse: bool=False, 
         parallel: bool=True) -&gt; MutableDenseMatrix:
         &#34;&#34;&#34;Inverse dynamics using body fixed representation of the 
@@ -1230,17 +1271,23 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
                 (n,1) Generalized jerk vector. Defaults to None.
             q4d (sympy.Matrix, optional): 
                 (n,1) Generalized jounce vector. Defaults to None.
-            WEE (sympy.Matrix, optional): 
+            WEE (list | sympy.Matrix, optional): 
                 (6,1) WEE (t) = [Mx,My,Mz,Fx,Fy,Fz] is the time varying 
                 wrench on the EE link. 
+                If there is more than one end-effector, you can use a 
+                list containing all wrenches instead.
                 Defaults to zeros(6, 1).
-            WDEE (sympy.Matrix, optional): 
+            WDEE (list | sympy.Matrix, optional): 
                 (6,1) WDEE (t) = [dMx,dMy,dMz,dFx,dFy,dFz] is the derivative 
                 of the time varying wrench on the EE link. 
+                If there is more than one end-effector, you can use a 
+                list containing all wrenches instead.
                 Defaults to zeros(6, 1).
-            W2DEE (sympy.Matrix, optional): 
+            W2DEE (list | sympy.Matrix, optional): 
                 (6,1) W2DEE (t) = [ddMx,ddMy,ddMz,ddFx,ddFy,ddFz] is the 
                 2nd derivative of the time varying wrench on the EE link. 
+                If there is more than one end-effector, you can use a 
+                list containing all wrenches instead.
                 Defaults to zeros(6, 1).
             simplify (bool, optional): 
                 Use simplify command on saved expressions. 
@@ -1275,7 +1322,24 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
             W2DEE = self.W2DEE
         
         self._save_vectors(q, qd, q2d, q3d, q4d, WEE, WDEE, W2DEE)
-            
+        self.n = len(q)
+        
+        # prepare ee link selection
+        if self.ee_parent is None:
+            self.ee_parent = [self.n]
+        if type(self.ee_parent) is not list: self.ee_parent = [self.ee_parent]
+        self.n_ee = len(self.ee_parent)
+        if self.n_ee &gt; 1:
+            if type(WEE) is list and len(WEE) &gt; 1:
+                assert(len(WEE) == len(self.ee_parent))
+            if type(WDEE) is list and len(WDEE) &gt; 1:
+                assert(len(WDEE) == len(self.ee_parent))
+            if type(W2DEE) is list and len(W2DEE) &gt; 1:
+                assert(len(W2DEE) == len(self.ee_parent)) 
+        if type(WEE) is not list: WEE = [WEE]
+        if type(WDEE) is not list: WDEE = [WDEE]
+        if type(W2DEE) is not list: W2DEE = [W2DEE]
+        
         if parallel:
             self._closed_form_inv_dyn_body_fixed_parallel(
                 q, qd, q2d, q3d, q4d, WEE, WDEE, W2DEE, simplify, cse)
@@ -1341,15 +1405,16 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
             FK_C, A = self._calc_A_matrix_tree(q)
         else:    
             FK_C, A = self._calc_A_matrix(q)
-            
-        fkin = FK_C[self.n-1]*self.ee
-        if simplify:
-            fkin = self.simplify(fkin, cse)
-        elif cse:
-            fkin = self._cse_expression(fkin)    
-        self.fkin = fkin
-
-
+        
+        fkin = [None]*self.n_ee
+        for i in range(self.n_ee):
+            fkin[i] = FK_C[self.ee_parent[i]-1]*self.ee[i]
+            if simplify:
+                fkin[i] = self.simplify(fkin[i], cse)
+            elif cse:
+                fkin[i] = self._cse_expression(fkin[i])    
+        self.fkin = fkin if len(fkin)&gt;1 else fkin[0]
+        
         if self.J is not None:
             J = self.J
             V = self._V
@@ -1372,78 +1437,88 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
             V = J*qd
             self._V = V
 
-        # Different Jacobians
-        R_i = Matrix(fkin[:3, :3]).row_join(
-            zeros(3, 1)).col_join(Matrix([0, 0, 0, 1]).T)
-        if simplify:  # fastens later simplifications
-            R_i = self.simplify(R_i, cse)
-        elif cse:
-            R_i = self._cse_expression(R_i)
+        R_i = [None]*self.n_ee
+        R_BFn = [None]*self.n_ee
+        Vb_BFn = [None]*self.n_ee
+        Vh_BFn = [None]*self.n_ee
+        Vb_ee = [None]*self.n_ee
+        Vh_ee = [None]*self.n_ee
+        Jh_ee = [None]*self.n_ee
+        Jb_ee = [None]*self.n_ee
+        Jh = [None]*self.n_ee
+        Jb = [None]*self.n_ee
+        for i in range(self.n_ee):
+            # Different Jacobians
+            R_i[i] = Matrix(fkin[i][:3, :3]).row_join(
+                zeros(3, 1)).col_join(Matrix([0, 0, 0, 1]).T)
+            if simplify:  # fastens later simplifications
+                R_i[i] = self.simplify(R_i[i], cse)
+            elif cse:
+                R_i[i] = self._cse_expression(R_i[i])
+            
+            R_BFn[i] = Matrix(FK_C[self.ee_parent[i]-1][:3, :3]).row_join(
+                zeros(3, 1)).col_join(Matrix([0, 0, 0, 1]).T)
 
-        R_BFn = Matrix(FK_C[-1][:3, :3]).row_join(
-            zeros(3, 1)).col_join(Matrix([0, 0, 0, 1]).T)
+            # Body fixed Jacobian of last moving body 
+            # (This may not correspond to end-effector frame)
+            Jb[i] = J[6*(self.ee_parent[i]-1):6*self.ee_parent[i], :] # used to be [-6:,:]
+            if simplify:
+                Jb[i] = self.simplify(Jb[i], cse)
+            elif cse:
+                Jb[i] = self._cse_expression(Jb[i])
 
-        # Body fixed Jacobian of last moving body 
-        # (This may not correspond to end-effector frame)
-        Jb = J[-6:, :]
-        if simplify:
-            Jb = self.simplify(Jb, cse)
-        elif cse:
-            Jb = self._cse_expression(Jb)
+            Vb_BFn[i] = Jb[i]*qd  # Body fixed twist of last moving body
+            if simplify:
+                Vb_BFn[i] = self.simplify(Vb_BFn[i], cse)
+            elif cse:
+                Vb_BFn[i] = self._cse_expression(Vb_BFn[i])
+            Vh_BFn[i] = SE3AdjMatrix(R_BFn[i])*Vb_BFn[i]
+            if simplify:
+                Vh_BFn[i] = self.simplify(Vh_BFn[i], cse)
+            elif cse:
+                Vh_BFn[i] = self._cse_expression(Vh_BFn[i])
+            
+            # Body fixed twist of end-effector frame
+            Vb_ee[i] = SE3AdjMatrix(SE3Inv(self.ee[i]))*Vb_BFn[i]
+            if simplify:
+                Vb_ee[i] = self.simplify(Vb_ee[i], cse)
+            elif cse:
+                Vb_ee[i] = self._cse_expression(Vb_ee[i])
+            # Hybrid twist of end-effector frame
+            Vh_ee[i] = SE3AdjMatrix(R_i[i])*Vb_ee[i]
+            if simplify:
+                Vh_ee[i] = self.simplify(Vh_ee[i], cse)
+            elif cse:
+                Vh_ee[i] = self._cse_expression(Vh_ee[i])
 
-        Vb_BFn = Jb*qd  # Body fixed twist of last moving body
-        if simplify:
-            Vb_BFn = self.simplify(Vb_BFn, cse)
-        elif cse:
-            Vb_BFn = self._cse_expression(Vb_BFn)
-        Vh_BFn = SE3AdjMatrix(R_BFn)*Vb_BFn
-        if simplify:
-            Vh_BFn = self.simplify(Vh_BFn, cse)
-        elif cse:
-            Vh_BFn = self._cse_expression(Vh_BFn)
-        self.Vb_BFn = Vb_BFn
-        self.Vh_BFn = Vh_BFn
+            # Body fixed Jacobian of end-effector frame
+            Jb_ee[i] = SE3AdjMatrix(SE3Inv(self.ee[i]))*Jb[i]
+            if simplify:
+                Jb_ee[i] = self.simplify(Jb_ee[i], cse)
+            elif cse:
+                Jb_ee[i] = self._cse_expression(Jb_ee[i])
 
-        # Body fixed twist of end-effector frame
-        Vb_ee = SE3AdjMatrix(SE3Inv(self.ee))*Vb_BFn
-        if simplify:
-            Vb_ee = self.simplify(Vb_ee, cse)
-        elif cse:
-            Vb_ee = self._cse_expression(Vb_ee)
-        # Hybrid twist of end-effector frame
-        Vh_ee = SE3AdjMatrix(R_i)*Vb_ee
-        if simplify:
-            Vh_ee = self.simplify(Vh_ee, cse)
-        elif cse:
-            Vh_ee = self._cse_expression(Vh_ee)
+            # Hybrid Jacobian of end-effector frame
+            Jh_ee[i] = SE3AdjMatrix(R_i[i])*Jb_ee[i]
+            # Hybrid Jacobian of last moving body
+            Jh[i] = SE3AdjMatrix(R_i[i])*Jb[i]  
 
-        self.Vb_ee = Vb_ee
-        self.Vh_ee = Vh_ee
-
-        # Body fixed Jacobian of end-effector frame
-        Jb_ee = SE3AdjMatrix(SE3Inv(self.ee))*Jb
-        if simplify:
-            Jb_ee = self.simplify(Jb_ee, cse)
-        elif cse:
-            Jb_ee = self._cse_expression(Jb_ee)
-
-        # Hybrid Jacobian of end-effector frame
-        Jh_ee = SE3AdjMatrix(R_i)*Jb_ee
-        # Hybrid Jacobian of last moving body
-        Jh = SE3AdjMatrix(R_i)*Jb  
-
-        if simplify:
-            Jh_ee = self.simplify(Jh_ee, cse)
-            Jh = self.simplify(Jh, cse)
-        elif cse:
-            Jh_ee = self._cse_expression(Jh_ee)
-            Jh = self._cse_expression(Jh)
-
-        self.Jh_ee = Jh_ee
-        self.Jb_ee = Jb_ee
-        self.Jh = Jh
-        self.Jb = Jb
-
+            if simplify:
+                Jh_ee[i] = self.simplify(Jh_ee[i], cse)
+                Jh[i] = self.simplify(Jh[i], cse)
+            elif cse:
+                Jh_ee[i] = self._cse_expression(Jh_ee[i])
+                Jh[i] = self._cse_expression(Jh[i])
+            
+        self.Vb_BFn = Vb_BFn if len(Vb_BFn)&gt;1 else Vb_BFn[0]
+        self.Vh_BFn = Vh_BFn if len(Vh_BFn)&gt;1 else Vh_BFn[0]
+        self.Vb_ee = Vb_ee if len(Vb_ee)&gt;1 else Vb_ee[0]
+        self.Vh_ee = Vh_ee if len(Vh_ee)&gt;1 else Vh_ee[0]
+        self.Jh_ee = Jh_ee if len(Jh_ee)&gt;1 else Jh_ee[0]
+        self.Jb_ee = Jb_ee if len(Jb_ee)&gt;1 else Jb_ee[0]
+        self.Jh = Jh if len(Jh)&gt;1 else Jh[0]
+        self.Jb = Jb if len(Jb)&gt;1 else Jb[0]
+        
         # Acceleration computations
         if self._a is not None:
             a = self._a
@@ -1469,80 +1544,88 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
 
         Vbd = J*q2d - A*a*V
 
-        # Hybrid acceleration of the last body
-        Vbd_BFn = Vbd[-6:, :]
-        if simplify:
-            Vbd_BFn = self.simplify(Vbd_BFn, cse)
-        elif cse:
-            Vbd_BFn = self._cse_expression(Vbd_BFn)
-        # Hybrid twist of end-effector frame 
-        # TODO: check comments
-        Vhd_BFn = (SE3AdjMatrix(R_BFn)*Vbd_BFn 
-                   + SE3adMatrix(Matrix(Vh_BFn[:3, :])
-                                      .col_join(Matrix([0, 0, 0])))
-                   * SE3AdjMatrix(R_BFn)*Vb_BFn)  
+        Vbd_BFn = [None]*self.n_ee
+        Vhd_BFn = [None]*self.n_ee
+        Vbd_ee = [None]*self.n_ee
+        Vhd_ee = [None]*self.n_ee
+        Jb_dot = [None]*self.n_ee
+        Jb_ee_dot = [None]*self.n_ee
+        Jh_dot = [None]*self.n_ee
+        Jh_ee_dot = [None]*self.n_ee
+        for i in range(self.n_ee):
+            # Hybrid acceleration of the last body
+            Vbd_BFn[i] = Vbd[6*(self.ee_parent[i]-1):6*self.ee_parent[i], :] # used to be [-6:,:]
+            if simplify:
+                Vbd_BFn[i] = self.simplify(Vbd_BFn[i], cse)
+            elif cse:
+                Vbd_BFn[i] = self._cse_expression(Vbd_BFn[i])
+            # Hybrid twist of end-effector frame 
+            # TODO: check comments
+            Vhd_BFn[i] = (SE3AdjMatrix(R_BFn[i])*Vbd_BFn[i] 
+                    + SE3adMatrix(Matrix(Vh_BFn[i][:3, :])
+                                        .col_join(Matrix([0, 0, 0])))
+                    * SE3AdjMatrix(R_BFn[i])*Vb_BFn[i])  
 
-        if simplify:
-            Vhd_BFn = self.simplify(Vhd_BFn, cse)
-        elif cse:
-            Vhd_BFn = self._cse_expression(Vhd_BFn)
+            if simplify:
+                Vhd_BFn[i] = self.simplify(Vhd_BFn[i], cse)
+            elif cse:
+                Vhd_BFn[i] = self._cse_expression(Vhd_BFn[i])
 
-        self.Vbd_BFn = Vbd_BFn
-        self.Vhd_BFn = Vhd_BFn
+            # Body fixed twist of end-effector frame
+            # Hybrid acceleration of the EE
+            Vbd_ee[i] = SE3AdjMatrix(SE3Inv(self.ee[i]))*Vbd_BFn[i]
+            if simplify:
+                Vbd_ee[i] = self.simplify(Vbd_ee[i], cse)
+            elif cse:
+                Vbd_ee[i] = self._cse_expression(Vbd_ee[i])
+            # Hybrid twist of end-effector frame
+            Vhd_ee[i] = SE3AdjMatrix(R_i[i])*Vbd_ee[i] + SE3adMatrix(Matrix(
+                Vh_ee[i][:3, :]).col_join(Matrix([0, 0, 0])))*\
+                    SE3AdjMatrix(R_i[i])*Vb_ee[i]  
+            if simplify:
+                Vhd_ee[i] = self.simplify(Vhd_ee[i], cse)
+            elif cse:
+                Vhd_ee[i] = self._cse_expression(Vhd_ee[i])
 
-        # Body fixed twist of end-effector frame
-        # Hybrid acceleration of the EE
-        Vbd_ee = SE3AdjMatrix(SE3Inv(self.ee))*Vbd_BFn
-        if simplify:
-            Vbd_ee = self.simplify(Vbd_ee, cse)
-        elif cse:
-            Vbd_ee = self._cse_expression(Vbd_ee)
-        # Hybrid twist of end-effector frame
-        Vhd_ee = SE3AdjMatrix(R_i)*Vbd_ee + SE3adMatrix(Matrix(
-            Vh_ee[:3, :]).col_join(Matrix([0, 0, 0])))*\
-                SE3AdjMatrix(R_i)*Vb_ee  
-        if simplify:
-            Vhd_ee = self.simplify(Vhd_ee, cse)
-        elif cse:
-            Vhd_ee = self._cse_expression(Vhd_ee)
+            # Body Jacobian time derivative
 
-        self.Vbd_ee = Vbd_ee
-        self.Vhd_ee = Vhd_ee
+            # For the last moving body
+            Jb_dot[i] = Jdot[6*(self.ee_parent[i]-1):6*self.ee_parent[i], :] # used to be [-6:,:]
 
-        # Body Jacobian time derivative
+            # For the EE
+            Jb_ee_dot[i] = SE3AdjMatrix(SE3Inv(self.ee[i]))*Jb_dot[i]
+            if simplify:
+                Jb_ee_dot[i] = self.simplify(Jb_ee_dot[i], cse)
+            elif cse:
+                Jb_ee_dot[i] = self._cse_expression(Jb_ee_dot[i])
 
-        # For the last moving body
-        Jb_dot = Jdot[-6:, :]
-        self.Jb_dot = Jb_dot
+            # Hybrid Jacobian time derivative
+            # For the last moving body
+            Jh_dot[i] = (SE3AdjMatrix(R_BFn[i])*Jb_dot[i] 
+                    + SE3adMatrix(Matrix(Vh_BFn[i][:3, :]).col_join(Matrix([0, 0, 0])))
+                    *SE3AdjMatrix(R_BFn[i])*Jb[i])
+            if simplify:
+                Jh_dot[i] = self.simplify(Jh_dot[i], cse)
+            elif cse:
+                Jh_dot[i] = self._cse_expression(Jh_dot[i])
 
-        # For the EE
-        Jb_ee_dot = SE3AdjMatrix(SE3Inv(self.ee))*Jb_dot
-        if simplify:
-            Jb_ee_dot = self.simplify(Jb_ee_dot, cse)
-        elif cse:
-            Jb_ee_dot = self._cse_expression(Jb_ee_dot)
-        self.Jb_ee_dot = Jb_ee_dot
-
-        # Hybrid Jacobian time derivative
-        # For the last moving body
-        Jh_dot = SE3AdjMatrix(R_BFn)*Jb_dot + SE3adMatrix(
-            Matrix(Vh_BFn[:3, :]).col_join(Matrix([0, 0, 0])))*\
-                SE3AdjMatrix(R_BFn)*Jb
-        if simplify:
-            Jh_dot = self.simplify(Jh_dot, cse)
-        elif cse:
-            Jh_dot = self._cse_expression(Jh_dot)
-        self.Jh_dot = Jh_dot
-
-        # For the EE
-        Jh_ee_dot = SE3AdjMatrix(R_i)*Jb_ee_dot + SE3adMatrix(
-            Matrix(Vh_ee[:3, :]).col_join(Matrix([0, 0, 0])))*\
-                SE3AdjMatrix(R_i)*Jb_ee
-        if simplify:
-            Jh_ee_dot = self.simplify(Jh_ee_dot, cse)
-        elif cse:
-            Jh_ee_dot = self._cse_expression(Jh_ee_dot)
-        self.Jh_ee_dot = Jh_ee_dot
+            # For the EE
+            Jh_ee_dot[i] = (SE3AdjMatrix(R_i[i])*Jb_ee_dot[i] 
+                        + SE3adMatrix(Matrix(Vh_ee[i][:3, :]).col_join(Matrix([0, 0, 0])))
+                        * SE3AdjMatrix(R_i[i])*Jb_ee[i])
+            if simplify:
+                Jh_ee_dot[i] = self.simplify(Jh_ee_dot[i], cse)
+            elif cse:
+                Jh_ee_dot[i] = self._cse_expression(Jh_ee_dot[i])
+        
+        self.Vbd_BFn = Vbd_BFn if len(Vbd_BFn)&gt;1 else Vbd_BFn[0]
+        self.Vhd_BFn = Vhd_BFn if len(Vhd_BFn)&gt;1 else Vhd_BFn[0]
+        self.Vbd_ee = Vbd_ee if len(Vbd_ee)&gt;1 else Vbd_ee[0]
+        self.Vhd_ee = Vhd_ee if len(Vhd_ee)&gt;1 else Vhd_ee[0]
+        self.Jb_dot = Jb_dot if len(Jb_dot)&gt;1 else Jb_dot[0]
+        self.Jb_ee_dot = Jb_ee_dot if len(Jb_ee_dot)&gt;1 else Jb_ee_dot[0]
+        self.Jh_dot = Jh_dot if len(Jh_dot)&gt;1 else Jh_dot[0]
+        self.Jh_ee_dot = Jh_ee_dot if len(Jh_ee_dot)&gt;1 else Jh_ee_dot[0]
 
         for e in self._get_expressions():
             self.all_symbols.update(e.free_symbols)
@@ -1555,9 +1638,9 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
                                         q2d: MutableDenseMatrix,
                                         q3d: MutableDenseMatrix=None, 
                                         q4d: MutableDenseMatrix=None, 
-                                        WEE: MutableDenseMatrix=zeros(6, 1), 
-                                        WDEE: MutableDenseMatrix=zeros(6, 1), 
-                                        W2DEE: MutableDenseMatrix=zeros(6, 1), 
+                                        WEE: List[MutableDenseMatrix]=[zeros(6, 1)], 
+                                        WDEE: List[MutableDenseMatrix]=[zeros(6, 1)], 
+                                        W2DEE: List[MutableDenseMatrix]=[zeros(6, 1)], 
                                         simplify: bool=True, 
                                         cse: bool=False) -&gt; MutableDenseMatrix:
         &#34;&#34;&#34;Inverse dynamics using body fixed representation of the 
@@ -1578,18 +1661,18 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
                 (n,1) Generalized jerk vector. Defaults to None.
             q4d (sympy.Matrix, optional): 
                 (n,1) Generalized jounce vector. Defaults to None.
-            WEE (sympy.Matrix, optional): 
+            WEE (list of sympy.Matrix, optional): 
                 (6,1) WEE (t) = [Mx,My,Mz,Fx,Fy,Fz] is the time varying 
                 wrench on the EE link. 
-                Defaults to zeros(6, 1).
-            WDEE (sympy.Matrix, optional): 
+                Defaults to [zeros(6, 1)].
+            WDEE (list of sympy.Matrix, optional): 
                 (6,1) WDEE (t) = [dMx,dMy,dMz,dFx,dFy,dFz] is the derivative 
                 of the time varying wrench on the EE link. 
-                Defaults to zeros(6, 1).
-            W2DEE (sympy.Matrix, optional): 
+                Defaults to [zeros(6, 1)].
+            W2DEE (list of sympy.Matrix, optional): 
                 (6,1) W2DEE (t) = [ddMx,ddMy,ddMz,ddFx,ddFy,ddFz] is the 
                 2nd derivative of the time varying wrench on the EE link. 
-                Defaults to zeros(6, 1).
+                Defaults to [zeros(6, 1)].
             simplify (bool, optional): Use simplify command 
                 on saved expressions. Defaults to True.
             cse (bool, optional): Use common subexpression 
@@ -1605,9 +1688,12 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
         self.var_syms.update(q2d.free_symbols)
         if q3d: self.var_syms.update(q3d.free_symbols)
         if q4d: self.var_syms.update(q4d.free_symbols)
-        self.optional_var_syms.update(WEE.free_symbols)
-        self.optional_var_syms.update(WDEE.free_symbols)
-        self.optional_var_syms.update(W2DEE.free_symbols)
+        for W in WEE:
+            self.optional_var_syms.update(W.free_symbols)
+        for WD in WDEE:
+            self.optional_var_syms.update(WD.free_symbols)
+        for W2D in W2DEE:
+            self.optional_var_syms.update(W2D.free_symbols)
 
         self.n = len(q)
 
@@ -1698,7 +1784,8 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
         # External Wrench
         Wext = zeros(6*self.n, 1)
         # WEE (t) is the time varying wrench on the EE link.
-        Wext[-6:, 0] = WEE
+        for i in range(self.n_ee):
+            Wext[6*(self.ee_parent[i]-1):6*self.ee_parent[i], 0] = WEE[i if len(WEE) == self.n_ee else 0] # TODO: ee idx
         Qext = J.T * Wext
 
         # Generalized forces Q
@@ -1756,7 +1843,8 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
             
             # First time derivative of External Wrench
             Wdext = zeros(6*self.n,1)
-            Wdext[-6:,0] = WDEE
+            for i in range(self.n_ee):
+                Wdext[6*(self.ee_parent[i]-1):6*self.ee_parent[i], 0] = WDEE[i if len(WDEE) == self.n_ee else 0]
             Qdext = J.T*(Wdext - (A*a).T * Wext)
             
             # Qd = M*q3d + (Md + C)*q2d + Cd*qd  # without gravity 
@@ -1815,7 +1903,8 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
 
             # Second time derivative of External Wrench
             W2dext = zeros(6*self.n,1)
-            W2dext[-6:,0] = W2DEE
+            for i in range(self.n_ee):
+                W2dext[6*(self.ee_parent[i]-1):6*self.ee_parent[i], 0] = W2DEE[i if len(W2DEE) == self.n_ee else 0]
             Q2dext = J.T*(W2dext - 2*(A*a).T*Wdext + (2*(A*a*A*a).T - (A*ad).T - (A*a*a).T)*Wext)
             
             # Second time derivative of generalized forces
@@ -1903,12 +1992,12 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
         else:    
             FK_C, A = self._calc_A_matrix(q)
         
-        self._set_value(&#34;fkin&#34;, FK_C[self.n-1]*self.ee)
-        if simplify:
-            self._start_simplification_process(&#34;fkin&#34;, cse)
-        elif cse:
-            self._start_cse_process(&#34;fkin&#34;)
-
+        for i in range(self.n_ee):
+            self._set_value(f&#34;fkin{i}&#34;, FK_C[self.ee_parent[i]-1]*self.ee[i])
+            if simplify:
+                self._start_simplification_process(f&#34;fkin{i}&#34;, cse)
+            elif cse:
+                self._start_cse_process(f&#34;fkin{i}&#34;)
 
         if self.J is not None:
             self._set_value(&#34;J&#34;, self.J)
@@ -1929,81 +2018,84 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
             # System twist (6n x 1)
             self._set_value_as_process(&#34;V&#34;, lambda: self._get_value(&#34;J&#34;)*qd)
 
-        # Different Jacobians
-        self._set_value_as_process(
-            &#34;R_i&#34;, 
-            lambda: 
-                Matrix(self._get_value(&#34;fkin&#34;)[:3, :3])
-                .row_join(zeros(3, 1))
-                .col_join(Matrix([0, 0, 0, 1]).T)
-            )
+        for i in range(self.n_ee):
+            # Different Jacobians
+            self._set_value_as_process(
+                f&#34;R_i{i}&#34;, 
+                lambda: 
+                    Matrix(self._get_value(f&#34;fkin{i}&#34;)[:3, :3])
+                    .row_join(zeros(3, 1))
+                    .col_join(Matrix([0, 0, 0, 1]).T)
+                )
 
-        if simplify:  # fastens later simplifications
-            self._start_simplification_process(&#34;R_i&#34;, cse)
-        elif cse:
-            self._start_cse_process(&#34;R_i&#34;)
+            if simplify:  # fastens later simplifications
+                self._start_simplification_process(f&#34;R_i{i}&#34;, cse)
+            elif cse:
+                self._start_cse_process(f&#34;R_i{i}&#34;)
 
-        self._set_value(&#34;R_BFn&#34;, Matrix(FK_C[-1][:3, :3]).row_join(
-            zeros(3, 1)).col_join(Matrix([0, 0, 0, 1]).T))
+            self._set_value(f&#34;R_BFn{i}&#34;, Matrix(FK_C[self.ee_parent[i]-1][:3, :3]).row_join(
+                zeros(3, 1)).col_join(Matrix([0, 0, 0, 1]).T)) 
 
-        # Body fixed Jacobian of last moving body 
-        # (This may not correspond to end-effector frame)
-        self._set_value_as_process(&#34;Jb&#34;, lambda: self._get_value(&#34;J&#34;)[-6:, :])
-        if simplify:
-            self._start_simplification_process(&#34;Jb&#34;, cse)
-        elif cse:
-            self._start_cse_process(&#34;Jb&#34;)
+            # Body fixed Jacobian of last moving body 
+            # (This may not correspond to end-effector frame)
+            self._set_value_as_process(
+                f&#34;Jb{i}&#34;, 
+                lambda: self._get_value(&#34;J&#34;)[6*(self.ee_parent[i]-1):6*self.ee_parent[i], :])
+            if simplify:
+                self._start_simplification_process(f&#34;Jb{i}&#34;, cse)
+            elif cse:
+                self._start_cse_process(f&#34;Jb{i}&#34;)
 
-        self._set_value_as_process(&#34;Vb_BFn&#34;, lambda: self._get_value(&#34;Jb&#34;)*qd)
-        # Body fixed twist of last moving body
-        if simplify:
-            self._start_simplification_process(&#34;Vb_BFn&#34;, cse)
-        elif cse:
-            self._start_cse_process(&#34;Vb_BFn&#34;)
+            self._set_value_as_process(f&#34;Vb_BFn{i}&#34;, lambda: self._get_value(f&#34;Jb{i}&#34;)*qd)
+            # Body fixed twist of last moving body
+            if simplify:
+                self._start_simplification_process(f&#34;Vb_BFn{i}&#34;, cse)
+            elif cse:
+                self._start_cse_process(f&#34;Vb_BFn{i}&#34;)
 
-        self._set_value_as_process(&#34;Vh_BFn&#34;, lambda: SE3AdjMatrix(
-            self._get_value(&#34;R_BFn&#34;))*self._get_value(&#34;Vb_BFn&#34;))
-        if simplify:
-            self._start_simplification_process(&#34;Vh_BFn&#34;, cse)
-        elif cse:
-            self._start_cse_process(&#34;Vh_BFn&#34;)
+            self._set_value_as_process(f&#34;Vh_BFn{i}&#34;, lambda: SE3AdjMatrix(
+                self._get_value(f&#34;R_BFn{i}&#34;))*self._get_value(f&#34;Vb_BFn{i}&#34;))
+            if simplify:
+                self._start_simplification_process(f&#34;Vh_BFn{i}&#34;, cse)
+            elif cse:
+                self._start_cse_process(f&#34;Vh_BFn{i}&#34;)
 
-        # Body fixed twist of end-effector frame
-        self._set_value_as_process(&#34;Vb_ee&#34;, lambda: SE3AdjMatrix(
-            SE3Inv(self.ee))*self._get_value(&#34;Vb_BFn&#34;))
-        if simplify:
-            self._start_simplification_process(&#34;Vb_ee&#34;, cse)
-        elif cse:
-            self._start_cse_process(&#34;Vb_ee&#34;)
-        # Hybrid twist of end-effector frame
-        self._set_value_as_process(&#34;Vh_ee&#34;, lambda: SE3AdjMatrix(
-            self._get_value(&#34;R_i&#34;))*self._get_value(&#34;Vb_ee&#34;))
-        if simplify:
-            self._start_simplification_process(&#34;Vh_ee&#34;, cse)
-        elif cse:
-            self._start_cse_process(&#34;Vh_ee&#34;)
+            # Body fixed twist of end-effector frame
+            self._set_value_as_process(f&#34;Vb_ee{i}&#34;, lambda: SE3AdjMatrix(
+                SE3Inv(self.ee[i]))*self._get_value(f&#34;Vb_BFn{i}&#34;))
+            if simplify:
+                self._start_simplification_process(f&#34;Vb_ee{i}&#34;, cse)
+            elif cse:
+                self._start_cse_process(f&#34;Vb_ee{i}&#34;)
+            # Hybrid twist of end-effector frame
+            self._set_value_as_process(f&#34;Vh_ee{i}&#34;, lambda: SE3AdjMatrix(
+                self._get_value(f&#34;R_i{i}&#34;))*self._get_value(f&#34;Vb_ee{i}&#34;))
+            if simplify:
+                self._start_simplification_process(f&#34;Vh_ee{i}&#34;, cse)
+            elif cse:
+                self._start_cse_process(f&#34;Vh_ee{i}&#34;)
 
-        # Body fixed Jacobian of end-effector frame
-        self._set_value_as_process(&#34;Jb_ee&#34;, lambda: SE3AdjMatrix(
-            SE3Inv(self.ee))*self._get_value(&#34;Jb&#34;))
-        if simplify:
-            self._start_simplification_process(&#34;Jb_ee&#34;, cse)
-        elif cse:
-            self._start_cse_process(&#34;Jb_ee&#34;)
+            # Body fixed Jacobian of end-effector frame
+            self._set_value_as_process(f&#34;Jb_ee{i}&#34;, lambda: SE3AdjMatrix(
+                SE3Inv(self.ee[i]))*self._get_value(f&#34;Jb{i}&#34;))
+            if simplify:
+                self._start_simplification_process(f&#34;Jb_ee{i}&#34;, cse)
+            elif cse:
+                self._start_cse_process(f&#34;Jb_ee{i}&#34;)
 
-        # Hybrid Jacobian of end-effector frame
-        self._set_value_as_process(&#34;Jh_ee&#34;, lambda: SE3AdjMatrix(
-            self._get_value(&#34;R_i&#34;))*self._get_value(&#34;Jb_ee&#34;))
-        # Hybrid Jacobian of last moving body
-        self._set_value_as_process(&#34;Jh&#34;, lambda: SE3AdjMatrix(
-            self._get_value(&#34;R_i&#34;))*self._get_value(&#34;Jb&#34;))
+            # Hybrid Jacobian of end-effector frame
+            self._set_value_as_process(f&#34;Jh_ee{i}&#34;, lambda: SE3AdjMatrix(
+                self._get_value(f&#34;R_i{i}&#34;))*self._get_value(f&#34;Jb_ee{i}&#34;))
+            # Hybrid Jacobian of last moving body
+            self._set_value_as_process(f&#34;Jh{i}&#34;, lambda: SE3AdjMatrix(
+                self._get_value(f&#34;R_i{i}&#34;))*self._get_value(f&#34;Jb{i}&#34;))
 
-        if simplify:
-            self._start_simplification_process(&#34;Jh_ee&#34;, cse)
-            self._start_simplification_process(&#34;Jh&#34;, cse)
-        elif cse:
-            self._start_cse_process(&#34;Jh_ee&#34;)
-            self._start_cse_process(&#34;Jh&#34;)
+            if simplify:
+                self._start_simplification_process(f&#34;Jh_ee{i}&#34;, cse)
+                self._start_simplification_process(f&#34;Jh{i}&#34;, cse)
+            elif cse:
+                self._start_cse_process(f&#34;Jh_ee{i}&#34;)
+                self._start_cse_process(f&#34;Jh{i}&#34;)
 
         # Acceleration computations
         if self._a is not None:
@@ -2031,127 +2123,148 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
         self._set_value_as_process(&#34;Vbd&#34;, lambda: self._get_value(
             &#34;J&#34;)*q2d - A*self._get_value(&#34;a&#34;)*self._get_value(&#34;V&#34;))
 
-        # Hybrid acceleration of the last body
-        self._set_value_as_process(
-            &#34;Vbd_BFn&#34;, lambda: self._get_value(&#34;Vbd&#34;)[-6:, :])
+        for i in range(self.n_ee):
+            # Hybrid acceleration of the last body
+            self._set_value_as_process(
+                f&#34;Vbd_BFn{i}&#34;, lambda: self._get_value(&#34;Vbd&#34;)[6*(self.ee_parent[i]-1):6*self.ee_parent[i], :])
 
-        if simplify:
-            self._start_simplification_process(&#34;Vbd_BFn&#34;, cse)
-        elif cse:
-            self._start_cse_process(&#34;Vbd_BFn&#34;)
+            if simplify:
+                self._start_simplification_process(f&#34;Vbd_BFn{i}&#34;, cse)
+            elif cse:
+                self._start_cse_process(f&#34;Vbd_BFn{i}&#34;)
 
-        # Hybrid twist of end-effector frame
-        self._set_value_as_process(
-            &#34;Vhd_BFn&#34;, 
-            lambda: 
-                SE3AdjMatrix(self._get_value(&#34;R_BFn&#34;))
-                * self._get_value(&#34;Vbd_BFn&#34;) 
-                + SE3adMatrix(Matrix(self._get_value(&#34;Vh_BFn&#34;)[:3, :])
-                                   .col_join(Matrix([0, 0, 0])))
-                * SE3AdjMatrix(self._get_value(&#34;R_BFn&#34;))
-                * self._get_value(&#34;Vb_BFn&#34;)
-            )
+            # Hybrid twist of end-effector frame
+            self._set_value_as_process(
+                f&#34;Vhd_BFn{i}&#34;, 
+                lambda: 
+                    SE3AdjMatrix(self._get_value(f&#34;R_BFn{i}&#34;))
+                    * self._get_value(f&#34;Vbd_BFn{i}&#34;) 
+                    + SE3adMatrix(Matrix(self._get_value(f&#34;Vh_BFn{i}&#34;)[:3, :])
+                                    .col_join(Matrix([0, 0, 0])))
+                    * SE3AdjMatrix(self._get_value(f&#34;R_BFn{i}&#34;))
+                    * self._get_value(f&#34;Vb_BFn{i}&#34;)
+                )
 
-        if simplify:
-            self._start_simplification_process(&#34;Vhd_BFn&#34;, cse)
-        elif cse:
-            self._start_cse_process(&#34;Vhd_BFn&#34;)
+            if simplify:
+                self._start_simplification_process(f&#34;Vhd_BFn{i}&#34;, cse)
+            elif cse:
+                self._start_cse_process(f&#34;Vhd_BFn{i}&#34;)
 
-        # Body fixed twist of end-effector frame
-        # Hybrid acceleration of the EE
-        self._set_value_as_process(&#34;Vbd_ee&#34;, lambda: SE3AdjMatrix(
-            SE3Inv(self.ee))*self._get_value(&#34;Vbd_BFn&#34;))
-        if simplify:
-            self._start_simplification_process(&#34;Vbd_ee&#34;, cse)
-        elif cse:
-            self._start_cse_process(&#34;Vbd_ee&#34;)
-        # Hybrid twist of end-effector frame
-        self._set_value_as_process(
-            &#34;Vhd_ee&#34;, 
-            lambda: 
-                SE3AdjMatrix(self._get_value(&#34;R_i&#34;)) 
-                * self._get_value(&#34;Vbd_ee&#34;) 
-                + SE3adMatrix(Matrix(self._get_value(&#34;Vh_ee&#34;)[:3, :])
-                                   .col_join(Matrix([0, 0, 0])))
-                * SE3AdjMatrix(self._get_value(&#34;R_i&#34;))
-                * self._get_value(&#34;Vb_ee&#34;)
-            )  # Hybrid twist of end-effector frame
+            # Body fixed twist of end-effector frame
+            # Hybrid acceleration of the EE
+            self._set_value_as_process(f&#34;Vbd_ee{i}&#34;, lambda: SE3AdjMatrix(
+                SE3Inv(self.ee[i]))*self._get_value(f&#34;Vbd_BFn{i}&#34;))
+            if simplify:
+                self._start_simplification_process(f&#34;Vbd_ee{i}&#34;, cse)
+            elif cse:
+                self._start_cse_process(f&#34;Vbd_ee{i}&#34;)
+            # Hybrid twist of end-effector frame
+            self._set_value_as_process(
+                f&#34;Vhd_ee{i}&#34;, 
+                lambda: 
+                    SE3AdjMatrix(self._get_value(f&#34;R_i{i}&#34;)) 
+                    * self._get_value(f&#34;Vbd_ee{i}&#34;) 
+                    + SE3adMatrix(Matrix(self._get_value(f&#34;Vh_ee{i}&#34;)[:3, :])
+                                    .col_join(Matrix([0, 0, 0])))
+                    * SE3AdjMatrix(self._get_value(f&#34;R_i{i}&#34;))
+                    * self._get_value(f&#34;Vb_ee{i}&#34;)
+                )  # Hybrid twist of end-effector frame
 
-        if simplify:
-            self._start_simplification_process(&#34;Vhd_ee&#34;, cse)
-        elif cse:
-            self._start_cse_process(&#34;Vhd_ee&#34;)
+            if simplify:
+                self._start_simplification_process(f&#34;Vhd_ee{i}&#34;, cse)
+            elif cse:
+                self._start_cse_process(f&#34;Vhd_ee{i}&#34;)
 
-        # Body Jacobian time derivative
+            # Body Jacobian time derivative
 
-        # For the last moving body
-        self._set_value_as_process(
-            &#34;Jb_dot&#34;, lambda: self._get_value(&#34;Jdot&#34;)[-6:, :])
+            # For the last moving body
+            self._set_value_as_process(
+                f&#34;Jb_dot{i}&#34;, lambda: self._get_value(&#34;Jdot&#34;)[6*(self.ee_parent[i]-1):6*self.ee_parent[i], :])
 
-        # For the EE
-        self._set_value_as_process(&#34;Jb_ee_dot&#34;, lambda: SE3AdjMatrix(
-            SE3Inv(self.ee))*self._get_value(&#34;Jb_dot&#34;))
-        if simplify:
-            self._start_simplification_process(&#34;Jb_ee_dot&#34;, cse)
-        elif cse:
-            self._start_cse_process(&#34;Jb_ee_dot&#34;)
+            # For the EE
+            self._set_value_as_process(f&#34;Jb_ee_dot{i}&#34;, lambda: SE3AdjMatrix(
+                SE3Inv(self.ee[i]))*self._get_value(f&#34;Jb_dot{i}&#34;))
+            if simplify:
+                self._start_simplification_process(f&#34;Jb_ee_dot{i}&#34;, cse)
+            elif cse:
+                self._start_cse_process(f&#34;Jb_ee_dot{i}&#34;)
 
-        # Hybrid Jacobian time derivative
-        # For the last moving body
-        self._set_value_as_process(
-            &#34;Jh_dot&#34;, 
-            lambda: 
-                SE3AdjMatrix(self._get_value(&#34;R_BFn&#34;))
-                * self._get_value(&#34;Jb_dot&#34;) 
-                + SE3adMatrix(Matrix(self._get_value(&#34;Vh_BFn&#34;)[:3, :])
-                                   .col_join(Matrix([0, 0, 0])))
-                * SE3AdjMatrix(self._get_value(&#34;R_BFn&#34;))
-                * self._get_value(&#34;Jb&#34;)
-            )
-        if simplify:
-            self._start_simplification_process(&#34;Jh_dot&#34;, cse)
-        elif cse:
-            self._start_cse_process(&#34;Jh_dot&#34;)
+            # Hybrid Jacobian time derivative
+            # For the last moving body
+            self._set_value_as_process(
+                f&#34;Jh_dot{i}&#34;, 
+                lambda: 
+                    SE3AdjMatrix(self._get_value(f&#34;R_BFn{i}&#34;))
+                    * self._get_value(f&#34;Jb_dot{i}&#34;) 
+                    + SE3adMatrix(Matrix(self._get_value(f&#34;Vh_BFn{i}&#34;)[:3, :])
+                                    .col_join(Matrix([0, 0, 0])))
+                    * SE3AdjMatrix(self._get_value(f&#34;R_BFn{i}&#34;))
+                    * self._get_value(f&#34;Jb{i}&#34;)
+                )
+            if simplify:
+                self._start_simplification_process(f&#34;Jh_dot{i}&#34;, cse)
+            elif cse:
+                self._start_cse_process(f&#34;Jh_dot{i}&#34;)
 
-        # For the EE
-        self._set_value_as_process(
-            &#34;Jh_ee_dot&#34;, 
-            lambda: 
-                SE3AdjMatrix(self._get_value(&#34;R_i&#34;))
-                * self._get_value(&#34;Jb_ee_dot&#34;) 
-                + SE3adMatrix(Matrix(self._get_value(&#34;Vh_ee&#34;)[:3, :])
-                                   .col_join(Matrix([0, 0, 0])))
-                * SE3AdjMatrix(self._get_value(&#34;R_i&#34;))
-                * self._get_value(&#34;Jb_ee&#34;)
-            )
-        if simplify:
-            self._start_simplification_process(&#34;Jh_ee_dot&#34;, cse)
-        elif cse:
-            self._start_cse_process(&#34;Jh_ee_dot&#34;)
+            # For the EE
+            self._set_value_as_process(
+                f&#34;Jh_ee_dot{i}&#34;, 
+                lambda: 
+                    SE3AdjMatrix(self._get_value(f&#34;R_i{i}&#34;))
+                    * self._get_value(f&#34;Jb_ee_dot{i}&#34;) 
+                    + SE3adMatrix(Matrix(self._get_value(f&#34;Vh_ee{i}&#34;)[:3, :])
+                                    .col_join(Matrix([0, 0, 0])))
+                    * SE3AdjMatrix(self._get_value(f&#34;R_i{i}&#34;))
+                    * self._get_value(f&#34;Jb_ee{i}&#34;)
+                )
+            if simplify:
+                self._start_simplification_process(f&#34;Jh_ee_dot{i}&#34;, cse)
+            elif cse:
+                self._start_cse_process(f&#34;Jh_ee_dot{i}&#34;)
+                
         self._a = self._get_value(&#34;a&#34;)
         self._V = self._get_value(&#34;V&#34;)
 
         # variables for Code Generation:
-        self.fkin = self._get_value(&#34;fkin&#34;)
         self.J = self._get_value(&#34;J&#34;)
-        self.Jb = self._get_value(&#34;Jb&#34;)
-        self.Jh = self._get_value(&#34;Jh&#34;)
         self.Jdot = self._get_value(&#34;Jdot&#34;)
-        self.Vb_ee = self._get_value(&#34;Vb_ee&#34;)
-        self.Vh_ee = self._get_value(&#34;Vh_ee&#34;)
-        self.Jb_ee = self._get_value(&#34;Jb_ee&#34;)
-        self.Jh_ee = self._get_value(&#34;Jh_ee&#34;)
-        self.Vh_BFn = self._get_value(&#34;Vh_BFn&#34;)
-        self.Vb_BFn = self._get_value(&#34;Vb_BFn&#34;)
-        self.Vhd_BFn = self._get_value(&#34;Vhd_BFn&#34;)
-        self.Vbd_BFn = self._get_value(&#34;Vbd_BFn&#34;)
-        self.Vhd_ee = self._get_value(&#34;Vhd_ee&#34;)
-        self.Vbd_ee = self._get_value(&#34;Vbd_ee&#34;)
-        self.Jh_dot = self._get_value(&#34;Jh_dot&#34;)
-        self.Jb_dot = self._get_value(&#34;Jb_dot&#34;)
-        self.Jh_ee_dot = self._get_value(&#34;Jh_ee_dot&#34;)
-        self.Jb_ee_dot = self._get_value(&#34;Jb_ee_dot&#34;)
+        self.fkin = [self._get_value(f&#34;fkin{i}&#34;) for i in range(self.n_ee)]
+        self.Jb = [self._get_value(f&#34;Jb{i}&#34;) for i in range(self.n_ee)]
+        self.Jh = [self._get_value(f&#34;Jh{i}&#34;) for i in range(self.n_ee)]
+        self.Vb_ee = [self._get_value(f&#34;Vb_ee{i}&#34;) for i in range(self.n_ee)]
+        self.Vh_ee = [self._get_value(f&#34;Vh_ee{i}&#34;) for i in range(self.n_ee)]
+        self.Jb_ee = [self._get_value(f&#34;Jb_ee{i}&#34;) for i in range(self.n_ee)]
+        self.Jh_ee = [self._get_value(f&#34;Jh_ee{i}&#34;) for i in range(self.n_ee)]
+        self.Vh_BFn = [self._get_value(f&#34;Vh_BFn{i}&#34;) for i in range(self.n_ee)]
+        self.Vb_BFn = [self._get_value(f&#34;Vb_BFn{i}&#34;) for i in range(self.n_ee)]
+        self.Vhd_BFn = [self._get_value(f&#34;Vhd_BFn{i}&#34;) for i in range(self.n_ee)]
+        self.Vbd_BFn = [self._get_value(f&#34;Vbd_BFn{i}&#34;) for i in range(self.n_ee)]
+        self.Vhd_ee = [self._get_value(f&#34;Vhd_ee{i}&#34;) for i in range(self.n_ee)]
+        self.Vbd_ee = [self._get_value(f&#34;Vbd_ee{i}&#34;) for i in range(self.n_ee)]
+        self.Jh_dot = [self._get_value(f&#34;Jh_dot{i}&#34;) for i in range(self.n_ee)]
+        self.Jb_dot = [self._get_value(f&#34;Jb_dot{i}&#34;) for i in range(self.n_ee)]
+        self.Jh_ee_dot = [self._get_value(f&#34;Jh_ee_dot{i}&#34;) for i in range(self.n_ee)]
+        self.Jb_ee_dot = [self._get_value(f&#34;Jb_ee_dot{i}&#34;) for i in range(self.n_ee)]
 
+        if self.n_ee == 1:
+            self.fkin = self.fkin[0] 
+            self.Jb = self.Jb[0] 
+            self.Jh = self.Jh[0] 
+            self.Vb_ee = self.Vb_ee[0] 
+            self.Vh_ee = self.Vh_ee[0] 
+            self.Jb_ee = self.Jb_ee[0] 
+            self.Jh_ee = self.Jh_ee[0] 
+            self.Vh_BFn = self.Vh_BFn[0] 
+            self.Vb_BFn = self.Vb_BFn[0] 
+            self.Vhd_BFn = self.Vhd_BFn[0] 
+            self.Vbd_BFn = self.Vbd_BFn[0] 
+            self.Vhd_ee = self.Vhd_ee[0] 
+            self.Vbd_ee = self.Vbd_ee[0] 
+            self.Jh_dot = self.Jh_dot[0] 
+            self.Jb_dot = self.Jb_dot[0] 
+            self.Jh_ee_dot = self.Jh_ee_dot[0] 
+            self.Jb_ee_dot = self.Jb_ee_dot[0] 
+        
         try:
             while True:
                 self.subex_dict.update(
@@ -2183,9 +2296,9 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
         q2d: MutableDenseMatrix, 
         q3d: MutableDenseMatrix, 
         q4d: MutableDenseMatrix, 
-        WEE: MutableDenseMatrix=zeros(6, 1), 
-        WDEE: MutableDenseMatrix=zeros(6, 1), 
-        W2DEE: MutableDenseMatrix=zeros(6, 1), 
+        WEE: List[MutableDenseMatrix]=[zeros(6, 1)], 
+        WDEE: List[MutableDenseMatrix]=[zeros(6, 1)], 
+        W2DEE: List[MutableDenseMatrix]=[zeros(6, 1)], 
         simplify: bool=True, cse: bool=False) -&gt; MutableDenseMatrix:
         &#34;&#34;&#34;Inverse dynamics using body fixed representation of the 
         twists in closed form. 
@@ -2208,18 +2321,18 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
                 (n,1) Generalized jerk vector. Defaults to None.
             q4d (sympy.Matrix, optional): 
                 (n,1) Generalized jounce vector. Defaults to None.
-            WEE (sympy.Matrix, optional): 
+            WEE (list of sympy.Matrix, optional): 
                 (6,1) WEE (t) = [Mx,My,Mz,Fx,Fy,Fz] is the time varying 
                 wrench on the EE link. 
-                Defaults to zeros(6, 1).
-            WDEE (sympy.Matrix, optional): 
+                Defaults to [zeros(6, 1)].
+            WDEE (list of sympy.Matrix, optional): 
                 (6,1) WDEE (t) = [dMx,dMy,dMz,dFx,dFy,dFz] is the derivative 
                 of the time varying wrench on the EE link. 
-                Defaults to zeros(6, 1).
-            W2DEE (sympy.Matrix, optional): 
+                Defaults to [zeros(6, 1)].
+            W2DEE (list of sympy.Matrix, optional): 
                 (6,1) W2DEE (t) = [ddMx,ddMy,ddMz,ddFx,ddFy,ddFz] is the 
                 2nd derivative of the time varying wrench on the EE link. 
-                Defaults to zeros(6, 1).
+                Defaults to [zeros(6, 1)].
             simplify (bool, optional): 
                 Use simplify command on saved expressions. 
                 Defaults to True.
@@ -2244,10 +2357,13 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
         self.var_syms.update(q2d.free_symbols)
         if q3d: self.var_syms.update(q3d.free_symbols)
         if q4d: self.var_syms.update(q4d.free_symbols)
-        self.optional_var_syms.update(WEE.free_symbols)
-        self.optional_var_syms.update(WDEE.free_symbols)
-        self.optional_var_syms.update(W2DEE.free_symbols)
-
+        for W in WEE:
+            self.optional_var_syms.update(W.free_symbols)
+        for WD in WDEE:
+            self.optional_var_syms.update(WD.free_symbols)
+        for W2D in W2DEE:
+            self.optional_var_syms.update(W2D.free_symbols)
+        
         self.n = len(q)
         self.queue_dict[&#34;subex_dict&#34;] = Queue()
 
@@ -2348,7 +2464,8 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
         # External Wrench
         Wext = zeros(6*self.n, 1)
         # WEE (t) is the time varying wrench on the EE link.
-        Wext[-6:, 0] = WEE
+        for i in range(self.n_ee):
+                Wext[6*(self.ee_parent[i]-1):6*self.ee_parent[i], 0] = WEE[i if len(WEE) == self.n_ee else 0]
         self._set_value_as_process(
             &#34;Qext&#34;, lambda: self._get_value(&#34;J&#34;).T * Wext)
 
@@ -2424,7 +2541,8 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
             
             # First time derivative of External Wrench
             Wdext = zeros(6*self.n,1)
-            Wdext[-6:,0] = WDEE
+            for i in range(self.n_ee):
+                Wdext[6*(self.ee_parent[i]-1):6*self.ee_parent[i], 0] = WDEE[i if len(WDEE) == self.n_ee else 0]
             self._set_value_as_process(
                 &#34;Qdext&#34;,
                 lambda: self._get_value(&#34;J&#34;).T*(Wdext - (A*a).T * Wext))
@@ -2508,7 +2626,8 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
 
             # Second time derivative of External Wrench
             W2dext = zeros(6*self.n,1)
-            W2dext[-6:,0] = W2DEE
+            for i in range(self.n_ee):
+                W2dext[6*(self.ee_parent[i]-1):6*self.ee_parent[i], 0] = W2DEE[i if len(W2DEE) == self.n_ee else 0]
             self._set_value_as_process(
                 &#34;Q2dext&#34;,
                 lambda: self._get_value(&#34;J&#34;).T
@@ -3409,19 +3528,19 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
 <dl>
 <dt id="skidy.kinematics_generator.SymbolicKinDyn"><code class="flex name class">
 <span>class <span class="ident">SymbolicKinDyn</span></span>
-<span>(</span><span>gravity_vector: sympy.matrices.dense.MutableDenseMatrix = None, ee: sympy.matrices.dense.MutableDenseMatrix = None, body_ref_config: List[sympy.matrices.dense.MutableDenseMatrix] = [], joint_screw_coord: List[sympy.matrices.dense.MutableDenseMatrix] = [], config_representation: str = 'spatial', Mb: List[sympy.matrices.dense.MutableDenseMatrix] = [], parent: List[int] = [], support: List[List[int]] = [], child: List[List[int]] = [], q: sympy.matrices.dense.MutableDenseMatrix = None, qd: sympy.matrices.dense.MutableDenseMatrix = None, q2d: sympy.matrices.dense.MutableDenseMatrix = None, q3d: sympy.matrices.dense.MutableDenseMatrix = None, q4d: sympy.matrices.dense.MutableDenseMatrix = None, WEE: sympy.matrices.dense.MutableDenseMatrix = Matrix([
+<span>(</span><span>gravity_vector: sympy.matrices.dense.MutableDenseMatrix = None, ee: Union[sympy.matrices.dense.MutableDenseMatrix, List[sympy.matrices.dense.MutableDenseMatrix]] = None, body_ref_config: List[sympy.matrices.dense.MutableDenseMatrix] = [], joint_screw_coord: List[sympy.matrices.dense.MutableDenseMatrix] = [], config_representation: str = 'spatial', Mb: List[sympy.matrices.dense.MutableDenseMatrix] = [], parent: List[int] = [], support: List[List[int]] = [], child: List[List[int]] = [], ee_parent: Union[int, List[int]] = None, q: sympy.matrices.dense.MutableDenseMatrix = None, qd: sympy.matrices.dense.MutableDenseMatrix = None, q2d: sympy.matrices.dense.MutableDenseMatrix = None, q3d: sympy.matrices.dense.MutableDenseMatrix = None, q4d: sympy.matrices.dense.MutableDenseMatrix = None, WEE: Union[sympy.matrices.dense.MutableDenseMatrix, List[sympy.matrices.dense.MutableDenseMatrix]] = Matrix([
 [0],
 [0],
 [0],
 [0],
 [0],
-[0]]), WDEE: sympy.matrices.dense.MutableDenseMatrix = Matrix([
+[0]]), WDEE: Union[sympy.matrices.dense.MutableDenseMatrix, List[sympy.matrices.dense.MutableDenseMatrix]] = Matrix([
 [0],
 [0],
 [0],
 [0],
 [0],
-[0]]), W2DEE: sympy.matrices.dense.MutableDenseMatrix = Matrix([
+[0]]), W2DEE: Union[sympy.matrices.dense.MutableDenseMatrix, List[sympy.matrices.dense.MutableDenseMatrix]] = Matrix([
 [0],
 [0],
 [0],
@@ -3438,9 +3557,13 @@ This tool supports generation of python, C and Matlab code.</p>
 <dl>
 <dt><strong><code>gravity_vector</code></strong> :&ensp;<code>sympy.Matrix</code>, optional</dt>
 <dd>Vector of gravity. Defaults to None.</dd>
-<dt><strong><code>ee</code></strong> :&ensp;<code>sympy.Matrix</code>, optional</dt>
-<dd>End-effector configuration with reference to last link
-body fixed frame in the chain. Defaults to None.</dd>
+<dt>ee (sympy.Matrix | list of sympy.Matrix, optional):</dt>
+<dt>End-effector configuration with reference to last link</dt>
+<dt>body fixed frame in the chain. This link can be selected</dt>
+<dt>manually using the parameter ee_parent.</dt>
+<dt>If there is more than one end-effector use a list of</dt>
+<dt>transforms instead.</dt>
+<dt>Defaults to None.</dt>
 <dt><strong><code>body_ref_config</code></strong> :&ensp;<code>list</code> of <code>sympy.Matrix</code>, optional</dt>
 <dd>List of reference configurations of bodies in body-fixed
 or spatial representation, dependent on selected
@@ -3476,6 +3599,10 @@ Defaults to [].</dd>
 child links. Use empty list if no child link is present.
 Only necessary for tree-like robot structures.
 Defaults to [].</dd>
+<dt>ee_parent (int | list, optional):</dt>
+<dt>parent link of the end effector frame. If there is more</dt>
+<dt>than one end-effector, use a list of indices instead.</dt>
+<dt>Defaults to None (= last link).</dt>
 <dt><strong><code>q</code></strong> :&ensp;<code>sympy.Matrix</code>, optional</dt>
 <dd>(n,1) Generalized position vector. Defaults to None.</dd>
 <dt><strong><code>qd</code></strong> :&ensp;<code>sympy.Matrix</code>, optional</dt>
@@ -3486,19 +3613,25 @@ Defaults to [].</dd>
 <dd>(n,1) Generalized jerk vector. Defaults to None.</dd>
 <dt><strong><code>q4d</code></strong> :&ensp;<code>sympy.Matrix</code>, optional</dt>
 <dd>(n,1) Generalized jounce vector. Defaults to None.</dd>
-<dt><strong><code>WEE</code></strong> :&ensp;<code>sympy.Matrix</code>, optional</dt>
-<dd>(6,1) WEE (t) = [Mx,My,Mz,Fx,Fy,Fz] is the time varying
+</dl>
+<p>WEE (sympy.Matrix | list, optional):
+(6,1) WEE (t) = [Mx,My,Mz,Fx,Fy,Fz] is the time varying
 wrench on the EE link.
-Defaults to zeros(6, 1).</dd>
-<dt><strong><code>WDEE</code></strong> :&ensp;<code>sympy.Matrix</code>, optional</dt>
-<dd>(6,1) WDEE (t) = [dMx,dMy,dMz,dFx,dFy,dFz] is the derivative
+If there is more than one end-effector, you can use a
+list containing all wrenches instead.
+Defaults to zeros(6, 1).
+WDEE (sympy.Matrix | list, optional):
+(6,1) WDEE (t) = [dMx,dMy,dMz,dFx,dFy,dFz] is the derivative
 of the time varying wrench on the EE link.
-Defaults to zeros(6, 1).</dd>
-<dt><strong><code>W2DEE</code></strong> :&ensp;<code>sympy.Matrix</code>, optional</dt>
-<dd>(6,1) W2DEE (t) = [ddMx,ddMy,ddMz,ddFx,ddFy,ddFz] is the
+If there is more than one end-effector, you can use a
+list containing all wrenches instead.
+Defaults to zeros(6, 1).
+W2DEE (sympy.Matrix | list, optional):
+(6,1) W2DEE (t) = [ddMx,ddMy,ddMz,ddFx,ddFy,ddFz] is the
 2nd derivative of the time varying wrench on the EE link.
-Defaults to zeros(6, 1).</dd>
-</dl></div>
+If there is more than one end-effector, you can use a
+list containing all wrenches instead.
+Defaults to zeros(6, 1).</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
@@ -3509,7 +3642,7 @@ Defaults to zeros(6, 1).</dd>
     
     def __init__(self, 
                  gravity_vector: MutableDenseMatrix=None, 
-                 ee: MutableDenseMatrix=None, 
+                 ee: Union[MutableDenseMatrix,List[MutableDenseMatrix]]=None, 
                  body_ref_config: List[MutableDenseMatrix]=[], 
                  joint_screw_coord: List[MutableDenseMatrix]=[], 
                  config_representation: str=&#34;spatial&#34;, 
@@ -3517,14 +3650,15 @@ Defaults to zeros(6, 1).</dd>
                  parent: List[int]=[], 
                  support: List[List[int]]=[], 
                  child: List[List[int]]=[], 
+                 ee_parent: Union[int,List[int]]=None,
                  q:MutableDenseMatrix=None, 
                  qd: MutableDenseMatrix=None, 
                  q2d: MutableDenseMatrix=None, 
                  q3d: MutableDenseMatrix=None, 
                  q4d: MutableDenseMatrix=None, 
-                 WEE: MutableDenseMatrix=zeros(6, 1),
-                 WDEE: MutableDenseMatrix=zeros(6, 1),
-                 W2DEE: MutableDenseMatrix=zeros(6, 1),
+                 WEE: Union[MutableDenseMatrix,List[MutableDenseMatrix]]=zeros(6, 1),
+                 WDEE: Union[MutableDenseMatrix,List[MutableDenseMatrix]]=zeros(6, 1),
+                 W2DEE: Union[MutableDenseMatrix,List[MutableDenseMatrix]]=zeros(6, 1),
                  **kwargs) -&gt; None:
         &#34;&#34;&#34;SymbolicKinDyn
         Symbolic tool to compute equations of motion of serial chain 
@@ -3534,9 +3668,13 @@ Defaults to zeros(6, 1).</dd>
         Args:
             gravity_vector (sympy.Matrix, optional): 
                 Vector of gravity. Defaults to None.
-            ee (sympy.Matrix, optional): 
+            ee (sympy.Matrix | list of sympy.Matrix, optional): 
                 End-effector configuration with reference to last link 
-                body fixed frame in the chain. Defaults to None.
+                body fixed frame in the chain. This link can be selected 
+                manually using the parameter ee_parent. 
+                If there is more than one end-effector use a list of 
+                transforms instead.
+                Defaults to None.
             body_ref_config (list of sympy.Matrix, optional): 
                 List of reference configurations of bodies in body-fixed
                 or spatial representation, dependent on selected 
@@ -3572,6 +3710,10 @@ Defaults to zeros(6, 1).</dd>
                 child links. Use empty list if no child link is present.
                 Only necessary for tree-like robot structures. 
                 Defaults to [].
+            ee_parent (int | list, optional): 
+                parent link of the end effector frame. If there is more 
+                than one end-effector, use a list of indices instead.
+                Defaults to None (= last link).
             q (sympy.Matrix, optional): 
                 (n,1) Generalized position vector. Defaults to None.
             qd (sympy.Matrix, optional): 
@@ -3582,17 +3724,23 @@ Defaults to zeros(6, 1).</dd>
                 (n,1) Generalized jerk vector. Defaults to None.
             q4d (sympy.Matrix, optional): 
                 (n,1) Generalized jounce vector. Defaults to None.
-            WEE (sympy.Matrix, optional): 
+            WEE (sympy.Matrix | list, optional): 
                 (6,1) WEE (t) = [Mx,My,Mz,Fx,Fy,Fz] is the time varying 
                 wrench on the EE link. 
+                If there is more than one end-effector, you can use a 
+                list containing all wrenches instead.
                 Defaults to zeros(6, 1).
-            WDEE (sympy.Matrix, optional): 
+            WDEE (sympy.Matrix | list, optional): 
                 (6,1) WDEE (t) = [dMx,dMy,dMz,dFx,dFy,dFz] is the derivative 
                 of the time varying wrench on the EE link. 
+                If there is more than one end-effector, you can use a 
+                list containing all wrenches instead.
                 Defaults to zeros(6, 1).
-            W2DEE (sympy.Matrix, optional): 
+            W2DEE (sympy.Matrix | list, optional): 
                 (6,1) W2DEE (t) = [ddMx,ddMy,ddMz,ddFx,ddFy,ddFz] is the 
                 2nd derivative of the time varying wrench on the EE link. 
+                If there is more than one end-effector, you can use a 
+                list containing all wrenches instead.
                 Defaults to zeros(6, 1).
             
         &#34;&#34;&#34;
@@ -3633,7 +3781,10 @@ Defaults to zeros(6, 1).</dd>
         self.parent = parent
         self.child = child
         self.support = support
-
+        
+        # costom ee link
+        self.ee_parent = ee_parent
+        
         # temporary vars
         self._FK_C = None
         self._A = None
@@ -3760,7 +3911,16 @@ Defaults to zeros(6, 1).</dd>
             else:
                 q, qd, q2d = self.q, self.qd, self.q2d
                 
-        self._save_vectors(q, qd, q2d, None, None, ..., ..., ...)    
+        self._save_vectors(q, qd, q2d, None, None, ..., ..., ...)
+        self.n = len(q)
+        
+        # prepare ee link selection
+        if self.ee_parent is None:
+            self.ee_parent = [self.n]
+        if type(self.ee) is not list: self.ee = [self.ee]
+        if type(self.ee_parent) is not list: self.ee_parent = [self.ee_parent]
+        assert(len(self.ee) == len(self.ee_parent))    
+        self.n_ee = len(self.ee_parent)
         
         if parallel:
             self._closed_form_kinematics_body_fixed_parallel(
@@ -3777,9 +3937,9 @@ Defaults to zeros(6, 1).</dd>
         q2d: MutableDenseMatrix=None, 
         q3d: MutableDenseMatrix=None, 
         q4d: MutableDenseMatrix=None, 
-        WEE: MutableDenseMatrix=..., 
-        WDEE: MutableDenseMatrix=..., 
-        W2DEE: MutableDenseMatrix=..., 
+        WEE: Union[MutableDenseMatrix,List[MutableDenseMatrix]]=..., 
+        WDEE: Union[MutableDenseMatrix,List[MutableDenseMatrix]]=..., 
+        W2DEE: Union[MutableDenseMatrix,List[MutableDenseMatrix]]=..., 
         simplify: bool=True, cse: bool=False, 
         parallel: bool=True) -&gt; MutableDenseMatrix:
         &#34;&#34;&#34;Inverse dynamics using body fixed representation of the 
@@ -3803,17 +3963,23 @@ Defaults to zeros(6, 1).</dd>
                 (n,1) Generalized jerk vector. Defaults to None.
             q4d (sympy.Matrix, optional): 
                 (n,1) Generalized jounce vector. Defaults to None.
-            WEE (sympy.Matrix, optional): 
+            WEE (list | sympy.Matrix, optional): 
                 (6,1) WEE (t) = [Mx,My,Mz,Fx,Fy,Fz] is the time varying 
                 wrench on the EE link. 
+                If there is more than one end-effector, you can use a 
+                list containing all wrenches instead.
                 Defaults to zeros(6, 1).
-            WDEE (sympy.Matrix, optional): 
+            WDEE (list | sympy.Matrix, optional): 
                 (6,1) WDEE (t) = [dMx,dMy,dMz,dFx,dFy,dFz] is the derivative 
                 of the time varying wrench on the EE link. 
+                If there is more than one end-effector, you can use a 
+                list containing all wrenches instead.
                 Defaults to zeros(6, 1).
-            W2DEE (sympy.Matrix, optional): 
+            W2DEE (list | sympy.Matrix, optional): 
                 (6,1) W2DEE (t) = [ddMx,ddMy,ddMz,ddFx,ddFy,ddFz] is the 
                 2nd derivative of the time varying wrench on the EE link. 
+                If there is more than one end-effector, you can use a 
+                list containing all wrenches instead.
                 Defaults to zeros(6, 1).
             simplify (bool, optional): 
                 Use simplify command on saved expressions. 
@@ -3848,7 +4014,24 @@ Defaults to zeros(6, 1).</dd>
             W2DEE = self.W2DEE
         
         self._save_vectors(q, qd, q2d, q3d, q4d, WEE, WDEE, W2DEE)
-            
+        self.n = len(q)
+        
+        # prepare ee link selection
+        if self.ee_parent is None:
+            self.ee_parent = [self.n]
+        if type(self.ee_parent) is not list: self.ee_parent = [self.ee_parent]
+        self.n_ee = len(self.ee_parent)
+        if self.n_ee &gt; 1:
+            if type(WEE) is list and len(WEE) &gt; 1:
+                assert(len(WEE) == len(self.ee_parent))
+            if type(WDEE) is list and len(WDEE) &gt; 1:
+                assert(len(WDEE) == len(self.ee_parent))
+            if type(W2DEE) is list and len(W2DEE) &gt; 1:
+                assert(len(W2DEE) == len(self.ee_parent)) 
+        if type(WEE) is not list: WEE = [WEE]
+        if type(WDEE) is not list: WDEE = [WDEE]
+        if type(W2DEE) is not list: W2DEE = [W2DEE]
+        
         if parallel:
             self._closed_form_inv_dyn_body_fixed_parallel(
                 q, qd, q2d, q3d, q4d, WEE, WDEE, W2DEE, simplify, cse)
@@ -3914,15 +4097,16 @@ Defaults to zeros(6, 1).</dd>
             FK_C, A = self._calc_A_matrix_tree(q)
         else:    
             FK_C, A = self._calc_A_matrix(q)
-            
-        fkin = FK_C[self.n-1]*self.ee
-        if simplify:
-            fkin = self.simplify(fkin, cse)
-        elif cse:
-            fkin = self._cse_expression(fkin)    
-        self.fkin = fkin
-
-
+        
+        fkin = [None]*self.n_ee
+        for i in range(self.n_ee):
+            fkin[i] = FK_C[self.ee_parent[i]-1]*self.ee[i]
+            if simplify:
+                fkin[i] = self.simplify(fkin[i], cse)
+            elif cse:
+                fkin[i] = self._cse_expression(fkin[i])    
+        self.fkin = fkin if len(fkin)&gt;1 else fkin[0]
+        
         if self.J is not None:
             J = self.J
             V = self._V
@@ -3945,78 +4129,88 @@ Defaults to zeros(6, 1).</dd>
             V = J*qd
             self._V = V
 
-        # Different Jacobians
-        R_i = Matrix(fkin[:3, :3]).row_join(
-            zeros(3, 1)).col_join(Matrix([0, 0, 0, 1]).T)
-        if simplify:  # fastens later simplifications
-            R_i = self.simplify(R_i, cse)
-        elif cse:
-            R_i = self._cse_expression(R_i)
+        R_i = [None]*self.n_ee
+        R_BFn = [None]*self.n_ee
+        Vb_BFn = [None]*self.n_ee
+        Vh_BFn = [None]*self.n_ee
+        Vb_ee = [None]*self.n_ee
+        Vh_ee = [None]*self.n_ee
+        Jh_ee = [None]*self.n_ee
+        Jb_ee = [None]*self.n_ee
+        Jh = [None]*self.n_ee
+        Jb = [None]*self.n_ee
+        for i in range(self.n_ee):
+            # Different Jacobians
+            R_i[i] = Matrix(fkin[i][:3, :3]).row_join(
+                zeros(3, 1)).col_join(Matrix([0, 0, 0, 1]).T)
+            if simplify:  # fastens later simplifications
+                R_i[i] = self.simplify(R_i[i], cse)
+            elif cse:
+                R_i[i] = self._cse_expression(R_i[i])
+            
+            R_BFn[i] = Matrix(FK_C[self.ee_parent[i]-1][:3, :3]).row_join(
+                zeros(3, 1)).col_join(Matrix([0, 0, 0, 1]).T)
 
-        R_BFn = Matrix(FK_C[-1][:3, :3]).row_join(
-            zeros(3, 1)).col_join(Matrix([0, 0, 0, 1]).T)
+            # Body fixed Jacobian of last moving body 
+            # (This may not correspond to end-effector frame)
+            Jb[i] = J[6*(self.ee_parent[i]-1):6*self.ee_parent[i], :] # used to be [-6:,:]
+            if simplify:
+                Jb[i] = self.simplify(Jb[i], cse)
+            elif cse:
+                Jb[i] = self._cse_expression(Jb[i])
 
-        # Body fixed Jacobian of last moving body 
-        # (This may not correspond to end-effector frame)
-        Jb = J[-6:, :]
-        if simplify:
-            Jb = self.simplify(Jb, cse)
-        elif cse:
-            Jb = self._cse_expression(Jb)
+            Vb_BFn[i] = Jb[i]*qd  # Body fixed twist of last moving body
+            if simplify:
+                Vb_BFn[i] = self.simplify(Vb_BFn[i], cse)
+            elif cse:
+                Vb_BFn[i] = self._cse_expression(Vb_BFn[i])
+            Vh_BFn[i] = SE3AdjMatrix(R_BFn[i])*Vb_BFn[i]
+            if simplify:
+                Vh_BFn[i] = self.simplify(Vh_BFn[i], cse)
+            elif cse:
+                Vh_BFn[i] = self._cse_expression(Vh_BFn[i])
+            
+            # Body fixed twist of end-effector frame
+            Vb_ee[i] = SE3AdjMatrix(SE3Inv(self.ee[i]))*Vb_BFn[i]
+            if simplify:
+                Vb_ee[i] = self.simplify(Vb_ee[i], cse)
+            elif cse:
+                Vb_ee[i] = self._cse_expression(Vb_ee[i])
+            # Hybrid twist of end-effector frame
+            Vh_ee[i] = SE3AdjMatrix(R_i[i])*Vb_ee[i]
+            if simplify:
+                Vh_ee[i] = self.simplify(Vh_ee[i], cse)
+            elif cse:
+                Vh_ee[i] = self._cse_expression(Vh_ee[i])
 
-        Vb_BFn = Jb*qd  # Body fixed twist of last moving body
-        if simplify:
-            Vb_BFn = self.simplify(Vb_BFn, cse)
-        elif cse:
-            Vb_BFn = self._cse_expression(Vb_BFn)
-        Vh_BFn = SE3AdjMatrix(R_BFn)*Vb_BFn
-        if simplify:
-            Vh_BFn = self.simplify(Vh_BFn, cse)
-        elif cse:
-            Vh_BFn = self._cse_expression(Vh_BFn)
-        self.Vb_BFn = Vb_BFn
-        self.Vh_BFn = Vh_BFn
+            # Body fixed Jacobian of end-effector frame
+            Jb_ee[i] = SE3AdjMatrix(SE3Inv(self.ee[i]))*Jb[i]
+            if simplify:
+                Jb_ee[i] = self.simplify(Jb_ee[i], cse)
+            elif cse:
+                Jb_ee[i] = self._cse_expression(Jb_ee[i])
 
-        # Body fixed twist of end-effector frame
-        Vb_ee = SE3AdjMatrix(SE3Inv(self.ee))*Vb_BFn
-        if simplify:
-            Vb_ee = self.simplify(Vb_ee, cse)
-        elif cse:
-            Vb_ee = self._cse_expression(Vb_ee)
-        # Hybrid twist of end-effector frame
-        Vh_ee = SE3AdjMatrix(R_i)*Vb_ee
-        if simplify:
-            Vh_ee = self.simplify(Vh_ee, cse)
-        elif cse:
-            Vh_ee = self._cse_expression(Vh_ee)
+            # Hybrid Jacobian of end-effector frame
+            Jh_ee[i] = SE3AdjMatrix(R_i[i])*Jb_ee[i]
+            # Hybrid Jacobian of last moving body
+            Jh[i] = SE3AdjMatrix(R_i[i])*Jb[i]  
 
-        self.Vb_ee = Vb_ee
-        self.Vh_ee = Vh_ee
-
-        # Body fixed Jacobian of end-effector frame
-        Jb_ee = SE3AdjMatrix(SE3Inv(self.ee))*Jb
-        if simplify:
-            Jb_ee = self.simplify(Jb_ee, cse)
-        elif cse:
-            Jb_ee = self._cse_expression(Jb_ee)
-
-        # Hybrid Jacobian of end-effector frame
-        Jh_ee = SE3AdjMatrix(R_i)*Jb_ee
-        # Hybrid Jacobian of last moving body
-        Jh = SE3AdjMatrix(R_i)*Jb  
-
-        if simplify:
-            Jh_ee = self.simplify(Jh_ee, cse)
-            Jh = self.simplify(Jh, cse)
-        elif cse:
-            Jh_ee = self._cse_expression(Jh_ee)
-            Jh = self._cse_expression(Jh)
-
-        self.Jh_ee = Jh_ee
-        self.Jb_ee = Jb_ee
-        self.Jh = Jh
-        self.Jb = Jb
-
+            if simplify:
+                Jh_ee[i] = self.simplify(Jh_ee[i], cse)
+                Jh[i] = self.simplify(Jh[i], cse)
+            elif cse:
+                Jh_ee[i] = self._cse_expression(Jh_ee[i])
+                Jh[i] = self._cse_expression(Jh[i])
+            
+        self.Vb_BFn = Vb_BFn if len(Vb_BFn)&gt;1 else Vb_BFn[0]
+        self.Vh_BFn = Vh_BFn if len(Vh_BFn)&gt;1 else Vh_BFn[0]
+        self.Vb_ee = Vb_ee if len(Vb_ee)&gt;1 else Vb_ee[0]
+        self.Vh_ee = Vh_ee if len(Vh_ee)&gt;1 else Vh_ee[0]
+        self.Jh_ee = Jh_ee if len(Jh_ee)&gt;1 else Jh_ee[0]
+        self.Jb_ee = Jb_ee if len(Jb_ee)&gt;1 else Jb_ee[0]
+        self.Jh = Jh if len(Jh)&gt;1 else Jh[0]
+        self.Jb = Jb if len(Jb)&gt;1 else Jb[0]
+        
         # Acceleration computations
         if self._a is not None:
             a = self._a
@@ -4042,80 +4236,88 @@ Defaults to zeros(6, 1).</dd>
 
         Vbd = J*q2d - A*a*V
 
-        # Hybrid acceleration of the last body
-        Vbd_BFn = Vbd[-6:, :]
-        if simplify:
-            Vbd_BFn = self.simplify(Vbd_BFn, cse)
-        elif cse:
-            Vbd_BFn = self._cse_expression(Vbd_BFn)
-        # Hybrid twist of end-effector frame 
-        # TODO: check comments
-        Vhd_BFn = (SE3AdjMatrix(R_BFn)*Vbd_BFn 
-                   + SE3adMatrix(Matrix(Vh_BFn[:3, :])
-                                      .col_join(Matrix([0, 0, 0])))
-                   * SE3AdjMatrix(R_BFn)*Vb_BFn)  
+        Vbd_BFn = [None]*self.n_ee
+        Vhd_BFn = [None]*self.n_ee
+        Vbd_ee = [None]*self.n_ee
+        Vhd_ee = [None]*self.n_ee
+        Jb_dot = [None]*self.n_ee
+        Jb_ee_dot = [None]*self.n_ee
+        Jh_dot = [None]*self.n_ee
+        Jh_ee_dot = [None]*self.n_ee
+        for i in range(self.n_ee):
+            # Hybrid acceleration of the last body
+            Vbd_BFn[i] = Vbd[6*(self.ee_parent[i]-1):6*self.ee_parent[i], :] # used to be [-6:,:]
+            if simplify:
+                Vbd_BFn[i] = self.simplify(Vbd_BFn[i], cse)
+            elif cse:
+                Vbd_BFn[i] = self._cse_expression(Vbd_BFn[i])
+            # Hybrid twist of end-effector frame 
+            # TODO: check comments
+            Vhd_BFn[i] = (SE3AdjMatrix(R_BFn[i])*Vbd_BFn[i] 
+                    + SE3adMatrix(Matrix(Vh_BFn[i][:3, :])
+                                        .col_join(Matrix([0, 0, 0])))
+                    * SE3AdjMatrix(R_BFn[i])*Vb_BFn[i])  
 
-        if simplify:
-            Vhd_BFn = self.simplify(Vhd_BFn, cse)
-        elif cse:
-            Vhd_BFn = self._cse_expression(Vhd_BFn)
+            if simplify:
+                Vhd_BFn[i] = self.simplify(Vhd_BFn[i], cse)
+            elif cse:
+                Vhd_BFn[i] = self._cse_expression(Vhd_BFn[i])
 
-        self.Vbd_BFn = Vbd_BFn
-        self.Vhd_BFn = Vhd_BFn
+            # Body fixed twist of end-effector frame
+            # Hybrid acceleration of the EE
+            Vbd_ee[i] = SE3AdjMatrix(SE3Inv(self.ee[i]))*Vbd_BFn[i]
+            if simplify:
+                Vbd_ee[i] = self.simplify(Vbd_ee[i], cse)
+            elif cse:
+                Vbd_ee[i] = self._cse_expression(Vbd_ee[i])
+            # Hybrid twist of end-effector frame
+            Vhd_ee[i] = SE3AdjMatrix(R_i[i])*Vbd_ee[i] + SE3adMatrix(Matrix(
+                Vh_ee[i][:3, :]).col_join(Matrix([0, 0, 0])))*\
+                    SE3AdjMatrix(R_i[i])*Vb_ee[i]  
+            if simplify:
+                Vhd_ee[i] = self.simplify(Vhd_ee[i], cse)
+            elif cse:
+                Vhd_ee[i] = self._cse_expression(Vhd_ee[i])
 
-        # Body fixed twist of end-effector frame
-        # Hybrid acceleration of the EE
-        Vbd_ee = SE3AdjMatrix(SE3Inv(self.ee))*Vbd_BFn
-        if simplify:
-            Vbd_ee = self.simplify(Vbd_ee, cse)
-        elif cse:
-            Vbd_ee = self._cse_expression(Vbd_ee)
-        # Hybrid twist of end-effector frame
-        Vhd_ee = SE3AdjMatrix(R_i)*Vbd_ee + SE3adMatrix(Matrix(
-            Vh_ee[:3, :]).col_join(Matrix([0, 0, 0])))*\
-                SE3AdjMatrix(R_i)*Vb_ee  
-        if simplify:
-            Vhd_ee = self.simplify(Vhd_ee, cse)
-        elif cse:
-            Vhd_ee = self._cse_expression(Vhd_ee)
+            # Body Jacobian time derivative
 
-        self.Vbd_ee = Vbd_ee
-        self.Vhd_ee = Vhd_ee
+            # For the last moving body
+            Jb_dot[i] = Jdot[6*(self.ee_parent[i]-1):6*self.ee_parent[i], :] # used to be [-6:,:]
 
-        # Body Jacobian time derivative
+            # For the EE
+            Jb_ee_dot[i] = SE3AdjMatrix(SE3Inv(self.ee[i]))*Jb_dot[i]
+            if simplify:
+                Jb_ee_dot[i] = self.simplify(Jb_ee_dot[i], cse)
+            elif cse:
+                Jb_ee_dot[i] = self._cse_expression(Jb_ee_dot[i])
 
-        # For the last moving body
-        Jb_dot = Jdot[-6:, :]
-        self.Jb_dot = Jb_dot
+            # Hybrid Jacobian time derivative
+            # For the last moving body
+            Jh_dot[i] = (SE3AdjMatrix(R_BFn[i])*Jb_dot[i] 
+                    + SE3adMatrix(Matrix(Vh_BFn[i][:3, :]).col_join(Matrix([0, 0, 0])))
+                    *SE3AdjMatrix(R_BFn[i])*Jb[i])
+            if simplify:
+                Jh_dot[i] = self.simplify(Jh_dot[i], cse)
+            elif cse:
+                Jh_dot[i] = self._cse_expression(Jh_dot[i])
 
-        # For the EE
-        Jb_ee_dot = SE3AdjMatrix(SE3Inv(self.ee))*Jb_dot
-        if simplify:
-            Jb_ee_dot = self.simplify(Jb_ee_dot, cse)
-        elif cse:
-            Jb_ee_dot = self._cse_expression(Jb_ee_dot)
-        self.Jb_ee_dot = Jb_ee_dot
-
-        # Hybrid Jacobian time derivative
-        # For the last moving body
-        Jh_dot = SE3AdjMatrix(R_BFn)*Jb_dot + SE3adMatrix(
-            Matrix(Vh_BFn[:3, :]).col_join(Matrix([0, 0, 0])))*\
-                SE3AdjMatrix(R_BFn)*Jb
-        if simplify:
-            Jh_dot = self.simplify(Jh_dot, cse)
-        elif cse:
-            Jh_dot = self._cse_expression(Jh_dot)
-        self.Jh_dot = Jh_dot
-
-        # For the EE
-        Jh_ee_dot = SE3AdjMatrix(R_i)*Jb_ee_dot + SE3adMatrix(
-            Matrix(Vh_ee[:3, :]).col_join(Matrix([0, 0, 0])))*\
-                SE3AdjMatrix(R_i)*Jb_ee
-        if simplify:
-            Jh_ee_dot = self.simplify(Jh_ee_dot, cse)
-        elif cse:
-            Jh_ee_dot = self._cse_expression(Jh_ee_dot)
-        self.Jh_ee_dot = Jh_ee_dot
+            # For the EE
+            Jh_ee_dot[i] = (SE3AdjMatrix(R_i[i])*Jb_ee_dot[i] 
+                        + SE3adMatrix(Matrix(Vh_ee[i][:3, :]).col_join(Matrix([0, 0, 0])))
+                        * SE3AdjMatrix(R_i[i])*Jb_ee[i])
+            if simplify:
+                Jh_ee_dot[i] = self.simplify(Jh_ee_dot[i], cse)
+            elif cse:
+                Jh_ee_dot[i] = self._cse_expression(Jh_ee_dot[i])
+        
+        self.Vbd_BFn = Vbd_BFn if len(Vbd_BFn)&gt;1 else Vbd_BFn[0]
+        self.Vhd_BFn = Vhd_BFn if len(Vhd_BFn)&gt;1 else Vhd_BFn[0]
+        self.Vbd_ee = Vbd_ee if len(Vbd_ee)&gt;1 else Vbd_ee[0]
+        self.Vhd_ee = Vhd_ee if len(Vhd_ee)&gt;1 else Vhd_ee[0]
+        self.Jb_dot = Jb_dot if len(Jb_dot)&gt;1 else Jb_dot[0]
+        self.Jb_ee_dot = Jb_ee_dot if len(Jb_ee_dot)&gt;1 else Jb_ee_dot[0]
+        self.Jh_dot = Jh_dot if len(Jh_dot)&gt;1 else Jh_dot[0]
+        self.Jh_ee_dot = Jh_ee_dot if len(Jh_ee_dot)&gt;1 else Jh_ee_dot[0]
 
         for e in self._get_expressions():
             self.all_symbols.update(e.free_symbols)
@@ -4128,9 +4330,9 @@ Defaults to zeros(6, 1).</dd>
                                         q2d: MutableDenseMatrix,
                                         q3d: MutableDenseMatrix=None, 
                                         q4d: MutableDenseMatrix=None, 
-                                        WEE: MutableDenseMatrix=zeros(6, 1), 
-                                        WDEE: MutableDenseMatrix=zeros(6, 1), 
-                                        W2DEE: MutableDenseMatrix=zeros(6, 1), 
+                                        WEE: List[MutableDenseMatrix]=[zeros(6, 1)], 
+                                        WDEE: List[MutableDenseMatrix]=[zeros(6, 1)], 
+                                        W2DEE: List[MutableDenseMatrix]=[zeros(6, 1)], 
                                         simplify: bool=True, 
                                         cse: bool=False) -&gt; MutableDenseMatrix:
         &#34;&#34;&#34;Inverse dynamics using body fixed representation of the 
@@ -4151,18 +4353,18 @@ Defaults to zeros(6, 1).</dd>
                 (n,1) Generalized jerk vector. Defaults to None.
             q4d (sympy.Matrix, optional): 
                 (n,1) Generalized jounce vector. Defaults to None.
-            WEE (sympy.Matrix, optional): 
+            WEE (list of sympy.Matrix, optional): 
                 (6,1) WEE (t) = [Mx,My,Mz,Fx,Fy,Fz] is the time varying 
                 wrench on the EE link. 
-                Defaults to zeros(6, 1).
-            WDEE (sympy.Matrix, optional): 
+                Defaults to [zeros(6, 1)].
+            WDEE (list of sympy.Matrix, optional): 
                 (6,1) WDEE (t) = [dMx,dMy,dMz,dFx,dFy,dFz] is the derivative 
                 of the time varying wrench on the EE link. 
-                Defaults to zeros(6, 1).
-            W2DEE (sympy.Matrix, optional): 
+                Defaults to [zeros(6, 1)].
+            W2DEE (list of sympy.Matrix, optional): 
                 (6,1) W2DEE (t) = [ddMx,ddMy,ddMz,ddFx,ddFy,ddFz] is the 
                 2nd derivative of the time varying wrench on the EE link. 
-                Defaults to zeros(6, 1).
+                Defaults to [zeros(6, 1)].
             simplify (bool, optional): Use simplify command 
                 on saved expressions. Defaults to True.
             cse (bool, optional): Use common subexpression 
@@ -4178,9 +4380,12 @@ Defaults to zeros(6, 1).</dd>
         self.var_syms.update(q2d.free_symbols)
         if q3d: self.var_syms.update(q3d.free_symbols)
         if q4d: self.var_syms.update(q4d.free_symbols)
-        self.optional_var_syms.update(WEE.free_symbols)
-        self.optional_var_syms.update(WDEE.free_symbols)
-        self.optional_var_syms.update(W2DEE.free_symbols)
+        for W in WEE:
+            self.optional_var_syms.update(W.free_symbols)
+        for WD in WDEE:
+            self.optional_var_syms.update(WD.free_symbols)
+        for W2D in W2DEE:
+            self.optional_var_syms.update(W2D.free_symbols)
 
         self.n = len(q)
 
@@ -4271,7 +4476,8 @@ Defaults to zeros(6, 1).</dd>
         # External Wrench
         Wext = zeros(6*self.n, 1)
         # WEE (t) is the time varying wrench on the EE link.
-        Wext[-6:, 0] = WEE
+        for i in range(self.n_ee):
+            Wext[6*(self.ee_parent[i]-1):6*self.ee_parent[i], 0] = WEE[i if len(WEE) == self.n_ee else 0] # TODO: ee idx
         Qext = J.T * Wext
 
         # Generalized forces Q
@@ -4329,7 +4535,8 @@ Defaults to zeros(6, 1).</dd>
             
             # First time derivative of External Wrench
             Wdext = zeros(6*self.n,1)
-            Wdext[-6:,0] = WDEE
+            for i in range(self.n_ee):
+                Wdext[6*(self.ee_parent[i]-1):6*self.ee_parent[i], 0] = WDEE[i if len(WDEE) == self.n_ee else 0]
             Qdext = J.T*(Wdext - (A*a).T * Wext)
             
             # Qd = M*q3d + (Md + C)*q2d + Cd*qd  # without gravity 
@@ -4388,7 +4595,8 @@ Defaults to zeros(6, 1).</dd>
 
             # Second time derivative of External Wrench
             W2dext = zeros(6*self.n,1)
-            W2dext[-6:,0] = W2DEE
+            for i in range(self.n_ee):
+                W2dext[6*(self.ee_parent[i]-1):6*self.ee_parent[i], 0] = W2DEE[i if len(W2DEE) == self.n_ee else 0]
             Q2dext = J.T*(W2dext - 2*(A*a).T*Wdext + (2*(A*a*A*a).T - (A*ad).T - (A*a*a).T)*Wext)
             
             # Second time derivative of generalized forces
@@ -4476,12 +4684,12 @@ Defaults to zeros(6, 1).</dd>
         else:    
             FK_C, A = self._calc_A_matrix(q)
         
-        self._set_value(&#34;fkin&#34;, FK_C[self.n-1]*self.ee)
-        if simplify:
-            self._start_simplification_process(&#34;fkin&#34;, cse)
-        elif cse:
-            self._start_cse_process(&#34;fkin&#34;)
-
+        for i in range(self.n_ee):
+            self._set_value(f&#34;fkin{i}&#34;, FK_C[self.ee_parent[i]-1]*self.ee[i])
+            if simplify:
+                self._start_simplification_process(f&#34;fkin{i}&#34;, cse)
+            elif cse:
+                self._start_cse_process(f&#34;fkin{i}&#34;)
 
         if self.J is not None:
             self._set_value(&#34;J&#34;, self.J)
@@ -4502,81 +4710,84 @@ Defaults to zeros(6, 1).</dd>
             # System twist (6n x 1)
             self._set_value_as_process(&#34;V&#34;, lambda: self._get_value(&#34;J&#34;)*qd)
 
-        # Different Jacobians
-        self._set_value_as_process(
-            &#34;R_i&#34;, 
-            lambda: 
-                Matrix(self._get_value(&#34;fkin&#34;)[:3, :3])
-                .row_join(zeros(3, 1))
-                .col_join(Matrix([0, 0, 0, 1]).T)
-            )
+        for i in range(self.n_ee):
+            # Different Jacobians
+            self._set_value_as_process(
+                f&#34;R_i{i}&#34;, 
+                lambda: 
+                    Matrix(self._get_value(f&#34;fkin{i}&#34;)[:3, :3])
+                    .row_join(zeros(3, 1))
+                    .col_join(Matrix([0, 0, 0, 1]).T)
+                )
 
-        if simplify:  # fastens later simplifications
-            self._start_simplification_process(&#34;R_i&#34;, cse)
-        elif cse:
-            self._start_cse_process(&#34;R_i&#34;)
+            if simplify:  # fastens later simplifications
+                self._start_simplification_process(f&#34;R_i{i}&#34;, cse)
+            elif cse:
+                self._start_cse_process(f&#34;R_i{i}&#34;)
 
-        self._set_value(&#34;R_BFn&#34;, Matrix(FK_C[-1][:3, :3]).row_join(
-            zeros(3, 1)).col_join(Matrix([0, 0, 0, 1]).T))
+            self._set_value(f&#34;R_BFn{i}&#34;, Matrix(FK_C[self.ee_parent[i]-1][:3, :3]).row_join(
+                zeros(3, 1)).col_join(Matrix([0, 0, 0, 1]).T)) 
 
-        # Body fixed Jacobian of last moving body 
-        # (This may not correspond to end-effector frame)
-        self._set_value_as_process(&#34;Jb&#34;, lambda: self._get_value(&#34;J&#34;)[-6:, :])
-        if simplify:
-            self._start_simplification_process(&#34;Jb&#34;, cse)
-        elif cse:
-            self._start_cse_process(&#34;Jb&#34;)
+            # Body fixed Jacobian of last moving body 
+            # (This may not correspond to end-effector frame)
+            self._set_value_as_process(
+                f&#34;Jb{i}&#34;, 
+                lambda: self._get_value(&#34;J&#34;)[6*(self.ee_parent[i]-1):6*self.ee_parent[i], :])
+            if simplify:
+                self._start_simplification_process(f&#34;Jb{i}&#34;, cse)
+            elif cse:
+                self._start_cse_process(f&#34;Jb{i}&#34;)
 
-        self._set_value_as_process(&#34;Vb_BFn&#34;, lambda: self._get_value(&#34;Jb&#34;)*qd)
-        # Body fixed twist of last moving body
-        if simplify:
-            self._start_simplification_process(&#34;Vb_BFn&#34;, cse)
-        elif cse:
-            self._start_cse_process(&#34;Vb_BFn&#34;)
+            self._set_value_as_process(f&#34;Vb_BFn{i}&#34;, lambda: self._get_value(f&#34;Jb{i}&#34;)*qd)
+            # Body fixed twist of last moving body
+            if simplify:
+                self._start_simplification_process(f&#34;Vb_BFn{i}&#34;, cse)
+            elif cse:
+                self._start_cse_process(f&#34;Vb_BFn{i}&#34;)
 
-        self._set_value_as_process(&#34;Vh_BFn&#34;, lambda: SE3AdjMatrix(
-            self._get_value(&#34;R_BFn&#34;))*self._get_value(&#34;Vb_BFn&#34;))
-        if simplify:
-            self._start_simplification_process(&#34;Vh_BFn&#34;, cse)
-        elif cse:
-            self._start_cse_process(&#34;Vh_BFn&#34;)
+            self._set_value_as_process(f&#34;Vh_BFn{i}&#34;, lambda: SE3AdjMatrix(
+                self._get_value(f&#34;R_BFn{i}&#34;))*self._get_value(f&#34;Vb_BFn{i}&#34;))
+            if simplify:
+                self._start_simplification_process(f&#34;Vh_BFn{i}&#34;, cse)
+            elif cse:
+                self._start_cse_process(f&#34;Vh_BFn{i}&#34;)
 
-        # Body fixed twist of end-effector frame
-        self._set_value_as_process(&#34;Vb_ee&#34;, lambda: SE3AdjMatrix(
-            SE3Inv(self.ee))*self._get_value(&#34;Vb_BFn&#34;))
-        if simplify:
-            self._start_simplification_process(&#34;Vb_ee&#34;, cse)
-        elif cse:
-            self._start_cse_process(&#34;Vb_ee&#34;)
-        # Hybrid twist of end-effector frame
-        self._set_value_as_process(&#34;Vh_ee&#34;, lambda: SE3AdjMatrix(
-            self._get_value(&#34;R_i&#34;))*self._get_value(&#34;Vb_ee&#34;))
-        if simplify:
-            self._start_simplification_process(&#34;Vh_ee&#34;, cse)
-        elif cse:
-            self._start_cse_process(&#34;Vh_ee&#34;)
+            # Body fixed twist of end-effector frame
+            self._set_value_as_process(f&#34;Vb_ee{i}&#34;, lambda: SE3AdjMatrix(
+                SE3Inv(self.ee[i]))*self._get_value(f&#34;Vb_BFn{i}&#34;))
+            if simplify:
+                self._start_simplification_process(f&#34;Vb_ee{i}&#34;, cse)
+            elif cse:
+                self._start_cse_process(f&#34;Vb_ee{i}&#34;)
+            # Hybrid twist of end-effector frame
+            self._set_value_as_process(f&#34;Vh_ee{i}&#34;, lambda: SE3AdjMatrix(
+                self._get_value(f&#34;R_i{i}&#34;))*self._get_value(f&#34;Vb_ee{i}&#34;))
+            if simplify:
+                self._start_simplification_process(f&#34;Vh_ee{i}&#34;, cse)
+            elif cse:
+                self._start_cse_process(f&#34;Vh_ee{i}&#34;)
 
-        # Body fixed Jacobian of end-effector frame
-        self._set_value_as_process(&#34;Jb_ee&#34;, lambda: SE3AdjMatrix(
-            SE3Inv(self.ee))*self._get_value(&#34;Jb&#34;))
-        if simplify:
-            self._start_simplification_process(&#34;Jb_ee&#34;, cse)
-        elif cse:
-            self._start_cse_process(&#34;Jb_ee&#34;)
+            # Body fixed Jacobian of end-effector frame
+            self._set_value_as_process(f&#34;Jb_ee{i}&#34;, lambda: SE3AdjMatrix(
+                SE3Inv(self.ee[i]))*self._get_value(f&#34;Jb{i}&#34;))
+            if simplify:
+                self._start_simplification_process(f&#34;Jb_ee{i}&#34;, cse)
+            elif cse:
+                self._start_cse_process(f&#34;Jb_ee{i}&#34;)
 
-        # Hybrid Jacobian of end-effector frame
-        self._set_value_as_process(&#34;Jh_ee&#34;, lambda: SE3AdjMatrix(
-            self._get_value(&#34;R_i&#34;))*self._get_value(&#34;Jb_ee&#34;))
-        # Hybrid Jacobian of last moving body
-        self._set_value_as_process(&#34;Jh&#34;, lambda: SE3AdjMatrix(
-            self._get_value(&#34;R_i&#34;))*self._get_value(&#34;Jb&#34;))
+            # Hybrid Jacobian of end-effector frame
+            self._set_value_as_process(f&#34;Jh_ee{i}&#34;, lambda: SE3AdjMatrix(
+                self._get_value(f&#34;R_i{i}&#34;))*self._get_value(f&#34;Jb_ee{i}&#34;))
+            # Hybrid Jacobian of last moving body
+            self._set_value_as_process(f&#34;Jh{i}&#34;, lambda: SE3AdjMatrix(
+                self._get_value(f&#34;R_i{i}&#34;))*self._get_value(f&#34;Jb{i}&#34;))
 
-        if simplify:
-            self._start_simplification_process(&#34;Jh_ee&#34;, cse)
-            self._start_simplification_process(&#34;Jh&#34;, cse)
-        elif cse:
-            self._start_cse_process(&#34;Jh_ee&#34;)
-            self._start_cse_process(&#34;Jh&#34;)
+            if simplify:
+                self._start_simplification_process(f&#34;Jh_ee{i}&#34;, cse)
+                self._start_simplification_process(f&#34;Jh{i}&#34;, cse)
+            elif cse:
+                self._start_cse_process(f&#34;Jh_ee{i}&#34;)
+                self._start_cse_process(f&#34;Jh{i}&#34;)
 
         # Acceleration computations
         if self._a is not None:
@@ -4604,127 +4815,148 @@ Defaults to zeros(6, 1).</dd>
         self._set_value_as_process(&#34;Vbd&#34;, lambda: self._get_value(
             &#34;J&#34;)*q2d - A*self._get_value(&#34;a&#34;)*self._get_value(&#34;V&#34;))
 
-        # Hybrid acceleration of the last body
-        self._set_value_as_process(
-            &#34;Vbd_BFn&#34;, lambda: self._get_value(&#34;Vbd&#34;)[-6:, :])
+        for i in range(self.n_ee):
+            # Hybrid acceleration of the last body
+            self._set_value_as_process(
+                f&#34;Vbd_BFn{i}&#34;, lambda: self._get_value(&#34;Vbd&#34;)[6*(self.ee_parent[i]-1):6*self.ee_parent[i], :])
 
-        if simplify:
-            self._start_simplification_process(&#34;Vbd_BFn&#34;, cse)
-        elif cse:
-            self._start_cse_process(&#34;Vbd_BFn&#34;)
+            if simplify:
+                self._start_simplification_process(f&#34;Vbd_BFn{i}&#34;, cse)
+            elif cse:
+                self._start_cse_process(f&#34;Vbd_BFn{i}&#34;)
 
-        # Hybrid twist of end-effector frame
-        self._set_value_as_process(
-            &#34;Vhd_BFn&#34;, 
-            lambda: 
-                SE3AdjMatrix(self._get_value(&#34;R_BFn&#34;))
-                * self._get_value(&#34;Vbd_BFn&#34;) 
-                + SE3adMatrix(Matrix(self._get_value(&#34;Vh_BFn&#34;)[:3, :])
-                                   .col_join(Matrix([0, 0, 0])))
-                * SE3AdjMatrix(self._get_value(&#34;R_BFn&#34;))
-                * self._get_value(&#34;Vb_BFn&#34;)
-            )
+            # Hybrid twist of end-effector frame
+            self._set_value_as_process(
+                f&#34;Vhd_BFn{i}&#34;, 
+                lambda: 
+                    SE3AdjMatrix(self._get_value(f&#34;R_BFn{i}&#34;))
+                    * self._get_value(f&#34;Vbd_BFn{i}&#34;) 
+                    + SE3adMatrix(Matrix(self._get_value(f&#34;Vh_BFn{i}&#34;)[:3, :])
+                                    .col_join(Matrix([0, 0, 0])))
+                    * SE3AdjMatrix(self._get_value(f&#34;R_BFn{i}&#34;))
+                    * self._get_value(f&#34;Vb_BFn{i}&#34;)
+                )
 
-        if simplify:
-            self._start_simplification_process(&#34;Vhd_BFn&#34;, cse)
-        elif cse:
-            self._start_cse_process(&#34;Vhd_BFn&#34;)
+            if simplify:
+                self._start_simplification_process(f&#34;Vhd_BFn{i}&#34;, cse)
+            elif cse:
+                self._start_cse_process(f&#34;Vhd_BFn{i}&#34;)
 
-        # Body fixed twist of end-effector frame
-        # Hybrid acceleration of the EE
-        self._set_value_as_process(&#34;Vbd_ee&#34;, lambda: SE3AdjMatrix(
-            SE3Inv(self.ee))*self._get_value(&#34;Vbd_BFn&#34;))
-        if simplify:
-            self._start_simplification_process(&#34;Vbd_ee&#34;, cse)
-        elif cse:
-            self._start_cse_process(&#34;Vbd_ee&#34;)
-        # Hybrid twist of end-effector frame
-        self._set_value_as_process(
-            &#34;Vhd_ee&#34;, 
-            lambda: 
-                SE3AdjMatrix(self._get_value(&#34;R_i&#34;)) 
-                * self._get_value(&#34;Vbd_ee&#34;) 
-                + SE3adMatrix(Matrix(self._get_value(&#34;Vh_ee&#34;)[:3, :])
-                                   .col_join(Matrix([0, 0, 0])))
-                * SE3AdjMatrix(self._get_value(&#34;R_i&#34;))
-                * self._get_value(&#34;Vb_ee&#34;)
-            )  # Hybrid twist of end-effector frame
+            # Body fixed twist of end-effector frame
+            # Hybrid acceleration of the EE
+            self._set_value_as_process(f&#34;Vbd_ee{i}&#34;, lambda: SE3AdjMatrix(
+                SE3Inv(self.ee[i]))*self._get_value(f&#34;Vbd_BFn{i}&#34;))
+            if simplify:
+                self._start_simplification_process(f&#34;Vbd_ee{i}&#34;, cse)
+            elif cse:
+                self._start_cse_process(f&#34;Vbd_ee{i}&#34;)
+            # Hybrid twist of end-effector frame
+            self._set_value_as_process(
+                f&#34;Vhd_ee{i}&#34;, 
+                lambda: 
+                    SE3AdjMatrix(self._get_value(f&#34;R_i{i}&#34;)) 
+                    * self._get_value(f&#34;Vbd_ee{i}&#34;) 
+                    + SE3adMatrix(Matrix(self._get_value(f&#34;Vh_ee{i}&#34;)[:3, :])
+                                    .col_join(Matrix([0, 0, 0])))
+                    * SE3AdjMatrix(self._get_value(f&#34;R_i{i}&#34;))
+                    * self._get_value(f&#34;Vb_ee{i}&#34;)
+                )  # Hybrid twist of end-effector frame
 
-        if simplify:
-            self._start_simplification_process(&#34;Vhd_ee&#34;, cse)
-        elif cse:
-            self._start_cse_process(&#34;Vhd_ee&#34;)
+            if simplify:
+                self._start_simplification_process(f&#34;Vhd_ee{i}&#34;, cse)
+            elif cse:
+                self._start_cse_process(f&#34;Vhd_ee{i}&#34;)
 
-        # Body Jacobian time derivative
+            # Body Jacobian time derivative
 
-        # For the last moving body
-        self._set_value_as_process(
-            &#34;Jb_dot&#34;, lambda: self._get_value(&#34;Jdot&#34;)[-6:, :])
+            # For the last moving body
+            self._set_value_as_process(
+                f&#34;Jb_dot{i}&#34;, lambda: self._get_value(&#34;Jdot&#34;)[6*(self.ee_parent[i]-1):6*self.ee_parent[i], :])
 
-        # For the EE
-        self._set_value_as_process(&#34;Jb_ee_dot&#34;, lambda: SE3AdjMatrix(
-            SE3Inv(self.ee))*self._get_value(&#34;Jb_dot&#34;))
-        if simplify:
-            self._start_simplification_process(&#34;Jb_ee_dot&#34;, cse)
-        elif cse:
-            self._start_cse_process(&#34;Jb_ee_dot&#34;)
+            # For the EE
+            self._set_value_as_process(f&#34;Jb_ee_dot{i}&#34;, lambda: SE3AdjMatrix(
+                SE3Inv(self.ee[i]))*self._get_value(f&#34;Jb_dot{i}&#34;))
+            if simplify:
+                self._start_simplification_process(f&#34;Jb_ee_dot{i}&#34;, cse)
+            elif cse:
+                self._start_cse_process(f&#34;Jb_ee_dot{i}&#34;)
 
-        # Hybrid Jacobian time derivative
-        # For the last moving body
-        self._set_value_as_process(
-            &#34;Jh_dot&#34;, 
-            lambda: 
-                SE3AdjMatrix(self._get_value(&#34;R_BFn&#34;))
-                * self._get_value(&#34;Jb_dot&#34;) 
-                + SE3adMatrix(Matrix(self._get_value(&#34;Vh_BFn&#34;)[:3, :])
-                                   .col_join(Matrix([0, 0, 0])))
-                * SE3AdjMatrix(self._get_value(&#34;R_BFn&#34;))
-                * self._get_value(&#34;Jb&#34;)
-            )
-        if simplify:
-            self._start_simplification_process(&#34;Jh_dot&#34;, cse)
-        elif cse:
-            self._start_cse_process(&#34;Jh_dot&#34;)
+            # Hybrid Jacobian time derivative
+            # For the last moving body
+            self._set_value_as_process(
+                f&#34;Jh_dot{i}&#34;, 
+                lambda: 
+                    SE3AdjMatrix(self._get_value(f&#34;R_BFn{i}&#34;))
+                    * self._get_value(f&#34;Jb_dot{i}&#34;) 
+                    + SE3adMatrix(Matrix(self._get_value(f&#34;Vh_BFn{i}&#34;)[:3, :])
+                                    .col_join(Matrix([0, 0, 0])))
+                    * SE3AdjMatrix(self._get_value(f&#34;R_BFn{i}&#34;))
+                    * self._get_value(f&#34;Jb{i}&#34;)
+                )
+            if simplify:
+                self._start_simplification_process(f&#34;Jh_dot{i}&#34;, cse)
+            elif cse:
+                self._start_cse_process(f&#34;Jh_dot{i}&#34;)
 
-        # For the EE
-        self._set_value_as_process(
-            &#34;Jh_ee_dot&#34;, 
-            lambda: 
-                SE3AdjMatrix(self._get_value(&#34;R_i&#34;))
-                * self._get_value(&#34;Jb_ee_dot&#34;) 
-                + SE3adMatrix(Matrix(self._get_value(&#34;Vh_ee&#34;)[:3, :])
-                                   .col_join(Matrix([0, 0, 0])))
-                * SE3AdjMatrix(self._get_value(&#34;R_i&#34;))
-                * self._get_value(&#34;Jb_ee&#34;)
-            )
-        if simplify:
-            self._start_simplification_process(&#34;Jh_ee_dot&#34;, cse)
-        elif cse:
-            self._start_cse_process(&#34;Jh_ee_dot&#34;)
+            # For the EE
+            self._set_value_as_process(
+                f&#34;Jh_ee_dot{i}&#34;, 
+                lambda: 
+                    SE3AdjMatrix(self._get_value(f&#34;R_i{i}&#34;))
+                    * self._get_value(f&#34;Jb_ee_dot{i}&#34;) 
+                    + SE3adMatrix(Matrix(self._get_value(f&#34;Vh_ee{i}&#34;)[:3, :])
+                                    .col_join(Matrix([0, 0, 0])))
+                    * SE3AdjMatrix(self._get_value(f&#34;R_i{i}&#34;))
+                    * self._get_value(f&#34;Jb_ee{i}&#34;)
+                )
+            if simplify:
+                self._start_simplification_process(f&#34;Jh_ee_dot{i}&#34;, cse)
+            elif cse:
+                self._start_cse_process(f&#34;Jh_ee_dot{i}&#34;)
+                
         self._a = self._get_value(&#34;a&#34;)
         self._V = self._get_value(&#34;V&#34;)
 
         # variables for Code Generation:
-        self.fkin = self._get_value(&#34;fkin&#34;)
         self.J = self._get_value(&#34;J&#34;)
-        self.Jb = self._get_value(&#34;Jb&#34;)
-        self.Jh = self._get_value(&#34;Jh&#34;)
         self.Jdot = self._get_value(&#34;Jdot&#34;)
-        self.Vb_ee = self._get_value(&#34;Vb_ee&#34;)
-        self.Vh_ee = self._get_value(&#34;Vh_ee&#34;)
-        self.Jb_ee = self._get_value(&#34;Jb_ee&#34;)
-        self.Jh_ee = self._get_value(&#34;Jh_ee&#34;)
-        self.Vh_BFn = self._get_value(&#34;Vh_BFn&#34;)
-        self.Vb_BFn = self._get_value(&#34;Vb_BFn&#34;)
-        self.Vhd_BFn = self._get_value(&#34;Vhd_BFn&#34;)
-        self.Vbd_BFn = self._get_value(&#34;Vbd_BFn&#34;)
-        self.Vhd_ee = self._get_value(&#34;Vhd_ee&#34;)
-        self.Vbd_ee = self._get_value(&#34;Vbd_ee&#34;)
-        self.Jh_dot = self._get_value(&#34;Jh_dot&#34;)
-        self.Jb_dot = self._get_value(&#34;Jb_dot&#34;)
-        self.Jh_ee_dot = self._get_value(&#34;Jh_ee_dot&#34;)
-        self.Jb_ee_dot = self._get_value(&#34;Jb_ee_dot&#34;)
+        self.fkin = [self._get_value(f&#34;fkin{i}&#34;) for i in range(self.n_ee)]
+        self.Jb = [self._get_value(f&#34;Jb{i}&#34;) for i in range(self.n_ee)]
+        self.Jh = [self._get_value(f&#34;Jh{i}&#34;) for i in range(self.n_ee)]
+        self.Vb_ee = [self._get_value(f&#34;Vb_ee{i}&#34;) for i in range(self.n_ee)]
+        self.Vh_ee = [self._get_value(f&#34;Vh_ee{i}&#34;) for i in range(self.n_ee)]
+        self.Jb_ee = [self._get_value(f&#34;Jb_ee{i}&#34;) for i in range(self.n_ee)]
+        self.Jh_ee = [self._get_value(f&#34;Jh_ee{i}&#34;) for i in range(self.n_ee)]
+        self.Vh_BFn = [self._get_value(f&#34;Vh_BFn{i}&#34;) for i in range(self.n_ee)]
+        self.Vb_BFn = [self._get_value(f&#34;Vb_BFn{i}&#34;) for i in range(self.n_ee)]
+        self.Vhd_BFn = [self._get_value(f&#34;Vhd_BFn{i}&#34;) for i in range(self.n_ee)]
+        self.Vbd_BFn = [self._get_value(f&#34;Vbd_BFn{i}&#34;) for i in range(self.n_ee)]
+        self.Vhd_ee = [self._get_value(f&#34;Vhd_ee{i}&#34;) for i in range(self.n_ee)]
+        self.Vbd_ee = [self._get_value(f&#34;Vbd_ee{i}&#34;) for i in range(self.n_ee)]
+        self.Jh_dot = [self._get_value(f&#34;Jh_dot{i}&#34;) for i in range(self.n_ee)]
+        self.Jb_dot = [self._get_value(f&#34;Jb_dot{i}&#34;) for i in range(self.n_ee)]
+        self.Jh_ee_dot = [self._get_value(f&#34;Jh_ee_dot{i}&#34;) for i in range(self.n_ee)]
+        self.Jb_ee_dot = [self._get_value(f&#34;Jb_ee_dot{i}&#34;) for i in range(self.n_ee)]
 
+        if self.n_ee == 1:
+            self.fkin = self.fkin[0] 
+            self.Jb = self.Jb[0] 
+            self.Jh = self.Jh[0] 
+            self.Vb_ee = self.Vb_ee[0] 
+            self.Vh_ee = self.Vh_ee[0] 
+            self.Jb_ee = self.Jb_ee[0] 
+            self.Jh_ee = self.Jh_ee[0] 
+            self.Vh_BFn = self.Vh_BFn[0] 
+            self.Vb_BFn = self.Vb_BFn[0] 
+            self.Vhd_BFn = self.Vhd_BFn[0] 
+            self.Vbd_BFn = self.Vbd_BFn[0] 
+            self.Vhd_ee = self.Vhd_ee[0] 
+            self.Vbd_ee = self.Vbd_ee[0] 
+            self.Jh_dot = self.Jh_dot[0] 
+            self.Jb_dot = self.Jb_dot[0] 
+            self.Jh_ee_dot = self.Jh_ee_dot[0] 
+            self.Jb_ee_dot = self.Jb_ee_dot[0] 
+        
         try:
             while True:
                 self.subex_dict.update(
@@ -4756,9 +4988,9 @@ Defaults to zeros(6, 1).</dd>
         q2d: MutableDenseMatrix, 
         q3d: MutableDenseMatrix, 
         q4d: MutableDenseMatrix, 
-        WEE: MutableDenseMatrix=zeros(6, 1), 
-        WDEE: MutableDenseMatrix=zeros(6, 1), 
-        W2DEE: MutableDenseMatrix=zeros(6, 1), 
+        WEE: List[MutableDenseMatrix]=[zeros(6, 1)], 
+        WDEE: List[MutableDenseMatrix]=[zeros(6, 1)], 
+        W2DEE: List[MutableDenseMatrix]=[zeros(6, 1)], 
         simplify: bool=True, cse: bool=False) -&gt; MutableDenseMatrix:
         &#34;&#34;&#34;Inverse dynamics using body fixed representation of the 
         twists in closed form. 
@@ -4781,18 +5013,18 @@ Defaults to zeros(6, 1).</dd>
                 (n,1) Generalized jerk vector. Defaults to None.
             q4d (sympy.Matrix, optional): 
                 (n,1) Generalized jounce vector. Defaults to None.
-            WEE (sympy.Matrix, optional): 
+            WEE (list of sympy.Matrix, optional): 
                 (6,1) WEE (t) = [Mx,My,Mz,Fx,Fy,Fz] is the time varying 
                 wrench on the EE link. 
-                Defaults to zeros(6, 1).
-            WDEE (sympy.Matrix, optional): 
+                Defaults to [zeros(6, 1)].
+            WDEE (list of sympy.Matrix, optional): 
                 (6,1) WDEE (t) = [dMx,dMy,dMz,dFx,dFy,dFz] is the derivative 
                 of the time varying wrench on the EE link. 
-                Defaults to zeros(6, 1).
-            W2DEE (sympy.Matrix, optional): 
+                Defaults to [zeros(6, 1)].
+            W2DEE (list of sympy.Matrix, optional): 
                 (6,1) W2DEE (t) = [ddMx,ddMy,ddMz,ddFx,ddFy,ddFz] is the 
                 2nd derivative of the time varying wrench on the EE link. 
-                Defaults to zeros(6, 1).
+                Defaults to [zeros(6, 1)].
             simplify (bool, optional): 
                 Use simplify command on saved expressions. 
                 Defaults to True.
@@ -4817,10 +5049,13 @@ Defaults to zeros(6, 1).</dd>
         self.var_syms.update(q2d.free_symbols)
         if q3d: self.var_syms.update(q3d.free_symbols)
         if q4d: self.var_syms.update(q4d.free_symbols)
-        self.optional_var_syms.update(WEE.free_symbols)
-        self.optional_var_syms.update(WDEE.free_symbols)
-        self.optional_var_syms.update(W2DEE.free_symbols)
-
+        for W in WEE:
+            self.optional_var_syms.update(W.free_symbols)
+        for WD in WDEE:
+            self.optional_var_syms.update(WD.free_symbols)
+        for W2D in W2DEE:
+            self.optional_var_syms.update(W2D.free_symbols)
+        
         self.n = len(q)
         self.queue_dict[&#34;subex_dict&#34;] = Queue()
 
@@ -4921,7 +5156,8 @@ Defaults to zeros(6, 1).</dd>
         # External Wrench
         Wext = zeros(6*self.n, 1)
         # WEE (t) is the time varying wrench on the EE link.
-        Wext[-6:, 0] = WEE
+        for i in range(self.n_ee):
+                Wext[6*(self.ee_parent[i]-1):6*self.ee_parent[i], 0] = WEE[i if len(WEE) == self.n_ee else 0]
         self._set_value_as_process(
             &#34;Qext&#34;, lambda: self._get_value(&#34;J&#34;).T * Wext)
 
@@ -4997,7 +5233,8 @@ Defaults to zeros(6, 1).</dd>
             
             # First time derivative of External Wrench
             Wdext = zeros(6*self.n,1)
-            Wdext[-6:,0] = WDEE
+            for i in range(self.n_ee):
+                Wdext[6*(self.ee_parent[i]-1):6*self.ee_parent[i], 0] = WDEE[i if len(WDEE) == self.n_ee else 0]
             self._set_value_as_process(
                 &#34;Qdext&#34;,
                 lambda: self._get_value(&#34;J&#34;).T*(Wdext - (A*a).T * Wext))
@@ -5081,7 +5318,8 @@ Defaults to zeros(6, 1).</dd>
 
             # Second time derivative of External Wrench
             W2dext = zeros(6*self.n,1)
-            W2dext[-6:,0] = W2DEE
+            for i in range(self.n_ee):
+                W2dext[6*(self.ee_parent[i]-1):6*self.ee_parent[i], 0] = W2DEE[i if len(W2DEE) == self.n_ee else 0]
             self._set_value_as_process(
                 &#34;Q2dext&#34;,
                 lambda: self._get_value(&#34;J&#34;).T
@@ -6033,7 +6271,7 @@ def joint_screw_coord(self) -&gt; list:
 <h3>Methods</h3>
 <dl>
 <dt id="skidy.kinematics_generator.SymbolicKinDyn.closed_form_inv_dyn_body_fixed"><code class="name flex">
-<span>def <span class="ident">closed_form_inv_dyn_body_fixed</span></span>(<span>self, q: sympy.matrices.dense.MutableDenseMatrix = None, qd: sympy.matrices.dense.MutableDenseMatrix = None, q2d: sympy.matrices.dense.MutableDenseMatrix = None, q3d: sympy.matrices.dense.MutableDenseMatrix = None, q4d: sympy.matrices.dense.MutableDenseMatrix = None, WEE: sympy.matrices.dense.MutableDenseMatrix = Ellipsis, WDEE: sympy.matrices.dense.MutableDenseMatrix = Ellipsis, W2DEE: sympy.matrices.dense.MutableDenseMatrix = Ellipsis, simplify: bool = True, cse: bool = False, parallel: bool = True) ‑> sympy.matrices.dense.MutableDenseMatrix</span>
+<span>def <span class="ident">closed_form_inv_dyn_body_fixed</span></span>(<span>self, q: sympy.matrices.dense.MutableDenseMatrix = None, qd: sympy.matrices.dense.MutableDenseMatrix = None, q2d: sympy.matrices.dense.MutableDenseMatrix = None, q3d: sympy.matrices.dense.MutableDenseMatrix = None, q4d: sympy.matrices.dense.MutableDenseMatrix = None, WEE: Union[sympy.matrices.dense.MutableDenseMatrix, List[sympy.matrices.dense.MutableDenseMatrix]] = Ellipsis, WDEE: Union[sympy.matrices.dense.MutableDenseMatrix, List[sympy.matrices.dense.MutableDenseMatrix]] = Ellipsis, W2DEE: Union[sympy.matrices.dense.MutableDenseMatrix, List[sympy.matrices.dense.MutableDenseMatrix]] = Ellipsis, simplify: bool = True, cse: bool = False, parallel: bool = True) ‑> sympy.matrices.dense.MutableDenseMatrix</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Inverse dynamics using body fixed representation of the
@@ -6056,18 +6294,24 @@ inverse_dynamics</p>
 <dd>(n,1) Generalized jerk vector. Defaults to None.</dd>
 <dt><strong><code>q4d</code></strong> :&ensp;<code>sympy.Matrix</code>, optional</dt>
 <dd>(n,1) Generalized jounce vector. Defaults to None.</dd>
-<dt><strong><code>WEE</code></strong> :&ensp;<code>sympy.Matrix</code>, optional</dt>
-<dd>(6,1) WEE (t) = [Mx,My,Mz,Fx,Fy,Fz] is the time varying
-wrench on the EE link.
-Defaults to zeros(6, 1).</dd>
-<dt><strong><code>WDEE</code></strong> :&ensp;<code>sympy.Matrix</code>, optional</dt>
-<dd>(6,1) WDEE (t) = [dMx,dMy,dMz,dFx,dFy,dFz] is the derivative
-of the time varying wrench on the EE link.
-Defaults to zeros(6, 1).</dd>
-<dt><strong><code>W2DEE</code></strong> :&ensp;<code>sympy.Matrix</code>, optional</dt>
-<dd>(6,1) W2DEE (t) = [ddMx,ddMy,ddMz,ddFx,ddFy,ddFz] is the
-2nd derivative of the time varying wrench on the EE link.
-Defaults to zeros(6, 1).</dd>
+<dt>WEE (list | sympy.Matrix, optional):</dt>
+<dt>(6,1) WEE (t) = [Mx,My,Mz,Fx,Fy,Fz] is the time varying</dt>
+<dt>wrench on the EE link.</dt>
+<dt>If there is more than one end-effector, you can use a</dt>
+<dt>list containing all wrenches instead.</dt>
+<dt>Defaults to zeros(6, 1).</dt>
+<dt>WDEE (list | sympy.Matrix, optional):</dt>
+<dt>(6,1) WDEE (t) = [dMx,dMy,dMz,dFx,dFy,dFz] is the derivative</dt>
+<dt>of the time varying wrench on the EE link.</dt>
+<dt>If there is more than one end-effector, you can use a</dt>
+<dt>list containing all wrenches instead.</dt>
+<dt>Defaults to zeros(6, 1).</dt>
+<dt>W2DEE (list | sympy.Matrix, optional):</dt>
+<dt>(6,1) W2DEE (t) = [ddMx,ddMy,ddMz,ddFx,ddFy,ddFz] is the</dt>
+<dt>2nd derivative of the time varying wrench on the EE link.</dt>
+<dt>If there is more than one end-effector, you can use a</dt>
+<dt>list containing all wrenches instead.</dt>
+<dt>Defaults to zeros(6, 1).</dt>
 <dt><strong><code>simplify</code></strong> :&ensp;<code>bool</code>, optional</dt>
 <dd>Use simplify command on saved expressions.
 Defaults to True.</dd>
@@ -6097,9 +6341,9 @@ of bodies not set.</p>
     q2d: MutableDenseMatrix=None, 
     q3d: MutableDenseMatrix=None, 
     q4d: MutableDenseMatrix=None, 
-    WEE: MutableDenseMatrix=..., 
-    WDEE: MutableDenseMatrix=..., 
-    W2DEE: MutableDenseMatrix=..., 
+    WEE: Union[MutableDenseMatrix,List[MutableDenseMatrix]]=..., 
+    WDEE: Union[MutableDenseMatrix,List[MutableDenseMatrix]]=..., 
+    W2DEE: Union[MutableDenseMatrix,List[MutableDenseMatrix]]=..., 
     simplify: bool=True, cse: bool=False, 
     parallel: bool=True) -&gt; MutableDenseMatrix:
     &#34;&#34;&#34;Inverse dynamics using body fixed representation of the 
@@ -6123,17 +6367,23 @@ of bodies not set.</p>
             (n,1) Generalized jerk vector. Defaults to None.
         q4d (sympy.Matrix, optional): 
             (n,1) Generalized jounce vector. Defaults to None.
-        WEE (sympy.Matrix, optional): 
+        WEE (list | sympy.Matrix, optional): 
             (6,1) WEE (t) = [Mx,My,Mz,Fx,Fy,Fz] is the time varying 
             wrench on the EE link. 
+            If there is more than one end-effector, you can use a 
+            list containing all wrenches instead.
             Defaults to zeros(6, 1).
-        WDEE (sympy.Matrix, optional): 
+        WDEE (list | sympy.Matrix, optional): 
             (6,1) WDEE (t) = [dMx,dMy,dMz,dFx,dFy,dFz] is the derivative 
             of the time varying wrench on the EE link. 
+            If there is more than one end-effector, you can use a 
+            list containing all wrenches instead.
             Defaults to zeros(6, 1).
-        W2DEE (sympy.Matrix, optional): 
+        W2DEE (list | sympy.Matrix, optional): 
             (6,1) W2DEE (t) = [ddMx,ddMy,ddMz,ddFx,ddFy,ddFz] is the 
             2nd derivative of the time varying wrench on the EE link. 
+            If there is more than one end-effector, you can use a 
+            list containing all wrenches instead.
             Defaults to zeros(6, 1).
         simplify (bool, optional): 
             Use simplify command on saved expressions. 
@@ -6168,7 +6418,24 @@ of bodies not set.</p>
         W2DEE = self.W2DEE
     
     self._save_vectors(q, qd, q2d, q3d, q4d, WEE, WDEE, W2DEE)
-        
+    self.n = len(q)
+    
+    # prepare ee link selection
+    if self.ee_parent is None:
+        self.ee_parent = [self.n]
+    if type(self.ee_parent) is not list: self.ee_parent = [self.ee_parent]
+    self.n_ee = len(self.ee_parent)
+    if self.n_ee &gt; 1:
+        if type(WEE) is list and len(WEE) &gt; 1:
+            assert(len(WEE) == len(self.ee_parent))
+        if type(WDEE) is list and len(WDEE) &gt; 1:
+            assert(len(WDEE) == len(self.ee_parent))
+        if type(W2DEE) is list and len(W2DEE) &gt; 1:
+            assert(len(W2DEE) == len(self.ee_parent)) 
+    if type(WEE) is not list: WEE = [WEE]
+    if type(WDEE) is not list: WDEE = [WDEE]
+    if type(W2DEE) is not list: W2DEE = [W2DEE]
+    
     if parallel:
         self._closed_form_inv_dyn_body_fixed_parallel(
             q, qd, q2d, q3d, q4d, WEE, WDEE, W2DEE, simplify, cse)
@@ -6295,7 +6562,16 @@ of bodies not set.</p>
         else:
             q, qd, q2d = self.q, self.qd, self.q2d
             
-    self._save_vectors(q, qd, q2d, None, None, ..., ..., ...)    
+    self._save_vectors(q, qd, q2d, None, None, ..., ..., ...)
+    self.n = len(q)
+    
+    # prepare ee link selection
+    if self.ee_parent is None:
+        self.ee_parent = [self.n]
+    if type(self.ee) is not list: self.ee = [self.ee]
+    if type(self.ee_parent) is not list: self.ee_parent = [self.ee_parent]
+    assert(len(self.ee) == len(self.ee_parent))    
+    self.n_ee = len(self.ee_parent)
     
     if parallel:
         self._closed_form_kinematics_body_fixed_parallel(

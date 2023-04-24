@@ -922,7 +922,7 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
     
     def __init__(self, 
                  gravity_vector: MutableDenseMatrix=None, 
-                 ee: MutableDenseMatrix=None, 
+                 ee: Union[MutableDenseMatrix,List[MutableDenseMatrix]]=None, 
                  body_ref_config: List[MutableDenseMatrix]=[], 
                  joint_screw_coord: List[MutableDenseMatrix]=[], 
                  config_representation: str="spatial", 
@@ -930,15 +930,15 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
                  parent: List[int]=[], 
                  support: List[List[int]]=[], 
                  child: List[List[int]]=[], 
-                 ee_parent: int=None,
+                 ee_parent: Union[int,List[int]]=None,
                  q:MutableDenseMatrix=None, 
                  qd: MutableDenseMatrix=None, 
                  q2d: MutableDenseMatrix=None, 
                  q3d: MutableDenseMatrix=None, 
                  q4d: MutableDenseMatrix=None, 
-                 WEE: MutableDenseMatrix=zeros(6, 1),
-                 WDEE: MutableDenseMatrix=zeros(6, 1),
-                 W2DEE: MutableDenseMatrix=zeros(6, 1),
+                 WEE: Union[MutableDenseMatrix,List[MutableDenseMatrix]]=zeros(6, 1),
+                 WDEE: Union[MutableDenseMatrix,List[MutableDenseMatrix]]=zeros(6, 1),
+                 W2DEE: Union[MutableDenseMatrix,List[MutableDenseMatrix]]=zeros(6, 1),
                  **kwargs) -> None:
         """SymbolicKinDyn
         Symbolic tool to compute equations of motion of serial chain 
@@ -948,10 +948,13 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
         Args:
             gravity_vector (sympy.Matrix, optional): 
                 Vector of gravity. Defaults to None.
-            ee (sympy.Matrix, optional): 
+            ee (sympy.Matrix | list of sympy.Matrix, optional): 
                 End-effector configuration with reference to last link 
                 body fixed frame in the chain. This link can be selected 
-                manually using the parameter ee_parent. Defaults to None.
+                manually using the parameter ee_parent. 
+                If there is more than one end-effector use a list of 
+                transforms instead.
+                Defaults to None.
             body_ref_config (list of sympy.Matrix, optional): 
                 List of reference configurations of bodies in body-fixed
                 or spatial representation, dependent on selected 
@@ -987,8 +990,10 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
                 child links. Use empty list if no child link is present.
                 Only necessary for tree-like robot structures. 
                 Defaults to [].
-            ee_parent (int, optional): 
-                parent link of the end effector frame.
+            ee_parent (int | list, optional): 
+                parent link of the end effector frame. If there is more 
+                than one end-effector, use a list of indices instead.
+                Defaults to None (= last link).
             q (sympy.Matrix, optional): 
                 (n,1) Generalized position vector. Defaults to None.
             qd (sympy.Matrix, optional): 
@@ -999,17 +1004,23 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
                 (n,1) Generalized jerk vector. Defaults to None.
             q4d (sympy.Matrix, optional): 
                 (n,1) Generalized jounce vector. Defaults to None.
-            WEE (sympy.Matrix, optional): 
+            WEE (sympy.Matrix | list, optional): 
                 (6,1) WEE (t) = [Mx,My,Mz,Fx,Fy,Fz] is the time varying 
                 wrench on the EE link. 
+                If there is more than one end-effector, you can use a 
+                list containing all wrenches instead.
                 Defaults to zeros(6, 1).
-            WDEE (sympy.Matrix, optional): 
+            WDEE (sympy.Matrix | list, optional): 
                 (6,1) WDEE (t) = [dMx,dMy,dMz,dFx,dFy,dFz] is the derivative 
                 of the time varying wrench on the EE link. 
+                If there is more than one end-effector, you can use a 
+                list containing all wrenches instead.
                 Defaults to zeros(6, 1).
-            W2DEE (sympy.Matrix, optional): 
+            W2DEE (sympy.Matrix | list, optional): 
                 (6,1) W2DEE (t) = [ddMx,ddMy,ddMz,ddFx,ddFy,ddFz] is the 
                 2nd derivative of the time varying wrench on the EE link. 
+                If there is more than one end-effector, you can use a 
+                list containing all wrenches instead.
                 Defaults to zeros(6, 1).
             
         """
@@ -1206,9 +1217,9 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
         q2d: MutableDenseMatrix=None, 
         q3d: MutableDenseMatrix=None, 
         q4d: MutableDenseMatrix=None, 
-        WEE: MutableDenseMatrix=..., 
-        WDEE: MutableDenseMatrix=..., 
-        W2DEE: MutableDenseMatrix=..., 
+        WEE: Union[MutableDenseMatrix,List[MutableDenseMatrix]]=..., 
+        WDEE: Union[MutableDenseMatrix,List[MutableDenseMatrix]]=..., 
+        W2DEE: Union[MutableDenseMatrix,List[MutableDenseMatrix]]=..., 
         simplify: bool=True, cse: bool=False, 
         parallel: bool=True) -> MutableDenseMatrix:
         """Inverse dynamics using body fixed representation of the 
@@ -1232,17 +1243,23 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
                 (n,1) Generalized jerk vector. Defaults to None.
             q4d (sympy.Matrix, optional): 
                 (n,1) Generalized jounce vector. Defaults to None.
-            WEE (sympy.Matrix, optional): 
+            WEE (list | sympy.Matrix, optional): 
                 (6,1) WEE (t) = [Mx,My,Mz,Fx,Fy,Fz] is the time varying 
                 wrench on the EE link. 
+                If there is more than one end-effector, you can use a 
+                list containing all wrenches instead.
                 Defaults to zeros(6, 1).
-            WDEE (sympy.Matrix, optional): 
+            WDEE (list | sympy.Matrix, optional): 
                 (6,1) WDEE (t) = [dMx,dMy,dMz,dFx,dFy,dFz] is the derivative 
                 of the time varying wrench on the EE link. 
+                If there is more than one end-effector, you can use a 
+                list containing all wrenches instead.
                 Defaults to zeros(6, 1).
-            W2DEE (sympy.Matrix, optional): 
+            W2DEE (list | sympy.Matrix, optional): 
                 (6,1) W2DEE (t) = [ddMx,ddMy,ddMz,ddFx,ddFy,ddFz] is the 
                 2nd derivative of the time varying wrench on the EE link. 
+                If there is more than one end-effector, you can use a 
+                list containing all wrenches instead.
                 Defaults to zeros(6, 1).
             simplify (bool, optional): 
                 Use simplify command on saved expressions. 
@@ -1593,9 +1610,9 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
                                         q2d: MutableDenseMatrix,
                                         q3d: MutableDenseMatrix=None, 
                                         q4d: MutableDenseMatrix=None, 
-                                        WEE: MutableDenseMatrix=zeros(6, 1), 
-                                        WDEE: MutableDenseMatrix=zeros(6, 1), 
-                                        W2DEE: MutableDenseMatrix=zeros(6, 1), 
+                                        WEE: List[MutableDenseMatrix]=[zeros(6, 1)], 
+                                        WDEE: List[MutableDenseMatrix]=[zeros(6, 1)], 
+                                        W2DEE: List[MutableDenseMatrix]=[zeros(6, 1)], 
                                         simplify: bool=True, 
                                         cse: bool=False) -> MutableDenseMatrix:
         """Inverse dynamics using body fixed representation of the 
@@ -1616,18 +1633,18 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
                 (n,1) Generalized jerk vector. Defaults to None.
             q4d (sympy.Matrix, optional): 
                 (n,1) Generalized jounce vector. Defaults to None.
-            WEE (sympy.Matrix, optional): 
+            WEE (list of sympy.Matrix, optional): 
                 (6,1) WEE (t) = [Mx,My,Mz,Fx,Fy,Fz] is the time varying 
                 wrench on the EE link. 
-                Defaults to zeros(6, 1).
-            WDEE (sympy.Matrix, optional): 
+                Defaults to [zeros(6, 1)].
+            WDEE (list of sympy.Matrix, optional): 
                 (6,1) WDEE (t) = [dMx,dMy,dMz,dFx,dFy,dFz] is the derivative 
                 of the time varying wrench on the EE link. 
-                Defaults to zeros(6, 1).
-            W2DEE (sympy.Matrix, optional): 
+                Defaults to [zeros(6, 1)].
+            W2DEE (list of sympy.Matrix, optional): 
                 (6,1) W2DEE (t) = [ddMx,ddMy,ddMz,ddFx,ddFy,ddFz] is the 
                 2nd derivative of the time varying wrench on the EE link. 
-                Defaults to zeros(6, 1).
+                Defaults to [zeros(6, 1)].
             simplify (bool, optional): Use simplify command 
                 on saved expressions. Defaults to True.
             cse (bool, optional): Use common subexpression 
@@ -2251,9 +2268,9 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
         q2d: MutableDenseMatrix, 
         q3d: MutableDenseMatrix, 
         q4d: MutableDenseMatrix, 
-        WEE: MutableDenseMatrix=zeros(6, 1), 
-        WDEE: MutableDenseMatrix=zeros(6, 1), 
-        W2DEE: MutableDenseMatrix=zeros(6, 1), 
+        WEE: List[MutableDenseMatrix]=[zeros(6, 1)], 
+        WDEE: List[MutableDenseMatrix]=[zeros(6, 1)], 
+        W2DEE: List[MutableDenseMatrix]=[zeros(6, 1)], 
         simplify: bool=True, cse: bool=False) -> MutableDenseMatrix:
         """Inverse dynamics using body fixed representation of the 
         twists in closed form. 
@@ -2276,18 +2293,18 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
                 (n,1) Generalized jerk vector. Defaults to None.
             q4d (sympy.Matrix, optional): 
                 (n,1) Generalized jounce vector. Defaults to None.
-            WEE (sympy.Matrix, optional): 
+            WEE (list of sympy.Matrix, optional): 
                 (6,1) WEE (t) = [Mx,My,Mz,Fx,Fy,Fz] is the time varying 
                 wrench on the EE link. 
-                Defaults to zeros(6, 1).
-            WDEE (sympy.Matrix, optional): 
+                Defaults to [zeros(6, 1)].
+            WDEE (list of sympy.Matrix, optional): 
                 (6,1) WDEE (t) = [dMx,dMy,dMz,dFx,dFy,dFz] is the derivative 
                 of the time varying wrench on the EE link. 
-                Defaults to zeros(6, 1).
-            W2DEE (sympy.Matrix, optional): 
+                Defaults to [zeros(6, 1)].
+            W2DEE (list of sympy.Matrix, optional): 
                 (6,1) W2DEE (t) = [ddMx,ddMy,ddMz,ddFx,ddFy,ddFz] is the 
                 2nd derivative of the time varying wrench on the EE link. 
-                Defaults to zeros(6, 1).
+                Defaults to [zeros(6, 1)].
             simplify (bool, optional): 
                 Use simplify command on saved expressions. 
                 Defaults to True.

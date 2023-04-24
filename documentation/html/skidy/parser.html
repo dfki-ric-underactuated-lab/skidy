@@ -122,14 +122,15 @@ def dict_parser(d: dict) -&gt; SymbolicKinDyn:
     parent = d[&#34;parent&#34;] if &#34;parent&#34; in d else []
     child = d[&#34;child&#34;] if &#34;child&#34; in d else []
     support = d[&#34;support&#34;] if &#34;support&#34; in d else []
+    ee_parent = d[&#34;ee_parent&#34;] if &#34;ee_parent&#34; in d else None
+    
     try:
         gravity = d[&#34;gravity&#34;] if &#34;gravity&#34; in d else d[&#34;gravity_vector&#34;]
     except KeyError:
         gravity = None
     
+    assert(&#34;joint_screw_coord&#34; in d)
     joint_screw_coord = []
-    if &#34;joint_screw_coord&#34; not in d:
-        raise KeyError(&#34;joint_screw_coord not found.&#34;)
     for js in d[&#34;joint_screw_coord&#34;]:
         if type(js) is list and len(js) == 6:
             joint_screw_coord.append(Matrix(js))
@@ -147,10 +148,10 @@ def dict_parser(d: dict) -&gt; SymbolicKinDyn:
                 raise ValueError(f&#34;joint type {js[&#39;type&#39;]} not supported.&#34;)
         else:
             raise ValueError(&#34;joint screw coordinates corrupted.&#34;) 
+
+    assert(&#34;body_ref_config&#34; in d)
     
     body_ref_config = []
-    if &#34;body_ref_config&#34; not in d:
-        raise KeyError(&#34;body_ref_config not found&#34;)
     for br in d[&#34;body_ref_config&#34;]:
         if type(br) is list:
             body_ref_config.append(Matrix(br))
@@ -175,14 +176,12 @@ def dict_parser(d: dict) -&gt; SymbolicKinDyn:
                     r = Matrix(Identity(3))
                 body_ref_config.append(transformation_matrix(r,t))
     
-    if &#34;ee&#34; not in d:
-        raise KeyError(&#34;ee not found&#34;)
+    assert(&#34;ee&#34; in d)
     
-    # if leading - is used in ee yaml we have a list we dont want. 
-    if type(d[&#34;ee&#34;]) is list and len(d[&#34;ee&#34;]) == 1:
-            d[&#34;ee&#34;] = d[&#34;ee&#34;][0]
-    if type(d[&#34;ee&#34;]) is list:
+    # transformation matrix directly in ee
+    if type(d[&#34;ee&#34;]) is list and type(d[&#34;ee&#34;][0]) is list and type(d[&#34;ee&#34;][0][0]) is not list:
         ee = Matrix(d[&#34;ee&#34;])
+    # dict in directly in ee
     elif type(d[&#34;ee&#34;]) is dict:
         if &#34;xyzrpy&#34; in d[&#34;ee&#34;]:
             ee = xyz_rpy_to_matrix(d[&#34;ee&#34;][&#34;xyzrpy&#34;])
@@ -203,6 +202,32 @@ def dict_parser(d: dict) -&gt; SymbolicKinDyn:
             else:
                 r = Matrix(Identity(3))
             ee = transformation_matrix(r,t)
+    # list of ee
+    elif type(d[&#34;ee&#34;]) is list:
+        ee = []
+        for eei in d[&#34;ee&#34;]:
+            if type(eei) is list:
+                ee.append(Matrix(eei))
+            elif type(eei) is dict:
+                if &#34;xyzrpy&#34; in eei:
+                    ee.append(xyz_rpy_to_matrix(eei[&#34;xyzrpy&#34;]))                
+                else:
+                    t = eei[&#34;translation&#34;] if &#34;translation&#34; in eei else [0,0,0]
+                    if &#34;rotation&#34; in eei:
+                        if type(eei[&#34;rotation&#34;]) is dict:
+                            if &#34;Q&#34; in eei[&#34;rotation&#34;]:
+                                r = quaternion_to_matrix(eei[&#34;rotation&#34;][&#34;Q&#34;])
+                            elif &#34;rpy&#34; in eei[&#34;rotation&#34;]:
+                                r = rpy_to_matrix(eei[&#34;rotation&#34;][&#34;rpy&#34;])
+                            elif &#34;axis&#34; in eei[&#34;rotation&#34;]:
+                                axis = eei[&#34;rotation&#34;][&#34;axis&#34;] if &#34;axis&#34; in eei[&#34;rotation&#34;] else [0,0,1]
+                                angle = eei[&#34;rotation&#34;][&#34;angle&#34;] if &#34;angle&#34; in eei[&#34;rotation&#34;] else 0
+                                r = SO3Exp(Matrix(axis),angle)
+                        else:
+                            r = Matrix(eei[&#34;rotation&#34;])
+                    else:
+                        r = Matrix(Identity(3))
+                    ee.append(transformation_matrix(r,t))        
     else:
         raise ValueError(f&#34;ee {d[&#39;ee&#39;]} cannot be processed.&#34;)
     
@@ -264,16 +289,38 @@ def dict_parser(d: dict) -&gt; SymbolicKinDyn:
     qd = Matrix(d[&#34;qd&#34;]) if &#34;qd&#34; in d else None        
     q2d = Matrix(d[&#34;q2d&#34;]) if &#34;q2d&#34; in d else None        
     q3d = Matrix(d[&#34;q3d&#34;]) if &#34;q3d&#34; in d else None        
-    q4d = Matrix(d[&#34;q4d&#34;]) if &#34;q4d&#34; in d else None        
-    WEE = Matrix(d[&#34;WEE&#34;]) if &#34;WEE&#34; in d else zeros(6,1)        
-    WDEE = Matrix(d[&#34;WDEE&#34;]) if &#34;WDEE&#34; in d else zeros(6,1)        
-    W2DEE = Matrix(d[&#34;W2DEE&#34;]) if &#34;W2DEE&#34; in d else zeros(6,1)        
+    q4d = Matrix(d[&#34;q4d&#34;]) if &#34;q4d&#34; in d else None
+    if &#34;WEE&#34; in d:
+        assert(type(d[&#34;WEE&#34;] is list))
+        if type(d[&#34;WEE&#34;][0]) is list:
+            WEE = [Matrix(w) for w in d[&#34;WEE&#34;]]
+        else:
+            WEE = Matrix(d[&#34;WEE&#34;])
+    else:
+        WEE = zeros(6,1)        
+    if &#34;WDEE&#34; in d:
+        assert(type(d[&#34;WDEE&#34;] is list))
+        if type(d[&#34;WDEE&#34;][0]) is list:
+            WDEE = [Matrix(w) for w in d[&#34;WDEE&#34;]]
+        else:
+            WDEE = Matrix(d[&#34;WDEE&#34;])
+    else:
+        WDEE = zeros(6,1)        
+    if &#34;W2DEE&#34; in d:
+        assert(type(d[&#34;W2DEE&#34;] is list))
+        if type(d[&#34;W2DEE&#34;][0]) is list:
+            W2DEE = [Matrix(w) for w in d[&#34;W2DEE&#34;]]
+        else:
+            W2DEE = Matrix(d[&#34;W2DEE&#34;])
+    else:
+        W2DEE = zeros(6,1)        
     
     skd = SymbolicKinDyn(gravity_vector=gravity,ee=ee,
                          body_ref_config=body_ref_config,
                          joint_screw_coord=joint_screw_coord,
                          config_representation=config_representation, 
-                         Mb=Mb, parent=parent, support=support, child=child,
+                         Mb=Mb, parent=parent, support=support, 
+                         child=child, ee_parent=ee_parent,
                          q=q,qd=qd,q2d=q2d,q3d=q3d,q4d=q4d,
                          WEE=WEE, WDEE=WDEE, W2DEE=W2DEE)
     return skd
@@ -300,7 +347,7 @@ def generate_template_yaml(path: str=&#34;edit_me.yaml&#34;, structure: str = No
         if not dof:
            dof = len(structure)
         else:
-            # fill structure with r until length mathes dof
+            # fill structure with r until length matches dof
             while len(structure) &lt; dof:
                 structure += &#34;r&#34;
             
@@ -321,6 +368,9 @@ def generate_template_yaml(path: str=&#34;edit_me.yaml&#34;, structure: str = No
         y.append(&#34;support:&#34;)
         for i in range(dof):
             y.append(f&#34;  - [{&#39;,&#39;.join([str(j) for j in range(1,i+2)])}]&#34;)
+        y.append(&#34;&#34;)
+        
+        y.append(f&#34;ee_parent: {dof}&#34;)
         y.append(&#34;&#34;)
         
     y.append(&#34;gravity: [0,0,-g]&#34;)
@@ -356,10 +406,10 @@ def generate_template_yaml(path: str=&#34;edit_me.yaml&#34;, structure: str = No
         y.append(&#34;&#34;)
     
     y.append(&#34;ee:&#34;)
-    y.append(&#34;  rotation:&#34;)
-    y.append(&#34;    axis: [0,0,1]&#34;)
-    y.append(&#34;    angle: 0&#34;)
-    y.append(&#34;  translation: [0,0,0]&#34;)
+    y.append(&#34;  - rotation:&#34;)
+    y.append(&#34;      axis: [0,0,1]&#34;)
+    y.append(&#34;      angle: 0&#34;)
+    y.append(&#34;    translation: [0,0,0]&#34;)
     y.append(&#34;&#34;)
     
     y.append(&#34;mass_inertia:&#34;)
@@ -488,6 +538,9 @@ def generate_template_python(path:str=&#34;edit_me.py&#34;, structure:str=None, 
             p.append(f&#34;           [{&#39;,&#39;.join([str(j) for j in range(1,i+2)])}]{&#39;,&#39; if dof &gt; i+1 else &#39;]&#39;}&#34;)
         p.append(&#34;&#34;)
         
+        p.append(f&#34;ee_parent = {dof}&#34;)
+        p.append(&#34;&#34;)
+        
     if urdf:
         p.append(&#34;urdfpath = &#39;/path/to/urdf&#39; # TODO: change me!&#34;)
         p.append(&#34;&#34;)
@@ -548,6 +601,7 @@ def generate_template_python(path:str=&#34;edit_me.py&#34;, structure:str=None, 
             p.append(&#34;                     parent=parent,&#34;)
             p.append(&#34;                     child=child,&#34;)
             p.append(&#34;                     support=support,&#34;)
+            p.append(&#34;                     ee_parent=ee_parent,&#34;)
     p.append(&#34;                     )&#34;)
     p.append(&#34;&#34;)
     if urdf:
@@ -672,14 +726,15 @@ def robot_from_urdf(path: str, symbolic: bool=True, cse: bool=False,
     parent = d[&#34;parent&#34;] if &#34;parent&#34; in d else []
     child = d[&#34;child&#34;] if &#34;child&#34; in d else []
     support = d[&#34;support&#34;] if &#34;support&#34; in d else []
+    ee_parent = d[&#34;ee_parent&#34;] if &#34;ee_parent&#34; in d else None
+    
     try:
         gravity = d[&#34;gravity&#34;] if &#34;gravity&#34; in d else d[&#34;gravity_vector&#34;]
     except KeyError:
         gravity = None
     
+    assert(&#34;joint_screw_coord&#34; in d)
     joint_screw_coord = []
-    if &#34;joint_screw_coord&#34; not in d:
-        raise KeyError(&#34;joint_screw_coord not found.&#34;)
     for js in d[&#34;joint_screw_coord&#34;]:
         if type(js) is list and len(js) == 6:
             joint_screw_coord.append(Matrix(js))
@@ -697,10 +752,10 @@ def robot_from_urdf(path: str, symbolic: bool=True, cse: bool=False,
                 raise ValueError(f&#34;joint type {js[&#39;type&#39;]} not supported.&#34;)
         else:
             raise ValueError(&#34;joint screw coordinates corrupted.&#34;) 
+
+    assert(&#34;body_ref_config&#34; in d)
     
     body_ref_config = []
-    if &#34;body_ref_config&#34; not in d:
-        raise KeyError(&#34;body_ref_config not found&#34;)
     for br in d[&#34;body_ref_config&#34;]:
         if type(br) is list:
             body_ref_config.append(Matrix(br))
@@ -725,14 +780,12 @@ def robot_from_urdf(path: str, symbolic: bool=True, cse: bool=False,
                     r = Matrix(Identity(3))
                 body_ref_config.append(transformation_matrix(r,t))
     
-    if &#34;ee&#34; not in d:
-        raise KeyError(&#34;ee not found&#34;)
+    assert(&#34;ee&#34; in d)
     
-    # if leading - is used in ee yaml we have a list we dont want. 
-    if type(d[&#34;ee&#34;]) is list and len(d[&#34;ee&#34;]) == 1:
-            d[&#34;ee&#34;] = d[&#34;ee&#34;][0]
-    if type(d[&#34;ee&#34;]) is list:
+    # transformation matrix directly in ee
+    if type(d[&#34;ee&#34;]) is list and type(d[&#34;ee&#34;][0]) is list and type(d[&#34;ee&#34;][0][0]) is not list:
         ee = Matrix(d[&#34;ee&#34;])
+    # dict in directly in ee
     elif type(d[&#34;ee&#34;]) is dict:
         if &#34;xyzrpy&#34; in d[&#34;ee&#34;]:
             ee = xyz_rpy_to_matrix(d[&#34;ee&#34;][&#34;xyzrpy&#34;])
@@ -753,6 +806,32 @@ def robot_from_urdf(path: str, symbolic: bool=True, cse: bool=False,
             else:
                 r = Matrix(Identity(3))
             ee = transformation_matrix(r,t)
+    # list of ee
+    elif type(d[&#34;ee&#34;]) is list:
+        ee = []
+        for eei in d[&#34;ee&#34;]:
+            if type(eei) is list:
+                ee.append(Matrix(eei))
+            elif type(eei) is dict:
+                if &#34;xyzrpy&#34; in eei:
+                    ee.append(xyz_rpy_to_matrix(eei[&#34;xyzrpy&#34;]))                
+                else:
+                    t = eei[&#34;translation&#34;] if &#34;translation&#34; in eei else [0,0,0]
+                    if &#34;rotation&#34; in eei:
+                        if type(eei[&#34;rotation&#34;]) is dict:
+                            if &#34;Q&#34; in eei[&#34;rotation&#34;]:
+                                r = quaternion_to_matrix(eei[&#34;rotation&#34;][&#34;Q&#34;])
+                            elif &#34;rpy&#34; in eei[&#34;rotation&#34;]:
+                                r = rpy_to_matrix(eei[&#34;rotation&#34;][&#34;rpy&#34;])
+                            elif &#34;axis&#34; in eei[&#34;rotation&#34;]:
+                                axis = eei[&#34;rotation&#34;][&#34;axis&#34;] if &#34;axis&#34; in eei[&#34;rotation&#34;] else [0,0,1]
+                                angle = eei[&#34;rotation&#34;][&#34;angle&#34;] if &#34;angle&#34; in eei[&#34;rotation&#34;] else 0
+                                r = SO3Exp(Matrix(axis),angle)
+                        else:
+                            r = Matrix(eei[&#34;rotation&#34;])
+                    else:
+                        r = Matrix(Identity(3))
+                    ee.append(transformation_matrix(r,t))        
     else:
         raise ValueError(f&#34;ee {d[&#39;ee&#39;]} cannot be processed.&#34;)
     
@@ -814,16 +893,38 @@ def robot_from_urdf(path: str, symbolic: bool=True, cse: bool=False,
     qd = Matrix(d[&#34;qd&#34;]) if &#34;qd&#34; in d else None        
     q2d = Matrix(d[&#34;q2d&#34;]) if &#34;q2d&#34; in d else None        
     q3d = Matrix(d[&#34;q3d&#34;]) if &#34;q3d&#34; in d else None        
-    q4d = Matrix(d[&#34;q4d&#34;]) if &#34;q4d&#34; in d else None        
-    WEE = Matrix(d[&#34;WEE&#34;]) if &#34;WEE&#34; in d else zeros(6,1)        
-    WDEE = Matrix(d[&#34;WDEE&#34;]) if &#34;WDEE&#34; in d else zeros(6,1)        
-    W2DEE = Matrix(d[&#34;W2DEE&#34;]) if &#34;W2DEE&#34; in d else zeros(6,1)        
+    q4d = Matrix(d[&#34;q4d&#34;]) if &#34;q4d&#34; in d else None
+    if &#34;WEE&#34; in d:
+        assert(type(d[&#34;WEE&#34;] is list))
+        if type(d[&#34;WEE&#34;][0]) is list:
+            WEE = [Matrix(w) for w in d[&#34;WEE&#34;]]
+        else:
+            WEE = Matrix(d[&#34;WEE&#34;])
+    else:
+        WEE = zeros(6,1)        
+    if &#34;WDEE&#34; in d:
+        assert(type(d[&#34;WDEE&#34;] is list))
+        if type(d[&#34;WDEE&#34;][0]) is list:
+            WDEE = [Matrix(w) for w in d[&#34;WDEE&#34;]]
+        else:
+            WDEE = Matrix(d[&#34;WDEE&#34;])
+    else:
+        WDEE = zeros(6,1)        
+    if &#34;W2DEE&#34; in d:
+        assert(type(d[&#34;W2DEE&#34;] is list))
+        if type(d[&#34;W2DEE&#34;][0]) is list:
+            W2DEE = [Matrix(w) for w in d[&#34;W2DEE&#34;]]
+        else:
+            W2DEE = Matrix(d[&#34;W2DEE&#34;])
+    else:
+        W2DEE = zeros(6,1)        
     
     skd = SymbolicKinDyn(gravity_vector=gravity,ee=ee,
                          body_ref_config=body_ref_config,
                          joint_screw_coord=joint_screw_coord,
                          config_representation=config_representation, 
-                         Mb=Mb, parent=parent, support=support, child=child,
+                         Mb=Mb, parent=parent, support=support, 
+                         child=child, ee_parent=ee_parent,
                          q=q,qd=qd,q2d=q2d,q3d=q3d,q4d=q4d,
                          WEE=WEE, WDEE=WDEE, W2DEE=W2DEE)
     return skd</code></pre>
@@ -984,6 +1085,9 @@ in yaml file. Defaults to True.</dd>
             p.append(f&#34;           [{&#39;,&#39;.join([str(j) for j in range(1,i+2)])}]{&#39;,&#39; if dof &gt; i+1 else &#39;]&#39;}&#34;)
         p.append(&#34;&#34;)
         
+        p.append(f&#34;ee_parent = {dof}&#34;)
+        p.append(&#34;&#34;)
+        
     if urdf:
         p.append(&#34;urdfpath = &#39;/path/to/urdf&#39; # TODO: change me!&#34;)
         p.append(&#34;&#34;)
@@ -1044,6 +1148,7 @@ in yaml file. Defaults to True.</dd>
             p.append(&#34;                     parent=parent,&#34;)
             p.append(&#34;                     child=child,&#34;)
             p.append(&#34;                     support=support,&#34;)
+            p.append(&#34;                     ee_parent=ee_parent,&#34;)
     p.append(&#34;                     )&#34;)
     p.append(&#34;&#34;)
     if urdf:
@@ -1132,7 +1237,7 @@ in yaml file. Defaults to True.</dd>
         if not dof:
            dof = len(structure)
         else:
-            # fill structure with r until length mathes dof
+            # fill structure with r until length matches dof
             while len(structure) &lt; dof:
                 structure += &#34;r&#34;
             
@@ -1153,6 +1258,9 @@ in yaml file. Defaults to True.</dd>
         y.append(&#34;support:&#34;)
         for i in range(dof):
             y.append(f&#34;  - [{&#39;,&#39;.join([str(j) for j in range(1,i+2)])}]&#34;)
+        y.append(&#34;&#34;)
+        
+        y.append(f&#34;ee_parent: {dof}&#34;)
         y.append(&#34;&#34;)
         
     y.append(&#34;gravity: [0,0,-g]&#34;)
@@ -1188,10 +1296,10 @@ in yaml file. Defaults to True.</dd>
         y.append(&#34;&#34;)
     
     y.append(&#34;ee:&#34;)
-    y.append(&#34;  rotation:&#34;)
-    y.append(&#34;    axis: [0,0,1]&#34;)
-    y.append(&#34;    angle: 0&#34;)
-    y.append(&#34;  translation: [0,0,0]&#34;)
+    y.append(&#34;  - rotation:&#34;)
+    y.append(&#34;      axis: [0,0,1]&#34;)
+    y.append(&#34;      angle: 0&#34;)
+    y.append(&#34;    translation: [0,0,0]&#34;)
     y.append(&#34;&#34;)
     
     y.append(&#34;mass_inertia:&#34;)
