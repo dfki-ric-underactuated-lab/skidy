@@ -277,6 +277,13 @@ class _AbstractCodeGeneration():
                         modstring = regex.sub("self.self.", "self.", modstring)
                     s.append("        self."+str(i)+" = " + modstring)
 
+            # avoid empty init function
+            if (not len(self.subex_dict) > 0 
+                and not len(self.assignment_dict) > 0
+                and not len(not_assigned_syms) > 0
+                ):
+                s.append("        pass")
+            
             # define functions
             for i in range(len(expressions)):
                 var_syms = self._sort_variables(self.var_syms.intersection(
@@ -412,6 +419,13 @@ class _AbstractCodeGeneration():
                         modstring = regex.sub("self.self.", "self.", modstring)
                     s.append("        self."+str(i)+" = " + modstring)
 
+            # avoid empty init function
+            if (not len(self.subex_dict) > 0 
+                and not len(self.assignment_dict) > 0
+                and not len(not_assigned_syms) > 0
+                ):
+                s.append("        pass")
+            
             # define functions
             for i in range(len(expressions)):
                 var_syms = self._sort_variables(self.var_syms.intersection(
@@ -2846,7 +2860,7 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
         self.parent = parent
             
     def _nsimplify(
-        self, num: float, *args, max_denominator: int=0, **kwargs
+        self, num: float, *args, max_denominator: int=0, tolerance: float=None, **kwargs
         ) -> Union[sympy.Expr, float]:
         """Find a simple sympy representation for a number like 1/2 
         instead of 0.5. This function extends sympy.nsimplify with a 
@@ -2858,11 +2872,20 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
             max_denominator (int, optional): 
                 maximum denominator to use. Use 0 to deactivate. 
                 Defaults to 0.
-
+            tolerance (float, optional): 
+                tolerance for simplify_numbers. Defaults to 0.0001.
+            
         Returns:
             Union[sympy.Expr, float]: simplified number.
         """
-        ex = nsimplify(num,*args, rational = False, **kwargs)
+        if tolerance:
+            if numpy.abs(num) < tolerance:
+                return 0
+            elif numpy.abs(1-num) < tolerance:
+                return 1
+            elif numpy.abs(-1-num) < tolerance:
+                return -1 
+        ex = nsimplify(num,*args, rational=False, tolerance=tolerance, **kwargs)
         if not max_denominator:
             return ex
         if ex.is_rational:
@@ -2971,13 +2994,15 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
             joint_origins.append(origin)
             if joint.joint_type in ["revolute", "continuous", "prismatic"]:
                 axis = Matrix(joint.axis)
+                if fixed_origin:
+                    origin *= fixed_origin
+                    fixed_origin = None
+                
                 if simplify_numbers:
                     for i in range(3):
                         axis[i] = self._nsimplify(axis[i], [pi], tolerance=tolerance,
                                             max_denominator=max_denominator)
-                if fixed_origin:
-                    origin *= fixed_origin
-                    fixed_origin = None
+                
                 self.B.append(Matrix(origin))
 
                 if joint.joint_type in ["revolute", "continuous"]:
@@ -3015,17 +3040,17 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
                 m = symbols("m_%s" % name)
                 cg = Matrix([*c_syms])
             else:
-                if simplify_numbers:
-                    for i in range(4):
-                        for j in range(4):
-                            inertiaorigin[i, j] = self._nsimplify(
-                                inertiaorigin[i, j], [pi], tolerance=tolerance,
-                                max_denominator=max_denominator)
-                    for i in range(3):
-                        for j in range(3):
-                            inertia[i, j] = self._nsimplify(
-                                inertia[i, j], [pi], tolerance=tolerance,
-                                max_denominator=max_denominator)
+                # if simplify_numbers:
+                #     for i in range(4):
+                #         for j in range(4):
+                #             inertiaorigin[i, j] = self._nsimplify(
+                #                 inertiaorigin[i, j], [pi], tolerance=tolerance,
+                #                 max_denominator=max_denominator)
+                #     for i in range(3):
+                #         for j in range(3):
+                #             inertia[i, j] = self._nsimplify(
+                #                 inertia[i, j], [pi], tolerance=tolerance,
+                #                 max_denominator=max_denominator)
                 I = Matrix(inertia)
                 m = mass
                 cg = Matrix(inertiaorigin[0:3, 3])
@@ -3045,6 +3070,13 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
                 continue
             self.Mb.append(M)
             i += 1
+        if simplify_numbers and not symbolic:
+            for M in self.Mb:
+                for i in range(6):
+                    for j in range(6):
+                        M[i, j] = self._nsimplify(
+                            M[i, j], [pi], tolerance=tolerance,
+                            max_denominator=max_denominator)
         return
 
     def dh_to_screw_coord(self, DH_param_table: MutableDenseMatrix) -> None:
@@ -3498,3 +3530,22 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
                                 .subs(zip(subq,self.q))
                                 )
         return expression
+    
+    def __repr__(self):
+        return (f"SymbolicKinDyn(ee={self.ee}, "
+               f"body_ref_config={self.body_ref_config}, "
+               f"joint_screw_coord={self.joint_screw_coord}, "
+               f"config_representation=\'{self.config_representation}\', "
+               f"Mb={self.Mb}, "
+               f"parent={self.parent}, "
+               f"support={self.support}, "
+               f"child={self.child}, "
+               f"ee_parent={self.ee_parent}, "
+               f"q={self.q}, "
+               f"qd={self.qd}, "
+               f"q2d={self.q2d}, "
+               f"q3d={self.q3d}, "
+               f"q4d={self.q4d}, "
+               f"WEE={self.WEE}, "
+               f"WDEE={self.WDEE}, "
+               f"W2DEE={self.W2DEE})")
