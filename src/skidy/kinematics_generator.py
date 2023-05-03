@@ -8,26 +8,25 @@ from multiprocessing import Process, Queue
 from typing import Any, Callable, Dict, Generator, List, Tuple, Union
 
 import numpy
+import pydot
 import regex
 import sympy
+import sympy.physics.mechanics
 from pylatex import Command, Document, NoEscape, Section
-from sympy import (Identity, Matrix, MutableDenseMatrix, cancel, ccode, 
-                   factor, lambdify, nsimplify, octave_code, pi, powsimp,
-                   symbols, zeros, julia_code)
+from sympy import (Identity, Matrix, MutableDenseMatrix, cancel, ccode, factor,
+                   julia_code, lambdify, nsimplify, octave_code, pi, powsimp,
+                   symbols, zeros)
 from sympy.printing.latex import LatexPrinter
 from sympy.printing.numpy import NumPyPrinter
 from sympy.simplify.cse_main import numbered_symbols
 from sympy.simplify.fu import fu
-from sympy.utilities.codegen import codegen, JuliaCodeGen
-import sympy.physics.mechanics
-
+from sympy.utilities.codegen import JuliaCodeGen, codegen
 from urdf_parser_py.urdf import URDF
 
-from skidy.matrices import (SE3AdjInvMatrix, SE3AdjMatrix,
-                                           SE3adMatrix, SE3Exp, SE3Inv, SO3Exp,
-                                           generalized_vectors, inertia_matrix,
-                                           mass_matrix_mixed_data,
-                                           xyz_rpy_to_matrix, matrix_to_xyz_rpy)
+from skidy.matrices import (SE3AdjInvMatrix, SE3AdjMatrix, SE3adMatrix, SE3Exp,
+                            SE3Inv, SO3Exp, generalized_vectors,
+                            inertia_matrix, mass_matrix_mixed_data,
+                            matrix_to_xyz_rpy, xyz_rpy_to_matrix)
 
 
 class _AbstractCodeGeneration():
@@ -843,6 +842,14 @@ class _AbstractCodeGeneration():
             # save tex file and compile pdf
             doc.generate_pdf(os.path.join(folder, "latex",name), clean_tex=False)
     
+    def generate_graph(self):
+        graph = pydot.Dot("Robot structure", graph_type="graph")
+        graph.add_node(pydot.Node("0"))
+        for i in range(len(self.parent) if self.parent else self.n):
+            graph.add_node(pydot.Node(f"{i+1}"))
+            graph.add_edge(pydot.Edge(f"{self.parent[i] if self.parent else i}",f"{i+1}"))
+        graph.write_png("output.png")
+        
     def _sort_variables(self, vars:List[sympy.Symbol]) -> List[sympy.Symbol]:
         """Sort variables for code generation starting with q, qd, qdd, 
         continuing with variable symbols and ending with constant 
@@ -2839,7 +2846,7 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
         self.parent = parent
             
     def _nsimplify(
-        self,num: float, *args, max_denominator: int=0, **kwargs
+        self, num: float, *args, max_denominator: int=0, **kwargs
         ) -> Union[sympy.Expr, float]:
         """Find a simple sympy representation for a number like 1/2 
         instead of 0.5. This function extends sympy.nsimplify with a 
@@ -2855,12 +2862,12 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
         Returns:
             Union[sympy.Expr, float]: simplified number.
         """
-        ex = nsimplify(num,*args,**kwargs)
+        ex = nsimplify(num,*args, rational = False, **kwargs)
         if not max_denominator:
             return ex
         if ex.is_rational:
             try:
-                d = ex.denominator
+                d = ex.denominator()
                 if d > max_denominator:
                     return num
             except ValueError:
@@ -2898,6 +2905,7 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
         """        
         with open(path, "r") as f:
             robot = URDF.from_xml_string(f.read())
+        self.config_representation = self.BODY_FIXED
         self.B = []
         self.X = []
         self._create_topology_lists(robot) # TODO: check!
@@ -3029,7 +3037,10 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
                     M = SE3AdjInvMatrix(
                         joint_origins[j-1]).T * M * SE3AdjInvMatrix(joint_origins[j-1])
                     j -= 1
-                self.Mb[-1] += M
+                try:
+                    self.Mb[-1] += M
+                except IndexError: # Base dynamics not important
+                    pass
                 i += 1
                 continue
             self.Mb.append(M)

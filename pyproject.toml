@@ -37,7 +37,8 @@ dependencies = [
     "urdf_parser_py",
     "regex",
     "PyYAML",
-    "pylatex"
+    "pylatex",
+    "pydot",
 ]
 # dynamic = ["version"]
 

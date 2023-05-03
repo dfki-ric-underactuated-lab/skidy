@@ -4,3 +4,4 @@ urdf_parser_py
 regex
 PyYAML
 pylatex
+pydot

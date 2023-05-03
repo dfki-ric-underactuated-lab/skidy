@@ -19,11 +19,11 @@ setup(
     install_requires=[
         "numpy",
         "sympy>=1.8",
-        # "urdfpy",
         "urdf_parser_py",
         "regex",
         "PyYAML",
-        "pylatex"
+        "pylatex",
+        "pydot",
     ],
     extras_require={"testing": ["cython","oct2py"]},
     classifiers=[
