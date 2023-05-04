@@ -1,3 +1,4 @@
+import copy
 import multiprocessing
 import os
 import queue
@@ -2926,16 +2927,23 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
             NotImplementedError: supports only the joint types 
                 "revolute", "continuous" and "prismatic".
         """        
+        # load URDF
         with open(path, "r") as f:
             robot = URDF.from_xml_string(f.read())
+        
         self.config_representation = self.BODY_FIXED
         self.B = []
         self.X = []
+        
+        # get parent, child and support array
         self._create_topology_lists(robot) # TODO: check!
+        # init some variables for later
         fixed_origin = None
         fixed_links = []
         DOF = 0
         xyz_rpy_syms = []
+        
+        # count DOF
         for joint in robot.joints:
             if joint.joint_type in ["revolute", "continuous", "prismatic"]:
                 DOF += 1
@@ -2948,15 +2956,21 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
         ji = 0  # joint index of used joints
         jia = 0  # joint index of all joints (fixed included)
         joint_origins = []
+        joint_origins_dict = {}
         for joint in robot.joints:
             name = joint.name
+            
+            # get SE3 pose from xyzrpy
             origin = xyz_rpy_to_matrix(joint.origin.xyz+joint.origin.rpy)
             if symbolic:
                 xyz_rpy = Matrix(joint.origin.xyz+joint.origin.rpy)
-                xyz_rpy_syms.append(symbols(
-                    " ".join([name+"_%s" % s for s in ["x", "y", "z", "roll", "pitch", "yar"]])))
+                # substitute variables
+                xyz_rpy_syms.append(
+                    symbols(" ".join([name+"_%s" % s 
+                                      for s in ["x", "y", "z", "roll", "pitch", "yar"]])))
                 xyzrpylist = []
                 if simplify_numbers:
+                    # replace values like 3.142 with pi
                     for i in range(6):
                         if (self._nsimplify(xyz_rpy[i], 
                                            tolerance=tolerance, 
@@ -2971,6 +2985,7 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
                             self.assignment_dict[xyz_rpy_syms[jia]
                                                  [i]] = xyz_rpy[i]
                 else:
+                    # replace all values unequal 0, abs(1) with symbolic values
                     for i in range(6):
                         if xyz_rpy[i] == 0:
                             xyzrpylist.append(0)
@@ -2982,6 +2997,7 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
                             xyzrpylist.append(xyz_rpy_syms[jia][i])
                             self.assignment_dict[xyz_rpy_syms[jia]
                                                  [i]] = xyz_rpy[i]
+                # get new SE3 Pose from xyzrpy
                 origin = xyz_rpy_to_matrix(xyzrpylist)
                 if cse:
                     origin = self._cse_expression(origin)
@@ -2991,12 +3007,29 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
                         origin[i, j] = self._nsimplify(
                             origin[i, j], [pi], tolerance=tolerance,
                             max_denominator=max_denominator)
+            # save SE3 pose in list
             joint_origins.append(origin)
+            joint_origins_dict[name] = origin
+            
+            # add fixed parents to origin
             if joint.joint_type in ["revolute", "continuous", "prismatic"]:
                 axis = Matrix(joint.axis)
-                if fixed_origin:
-                    origin *= fixed_origin
-                    fixed_origin = None
+                
+                # calc fixed origin from parent origins:
+                fixed_origin = Matrix(Identity(4))
+                parent_joint = copy.copy(joint)
+                while True :
+                    try:
+                        parent_joint = robot.joint_map[robot.parent_map[parent_joint.parent][0]]
+                    except KeyError: # base_link has no parent
+                        break
+                    if parent_joint.type == "fixed":
+                        fixed_origin = joint_origins_dict[parent_joint.name] * fixed_origin
+                    else: # stop when last non fixed joint is reached
+                        break
+
+                # transform
+                origin = fixed_origin * origin 
                 
                 if simplify_numbers:
                     for i in range(3):
@@ -3011,10 +3044,6 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
                     self.X.append(Matrix(Matrix([0, 0, 0])).col_join(axis))
                 ji += 1
             elif joint.joint_type == "fixed":
-                if fixed_origin:
-                    fixed_origin *= origin
-                else:
-                    fixed_origin = origin
                 fixed_links.append((joint.parent, joint.child))
             jia += 1
 
@@ -3040,28 +3069,29 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
                 m = symbols("m_%s" % name)
                 cg = Matrix([*c_syms])
             else:
-                # if simplify_numbers:
-                #     for i in range(4):
-                #         for j in range(4):
-                #             inertiaorigin[i, j] = self._nsimplify(
-                #                 inertiaorigin[i, j], [pi], tolerance=tolerance,
-                #                 max_denominator=max_denominator)
-                #     for i in range(3):
-                #         for j in range(3):
-                #             inertia[i, j] = self._nsimplify(
-                #                 inertia[i, j], [pi], tolerance=tolerance,
-                #                 max_denominator=max_denominator)
                 I = Matrix(inertia)
                 m = mass
                 cg = Matrix(inertiaorigin[0:3, 3])
             M = mass_matrix_mixed_data(m, I, cg)
+            # if link is child of fixed joint
             if name in [x[1] for x in fixed_links]:
-                j = i
-                # transform Mass matrix
-                while robot.links[j].name in [x[1] for x in fixed_links]:
-                    M = SE3AdjInvMatrix(
-                        joint_origins[j-1]).T * M * SE3AdjInvMatrix(joint_origins[j-1])
-                    j -= 1
+                parent_joint = robot.joint_map[robot.parent_map[name][0]]
+                while True:
+                    if parent_joint.type == 'fixed':
+                        M = (SE3AdjInvMatrix(joint_origins_dict[parent_joint.name]).T 
+                             * M * SE3AdjInvMatrix(joint_origins_dict[parent_joint.name]))
+                    else:
+                        break
+                    try:
+                        parent_joint = robot.joint_map[robot.parent_map[parent_joint.parent][0]]
+                    except KeyError:
+                        break      
+                # j = i
+                # # transform Mass matrix
+                # while robot.links[j].name in [x[1] for x in fixed_links]:
+                #     M = (SE3AdjInvMatrix(joint_origins[j-1]).T 
+                #          * M * SE3AdjInvMatrix(joint_origins[j-1]))
+                #     j -= 1
                 try:
                     self.Mb[-1] += M
                 except IndexError: # Base dynamics not important
