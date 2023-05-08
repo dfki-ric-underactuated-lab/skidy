@@ -17,6 +17,9 @@ from skidy.parser import robot_from_yaml, robot_from_json, robot_from_urdf
 from sympy import Matrix, cos, sin, symbols, Identity, simplify, zeros, parse_expr
 import random
 import numpy as np
+import kinpy
+from urdf_parser_py.urdf import URDF
+
 
 try:
     from oct2py import octave
@@ -1528,9 +1531,69 @@ class TestYamlParser(unittest.TestCase):
                 self.assertEqual(skd.WDEE, Matrix([*symbols("dMx,dMy,dMz,dFx,dFy,dFz")]))
             with self.subTest("W2DEE"):
                 self.assertEqual(skd.W2DEE, Matrix([*symbols("ddMx,ddMy,ddMz,ddFx,ddFy,ddFz")]))
-            
+    
+class TestURDF(unittest.TestCase):
+    
+    @classmethod
+    def setUpClass(cls) -> None:
+        path = os.path.join(dirname(dirname(__file__)),"examples","urdf","hopping_leg.urdf")
+        with open(path, "r") as f:
+            robot = URDF.from_xml_string(f.read())
+        cls.chain = kinpy.build_chain_from_urdf(robot.to_xml_string())
+        
+        gravity = Matrix([0, 0, -9.81])
 
+        # end-effector configuration w.r.t. last link body fixed frame in the chain (4x4 SE3 Pose (sympy.Matrix))
+        ee = [transformation_matrix(r=SO3Exp(axis=[0, 0, 1], angle=0), t=[0, 0, 0]),
+            # transformation_matrix(r=SO3Exp(axis=[0, 0, 1], angle=0), t=[0, 0, 0]),
+            # transformation_matrix(r=SO3Exp(axis=[0, 0, 1], angle=0), t=[0, 0, 0]),
+            # transformation_matrix(r=SO3Exp(axis=[0, 0, 1], angle=0), t=[0, 0, 0]),    
+            ]
+        # ee_parent = [3,6,9,12]
+        ee_parent = 3
+        skd = skidy.SymbolicKinDyn(gravity_vector=gravity,
+                            ee=ee,
+                            ee_parent=ee_parent)
 
+        skd.load_from_urdf(path=path,
+                        # symbolify equations? (eg. use Ixx instead of numeric value)
+                        symbolic=False,
+                        cse=False,  # use common subexpression elimination?
+                        # round numbers if close to common fractions like 1/2 etc and replace eg 3.1416 by pi?
+                        simplify_numbers=True,
+                        tolerance=0.0001,  # tolerance for simplify numbers
+                        # define max denominator for simplify numbers to avoid simplification to something like 13/153
+                        max_denominator=8,
+                        )
+        skd.n = len(skd.parent)
+        q, qd, q2d = skidy.generalized_vectors(len(skd.body_ref_config), startindex=0)
+        WEE = zeros(6, 1)
+
+        # run Calculations
+        skd.closed_form_kinematics_body_fixed(q, qd, q2d, simplify=True)
+        skd.closed_form_inv_dyn_body_fixed(q, qd, q2d, WEE=WEE, simplify=True)
+        cls.skd = skd
+
+    def testFK(self):
+        q = [random.random(), random.random(), random.random()]
+        names =  self.chain.get_joint_parameter_names()
+        th = {names[i]: q[i] for i in range(3)}
+        fk_kp = self.chain.forward_kinematics(th)["link_2"]
+        fk = transformation_matrix(
+            skidy.quaternion_to_matrix(fk_kp.rot),
+            fk_kp.pos
+        )
+        fkin = (self.skd.fkin
+                .subs(self.skd.q[0],q[0])
+                .subs(self.skd.q[1],q[1])
+                .subs(self.skd.q[2],q[2])
+                ).doit()
+                        
+        self.assertTrue(
+            np.allclose(np.asarray(fk, dtype=np.double),
+                        np.asarray(fkin, dtype=np.double),
+                        atol=0.0001)
+        )
 
 class MatlabClass():
     _counter = 0

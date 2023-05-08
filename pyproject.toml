@@ -43,7 +43,7 @@ dependencies = [
 # dynamic = ["version"]
 
 [project.optional-dependencies]
-testing = ["cython", "oct2py"]
+testing = ["cython", "oct2py", "kinpy"]
 
 [project.scripts]
 skidy = "skidy.__main__:main"

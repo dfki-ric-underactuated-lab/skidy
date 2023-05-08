@@ -2936,7 +2936,7 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
         self.X = []
         
         # get parent, child and support array
-        self._create_topology_lists(robot) # TODO: check!
+        self._create_topology_lists(robot)
         # init some variables for later
         fixed_origin = None
         fixed_links = []

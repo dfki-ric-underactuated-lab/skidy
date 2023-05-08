@@ -87,6 +87,12 @@ The project has the following dependencies:
     python3 -m pip install pylatex
     ```
 
+- pydot
+
+    ```bash
+    python3 -m pip install pydot
+    ```
+
 For unit testing the following packages are additionally recommended:
 
 - oct2py
@@ -106,6 +112,12 @@ For unit testing the following packages are additionally recommended:
 
     ```bash
     python3 -m pip install cython
+    ```
+
+- kinpy
+
+    ```bash
+    python3 -m pip install kinpy
     ```
 
 ## 2. Usage

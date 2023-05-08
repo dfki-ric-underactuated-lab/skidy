@@ -260,7 +260,9 @@ def transformation_matrix(r: MutableDenseMatrix=Matrix(Identity(3)),
     """
     if type(t) is list:
         t = Matrix(t)
-    T = r.row_join(t).col_join(Matrix([[0, 0, 0, 1]]))
+    T = Matrix(Identity(4))
+    T[:3,:3] = r
+    T[:3,3] = t
     return T
 
 def mass_matrix_mixed_data(m: Union[float, Expr], Theta: MutableDenseMatrix, 
