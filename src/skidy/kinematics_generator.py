@@ -27,7 +27,8 @@ from urdf_parser_py.urdf import URDF
 from skidy.matrices import (SE3AdjInvMatrix, SE3AdjMatrix, SE3adMatrix, SE3Exp,
                             SE3Inv, SO3Exp, generalized_vectors,
                             inertia_matrix, mass_matrix_mixed_data,
-                            matrix_to_xyz_rpy, xyz_rpy_to_matrix)
+                            matrix_to_xyz_rpy, xyz_rpy_to_matrix,
+                            transformation_matrix)
 
 
 class _AbstractCodeGeneration():
@@ -3107,6 +3108,10 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
                         M[i, j] = self._nsimplify(
                             M[i, j], [pi], tolerance=tolerance,
                             max_denominator=max_denominator)
+        if self.ee is None:
+            self.ee = [transformation_matrix()]
+        if self.gravity_vector is None:
+            self.gravity_vector = Matrix([0,0,-9.81])
         return
 
     def dh_to_screw_coord(self, DH_param_table: MutableDenseMatrix) -> None:
