@@ -1769,7 +1769,7 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
             U = U.col_join(SE3AdjInvMatrix(FK_C[k]))
 
         Vd_0 = zeros(6, 1)
-        Vd_0[3:6, 0] = -self.gravity_vector
+        Vd_0[3:6, 0] = -Matrix(self.gravity_vector)
         Qgrav = J.T*Mb*U*Vd_0
         if simplify:
             Qgrav = self.simplify(Qgrav, cse)
@@ -2448,7 +2448,7 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
             U = U.col_join(SE3AdjInvMatrix(FK_C[k]))
 
         Vd_0 = zeros(6, 1)
-        Vd_0[3:6, 0] = -self.gravity_vector
+        Vd_0[3:6, 0] = -Matrix(self.gravity_vector)
         self._set_value_as_process(
             "Qgrav", lambda: self._get_value("J").T*Mb*U*Vd_0)
         if simplify:
