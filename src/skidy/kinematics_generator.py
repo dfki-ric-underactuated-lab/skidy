@@ -868,8 +868,8 @@ class _AbstractCodeGeneration():
         
     def _sort_variables(self, vars:List[sympy.Symbol]) -> List[sympy.Symbol]:
         """Sort variables for code generation starting with q, qd, qdd, 
-        continuing with variable symbols and ending with constant 
-        symbols.
+        continuing with variable symbols (like fx in WEE) and ending 
+        with constant symbols.
 
         Args:
             vars (list of sympy.symbols): Variables to sort.
@@ -883,62 +883,55 @@ class _AbstractCodeGeneration():
         var_syms = self.var_syms.intersection(vars)
         optional_var_syms = self.optional_var_syms.intersection(vars)
         rest = list(vars.difference(var_syms).difference(optional_var_syms))
-        # divide variable symbols into q, dq, ddq and other variable symbols
-        q = []
-        dq = []
-        ddq = []
-        dddq = []
-        ddddq = []
-        var_rest = []
-        WEE = []
-        WDEE = []
-        W2DEE = []
-        for i in var_syms:
-            if str(i).startswith("ddddq") or  (self.q4d and i in self.q4d):
-                ddddq.append(i)
-            elif str(i).startswith("dddq") or (self.q3d and i in self.q3d):
-                dddq.append(i)
-            elif str(i).startswith("ddq") or i in self.q2d:
-                ddq.append(i)
-            elif str(i).startswith("dq") or i in self.qd:
-                dq.append(i)
-            elif str(i).startswith("q") or i in self.q:
-                q.append(i)
-            else:
-                var_rest.append(i)
-                
-        for i in optional_var_syms:
-            if str(i).startswith("dd") or i in self.W2DEE:
-                W2DEE.append(i)
-            elif str(i).startswith("d") or i in self.WDEE:
-                WDEE.append(i)
-            else:
-                WEE.append(i)
-            
-        def symsort(data: List[sympy.Symbol]) -> List[sympy.Symbol]:
-            """Sort symbols
-
-            Args:
-                data (list): symbols
-
-            Returns:
-                list: sorted symbols
-            """
-            return [x for _, x in sorted(zip(list(map(str, data)), data))]
         
-        # return sorted list
-        return (symsort(q) 
-                + symsort(dq) 
-                + symsort(ddq) 
-                + symsort(dddq) 
-                + symsort(ddddq) 
-                + symsort(var_rest) 
-                + symsort(WEE) 
-                + symsort(WDEE) 
-                + symsort(W2DEE) 
-                + symsort(rest))
-            
-            
+        # function to sort symbols by name; returns list
+        symsort = lambda data: [x for _, x in sorted(zip(list(map(str, data)), data))]
+        
+        sorted_syms = []
+        # go through generalized vectors and sort variables according to their order
+        for i in self.q:
+            if i in var_syms:
+                sorted_syms.append(i)
+                var_syms.remove(i)
+        for i in self.qd:
+            if i in var_syms:
+                sorted_syms.append(i)
+                var_syms.remove(i)
+        for i in self.q2d:
+            if i in var_syms:
+                sorted_syms.append(i)
+                var_syms.remove(i)
+        if self.q3d:
+            for i in self.q3d:
+                if i in var_syms:
+                    sorted_syms.append(i)
+                    var_syms.remove(i)
+        if self.q4d:
+            for i in self.q4d:
+                if i in var_syms:
+                    sorted_syms.append(i)
+                    var_syms.remove(i)
+        if var_syms:
+            sorted_syms += symsort(var_syms)
+        # now append symbols in external wrenches
+        for i in self.WEE:
+            if i in optional_var_syms:
+                sorted_syms.append(i)
+                optional_var_syms.remove(i)
+        for i in self.WDEE:
+            if i in optional_var_syms:
+                sorted_syms.append(i)
+                optional_var_syms.remove(i)
+        for i in self.W2DEE:
+            if i in optional_var_syms:
+                sorted_syms.append(i)
+                optional_var_syms.remove(i)
+        if optional_var_syms:
+            sorted_syms += symsort(optional_var_syms)
+        # finally sort additional symbols by their name
+        sorted_syms += symsort(rest)
+        return sorted_syms
+
 class SymbolicKinDyn(_AbstractCodeGeneration):
     BODY_FIXED = "body_fixed"
     SPATIAL = "spatial"
