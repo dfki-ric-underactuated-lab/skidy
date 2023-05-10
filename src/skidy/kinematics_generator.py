@@ -858,13 +858,13 @@ class _AbstractCodeGeneration():
             # save tex file and compile pdf
             doc.generate_pdf(os.path.join(folder, "latex",name), clean_tex=False)
     
-    def generate_graph(self):
+    def generate_graph(self, path: str="output.png") -> None:
         graph = pydot.Dot("Robot structure", graph_type="graph")
         graph.add_node(pydot.Node("0"))
         for i in range(len(self.parent) if self.parent else self.n):
             graph.add_node(pydot.Node(f"{i+1}"))
             graph.add_edge(pydot.Edge(f"{self.parent[i] if self.parent else i}",f"{i+1}"))
-        graph.write_png("output.png")
+        graph.write_png(path)
         
     def _sort_variables(self, vars:List[sympy.Symbol]) -> List[sympy.Symbol]:
         """Sort variables for code generation starting with q, qd, qdd, 
@@ -1769,7 +1769,7 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
             U = U.col_join(SE3AdjInvMatrix(FK_C[k]))
 
         Vd_0 = zeros(6, 1)
-        Vd_0[3:6, 0] = self.gravity_vector
+        Vd_0[3:6, 0] = -self.gravity_vector
         Qgrav = J.T*Mb*U*Vd_0
         if simplify:
             Qgrav = self.simplify(Qgrav, cse)
@@ -1780,7 +1780,7 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
         Wext = zeros(6*self.n, 1)
         # WEE (t) is the time varying wrench on the EE link.
         for i in range(self.n_ee):
-            Wext[6*(self.ee_parent[i]-1):6*self.ee_parent[i], 0] = WEE[i if len(WEE) == self.n_ee else 0] # TODO: ee idx
+            Wext[6*(self.ee_parent[i]-1):6*self.ee_parent[i], 0] = WEE[i if len(WEE) == self.n_ee else 0]
         Qext = J.T * Wext
 
         # Generalized forces Q
@@ -2448,7 +2448,7 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
             U = U.col_join(SE3AdjInvMatrix(FK_C[k]))
 
         Vd_0 = zeros(6, 1)
-        Vd_0[3:6, 0] = self.gravity_vector
+        Vd_0[3:6, 0] = -self.gravity_vector
         self._set_value_as_process(
             "Qgrav", lambda: self._get_value("J").T*Mb*U*Vd_0)
         if simplify:
@@ -2892,9 +2892,12 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
             return ex
         if ex.is_rational:
             try:
-                d = ex.denominator()
+                try:
+                    d = ex.denominator()
+                except TypeError:
+                    d = ex.denominator 
                 if d > max_denominator:
-                    return num
+                    return num    
             except ValueError:
                 return ex
         elif type(ex) in {sympy.core.add.Add, sympy.core.power.Pow}:

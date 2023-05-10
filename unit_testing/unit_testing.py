@@ -1,25 +1,24 @@
+import os
+import random
+import shutil
+import sys
 import unittest
 import unittest.mock
-import sys
-import os
-from textwrap import dedent
-import shutil
 import warnings
 from os.path import dirname
-sys.path.append(dirname(dirname(__file__)))
-import skidy
-from skidy import (SE3AdjInvMatrix, SE3AdjMatrix, 
-                                  SE3adMatrix, SE3Exp, SE3Inv, SO3Exp, 
-                                  inertia_matrix, transformation_matrix, 
-                                  mass_matrix_mixed_data, rpy_to_matrix, 
-                                  xyz_rpy_to_matrix)
-from skidy.parser import robot_from_yaml, robot_from_json, robot_from_urdf
-from sympy import Matrix, cos, sin, symbols, Identity, simplify, zeros, parse_expr
-import random
-import numpy as np
+from textwrap import dedent
+
 import kinpy
+import numpy as np
+from sympy import (Identity, Matrix, cos, parse_expr, simplify, sin, symbols,
+                   zeros)
 from urdf_parser_py.urdf import URDF
 
+import skidy
+from skidy import (SE3AdjInvMatrix, SE3AdjMatrix, SE3adMatrix, SE3Exp, SE3Inv,
+                   SO3Exp, inertia_matrix, mass_matrix_mixed_data,
+                   rpy_to_matrix, transformation_matrix, xyz_rpy_to_matrix)
+from skidy.parser import robot_from_json, robot_from_urdf, robot_from_yaml
 
 try:
     from oct2py import octave
@@ -32,6 +31,13 @@ except (ImportError,ModuleNotFoundError):
     cython = None  # skip cython tests
     warnings.warn("Cannot import cython. Skip all tests for the generated cython code.")
     
+try: 
+    import pinocchio
+except (ImportError,ModuleNotFoundError):
+    pinocchio = None  # skip cython tests
+    warnings.warn("Cannot import pinocchio. Skip all tests using pinocchio.")
+
+
 delete_generated_code = True # False deactivates cleanup functions
 
 def prepare(cls):
@@ -49,7 +55,7 @@ def prepare(cls):
     
     cls.skd.config_representation = "spatial"
     
-    cls.skd.gravity_vector = Matrix([0, cls.g, 0])
+    cls.skd.gravity_vector = Matrix([0, -cls.g, 0])
 
     # Joint screw coordinates in spatial representation
 
@@ -1572,7 +1578,10 @@ class TestURDF(unittest.TestCase):
         # run Calculations
         skd.closed_form_kinematics_body_fixed(q, qd, q2d, simplify=True)
         skd.closed_form_inv_dyn_body_fixed(q, qd, q2d, WEE=WEE, simplify=True)
+        
+        # save to class
         cls.skd = skd
+        cls.path = path
 
     def testFK(self):
         q = [random.random(), random.random(), random.random()]
@@ -1593,6 +1602,40 @@ class TestURDF(unittest.TestCase):
             np.allclose(np.asarray(fk, dtype=np.double),
                         np.asarray(fkin, dtype=np.double),
                         atol=0.0001)
+        )
+        
+    @unittest.skipIf(pinocchio is None, "Skip test as I cannot import pinocchio")
+    def testInvDyn(self):
+        q = np.array([random.random(), random.random(), random.random()])
+        dq = np.array([random.random(), random.random(), random.random()])
+        ddq = np.array([random.random(), random.random(), random.random()])
+        # dq = np.zeros(3)
+        # ddq = np.zeros(3)
+        
+        # setup pinocchio model
+        model = pinocchio.buildModelFromUrdf(self.path)
+        data = model.createData()
+        
+        # invDyn
+        idyn = pinocchio.rnea(model,data,q,dq,ddq)
+        Q = (self.skd.Q
+             .subs(self.skd.q[0], q[0])
+             .subs(self.skd.q[1], q[1])
+             .subs(self.skd.q[2], q[2])
+             .subs(self.skd.qd[0], dq[0])
+             .subs(self.skd.qd[1], dq[1])
+             .subs(self.skd.qd[2], dq[2])
+             .subs(self.skd.q2d[0], ddq[0])
+             .subs(self.skd.q2d[1], ddq[1])
+             .subs(self.skd.q2d[2], ddq[2])
+             ).doit()
+        
+        self.assertTrue(
+            np.allclose(
+                np.asarray(Q,dtype=np.double),
+                np.asarray(idyn, dtype=np.double).reshape(np.asarray(Q).shape),
+                atol = 0.01
+            )
         )
 
 class MatlabClass():

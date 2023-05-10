@@ -120,6 +120,12 @@ For unit testing the following packages are additionally recommended:
     python3 -m pip install kinpy
     ```
 
+- pinocchio
+
+    ```bash
+    python3 -m pip install pin
+    ```
+
 ## 2. Usage
 
 There are four ways to load your robot into the library:
