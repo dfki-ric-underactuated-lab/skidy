@@ -890,7 +890,7 @@ class _AbstractCodeGeneration():
         
         # end effector
         # set ee_parent if not already set
-        self.ee_parent = self.ee_parent or (len(self.parent) + 1 if self.parent else self.n + 1)
+        self.ee_parent = self.ee_parent or (len(self.parent) if self.parent else self.n)
         if type(self.ee_parent) is list and len(self.parent)>1:
             for i in range(len(self.ee_parent)):
                 # ee node with WEE, WDEE, and W2DEE label in case they are non zero
