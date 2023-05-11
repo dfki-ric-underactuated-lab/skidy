@@ -25,6 +25,7 @@ def main() -> None:
     parser.add_argument("-m","--matlab", action="store_true", help="generate Matlab/Octave code")
     parser.add_argument("-j","--julia", action="store_true", help="generate julia code")
     parser.add_argument("-l","--latex", action="store_true", help="generate LaTeX code and pdf")
+    parser.add_argument("-g","--graph", action="store_true", help="generate structure graph from input and save it as pdf")
     parser.add_argument("--cython", action="store_true", help="generate Cython code")
     parser.add_argument("--no-kinematics", action="store_true", help="skip generation of kinematics equations.")
     parser.add_argument("--no-dynamics", action="store_true", help="skip generation of dynamics equations.")
@@ -95,7 +96,8 @@ def main() -> None:
             and not args.matlab 
             and not args.julia 
             and not args.latex 
-            and not args.cython):
+            and not args.cython
+            and not args.graph):
             raise ValueError("Please provide at least one programming language in which I should generate code.")
         
         if ext in {".yaml",".YAML","yml"}:
@@ -117,25 +119,35 @@ def main() -> None:
         else: 
             raise ValueError("File extension not recognized.")
         
-        if not args.no_kinematics:
-            skd.closed_form_kinematics_body_fixed(
-                simplify=args.simplify, cse=args.cse, parallel=args.serial)
-        if not args.no_dynamics:
-            skd.closed_form_inv_dyn_body_fixed(
-                simplify=args.simplify, cse=args.cse, parallel=args.serial)
+        if (args.python 
+            or args.C 
+            or args.matlab 
+            or args.julia 
+            or args.latex 
+            or args.cython):
+            
+            if not args.no_kinematics:
+                skd.closed_form_kinematics_body_fixed(
+                    simplify=args.simplify, cse=args.cse, parallel=args.serial)
+            if not args.no_dynamics:
+                skd.closed_form_inv_dyn_body_fixed(
+                    simplify=args.simplify, cse=args.cse, parallel=args.serial)
     
-        skd.generate_code(python=args.python, 
-                          C=args.C, 
-                          Matlab=args.matlab, 
-                          cython=args.cython, 
-                          julia=args.julia, 
-                          latex=args.latex, 
-                          cache=args.cache,
-                          folder=args.folder, 
-                          use_global_vars=True, 
-                          name=args.name, 
-                          project=args.project)
-
+            skd.generate_code(python=args.python, 
+                              C=args.C, 
+                              Matlab=args.matlab, 
+                              cython=args.cython, 
+                              julia=args.julia, 
+                              latex=args.latex, 
+                              cache=args.cache,
+                              folder=args.folder, 
+                              use_global_vars=True, 
+                              name=args.name, 
+                              project=args.project)
+        if args.graph:
+            if not os.path.exists(os.path.join(args.folder,"graphs")):
+                os.mkdir(os.path.join(args.folder,"graphs"))
+            skd.generate_graph(os.path.join(args.folder,"graphs",args.name+".pdf"),1)
 
 if __name__ == "__main__":
     main()
