@@ -858,13 +858,126 @@ class _AbstractCodeGeneration():
             # save tex file and compile pdf
             doc.generate_pdf(os.path.join(folder, "latex",name), clean_tex=False)
     
-    def generate_graph(self, path: str="output.png") -> None:
-        graph = pydot.Dot("Robot structure", graph_type="graph")
-        graph.add_node(pydot.Node("0"))
+    def generate_graph(self, path: str="output.pdf", include_mb: bool=False) -> None:
+        """Write pdf graph from robot structure.
+
+        Args:
+            path (str, optional): Path where to save graph. 
+                Defaults to "output.pdf".
+            include_mb (bool, optional): Include mass inertia matrix. 
+                Defaults to False.
+        """
+        graph = pydot.Dot("Robot structure", graph_type="digraph")
+        graph.add_node(pydot.Node("0_l", label="0 (base)", shape="box"))
         for i in range(len(self.parent) if self.parent else self.n):
-            graph.add_node(pydot.Node(f"{i+1}"))
-            graph.add_edge(pydot.Edge(f"{self.parent[i] if self.parent else i}",f"{i+1}"))
-        graph.write_png(path)
+            lab = "[[{}, {}, {}, {}], \l [{}, {}, {}, {}], \l [{}, {}, {}, {}], \l [{}, {}, {}, {}]]\l".format(
+                *self.body_ref_config[i]
+            )
+            # joints
+            vars = [str(x[i]) for x in [self.q,self.qd,self.q2d,self.q3d, self.q4d] if x]
+            graph.add_node(pydot.Node(f"{i+1}",label="[{}, {}, {}, {}, {}, {}]{}"
+                                      .format(*self.joint_screw_coord[i],"\n{"+", ".join(vars)+"}" if vars else ""), color="blue"))
+            graph.add_edge(pydot.Edge(f"{self.parent[i] if self.parent else i}_l",f"{i+1}",
+                                      label=lab))
+            # links
+            if include_mb:
+                lab = (("[[{}, {}, {}, {}, {}, {}], \l [{}, {}, {}, {}, {}, {}], \l"
+                        " [{}, {}, {}, {}, {}, {}], \l [{}, {}, {}, {}, {}, {}], \l"
+                        " [{}, {}, {}, {}, {}, {}], \l [{}, {}, {}, {}, {}, {}]]\l")
+                    .format(*self.Mb[i]))
+            graph.add_node(pydot.Node(f"{i+1}_l",shape="box", label=f"{i+1}"+(":\n"+lab if include_mb else "")))
+            graph.add_edge(pydot.Edge(f"{i+1}",f"{i+1}_l"))
+        
+        # end effector
+        # set ee_parent if not already set
+        self.ee_parent = self.ee_parent or (len(self.parent) + 1 if self.parent else self.n + 1)
+        if type(self.ee_parent) is list and len(self.parent)>1:
+            for i in range(len(self.ee_parent)):
+                # ee node with WEE, WDEE, and W2DEE label in case they are non zero
+                lab = (f"ee_{i+1}"
+                       # WEE
+                       +"{}".format(
+                           "\n[{}, {}, {}, {}, {}, {}]"
+                           .format(*self.WEE[i] 
+                                   if type(self.WEE) is list 
+                                   else self.WEE)
+                           if not self.WEE == zeros(6,1) 
+                           and not (type(self.WEE) is list 
+                                    and self.WEE[i] == zeros(6,1))
+                           else "")
+                       # WDEE
+                       +"{}".format(
+                           "\n[{}, {}, {}, {}, {}, {}]"
+                           .format(*self.WDEE[i] 
+                                   if type(self.WDEE) is list 
+                                   else self.WDEE)
+                           if not self.WDEE == zeros(6,1) 
+                           and not (type(self.WDEE) is list 
+                                    and self.WDEE[i] == zeros(6,1))
+                           else "")
+                       # W2DEE
+                       +"{}".format(
+                           "\n[{}, {}, {}, {}, {}, {}]"
+                           .format(*self.W2DEE[i] 
+                                   if type(self.W2DEE) is list 
+                                   else self.W2DEE)
+                           if not self.W2DEE == zeros(6,1) 
+                           and not (type(self.W2DEE) is list 
+                                    and self.W2DEE[i] == zeros(6,1))
+                           else ""))
+                graph.add_node(
+                    pydot.Node(f"ee_{i+1}",  shape="plaintext", 
+                              label=lab
+                    )
+                )
+                lab = "[[{}, {}, {}, {}], \l [{}, {}, {}, {}], \l [{}, {}, {}, {}], \l [{}, {}, {}, {}]]\l".format(
+                    *self.ee[i]
+                )
+                graph.add_edge(pydot.Edge(f"{self.ee_parent[i]}_l",f"ee_{i+1}", 
+                                            label=lab))
+        else:
+            # ee node with WEE, WDEE, and W2DEE label in case they are non zero
+            lab = (f"ee"
+                   # WEE
+                   +"{}".format(
+                       "\n[{}, {}, {}, {}, {}, {}]"
+                       .format(*self.WEE[0] 
+                               if type(self.WEE) is list # decide wether [Matrix] or just Matrix
+                               else self.WEE)
+                       if not self.WEE == zeros(6,1) # only if non zero
+                       and not (type(self.WEE) is list and self.WEE[0] == zeros(6,1)) # can be a list too...
+                       else "")
+                   # WDEE
+                   +"{}".format(
+                       "\n[{}, {}, {}, {}, {}, {}]"
+                       .format(*self.WDEE[0] 
+                               if type(self.WDEE) is list 
+                               else self.WDEE)
+                       if not self.WDEE == zeros(6,1) 
+                       and not (type(self.WDEE) is list and self.WDEE[0] == zeros(6,1))
+                       else "")
+                   # W2DEE
+                   +"{}".format(
+                       "\n[{}, {}, {}, {}, {}, {}]"
+                       .format(*self.W2DEE[0] 
+                               if type(self.W2DEE) is list 
+                               else self.W2DEE)
+                       if not self.W2DEE == zeros(6,1) 
+                       and not (type(self.W2DEE) is list and self.W2DEE[0] == zeros(6,1))
+                       else ""))
+            graph.add_node(
+                pydot.Node(f"ee", shape="plaintext",
+                           label=lab
+                )
+            )
+            lab = "[[{}, {}, {}, {}], \l [{}, {}, {}, {}], \l [{}, {}, {}, {}], \l [{}, {}, {}, {}]]\l".format(
+                    *self.ee[0] if type(self.ee) is list else self.ee
+                )
+            graph.add_edge(pydot.Edge(
+                f"{self.ee_parent[0] if type(self.ee_parent) is list else self.ee_parent}_l",f"ee",
+                label=lab
+                ))
+        graph.write_pdf(path)
         
     def _sort_variables(self, vars:List[sympy.Symbol]) -> List[sympy.Symbol]:
         """Sort variables for code generation starting with q, qd, qdd, 
