@@ -29,6 +29,7 @@ from skidy.matrices import (SE3AdjInvMatrix, SE3AdjMatrix, SE3adMatrix, SE3Exp,
                             inertia_matrix, mass_matrix_mixed_data,
                             matrix_to_xyz_rpy, xyz_rpy_to_matrix,
                             transformation_matrix)
+from skidy.parser import skd_to_yaml, skd_to_json
 
 
 class _AbstractCodeGeneration():
@@ -3038,7 +3039,7 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
                 "revolute", "continuous" and "prismatic".
         """        
         # load URDF
-        with open(path, "r") as f:
+        with open(path, "rb") as f:
             robot = URDF.from_xml_string(f.read())
         
         self.config_representation = self.BODY_FIXED
@@ -3223,6 +3224,24 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
             self.gravity_vector = Matrix([0,0,-9.81])
         return
 
+    def to_yaml(self, path: str="robot.yaml") -> None:
+        """Save robot as YAML file.
+
+        Args:
+            path (str, optional): Path where to save .yaml file. 
+                Defaults to "robot.yaml".
+        """
+        return skd_to_yaml(self,path)
+    
+    def to_json(self, path: str="robot.json") -> None:
+        """Save robot as JSON file.
+
+        Args:
+            path (str, optional): Path where to save .json file. 
+                Defaults to "robot.json".
+        """
+        return skd_to_json(self,path)
+    
     def dh_to_screw_coord(self, DH_param_table: MutableDenseMatrix) -> None:
         """Build screw coordinate paramters (joint axis frames and 
         body reference frames) from a given modified Denavit-Hartenberg 
