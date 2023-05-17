@@ -1098,7 +1098,7 @@ skd = SymbolicKinDyn(gravity_vector=gravity,
                      )
 
 skd.load_from_urdf(path = urdfpath,
-                   symbolic=True, 
+                   symbolic=False, 
                    cse=False, 
                    simplify_numbers=True,  
                    tolerance=0.0001, 
@@ -1195,7 +1195,7 @@ Initialize class with the two defined parameters.
 
 ```python
 skd.load_from_urdf(path = urdfpath,
-                   symbolic=True, 
+                   symbolic=False, 
                    cse=False, 
                    simplify_numbers=True,  
                    tolerance=0.0001, 

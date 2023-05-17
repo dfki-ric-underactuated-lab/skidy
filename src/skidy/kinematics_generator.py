@@ -24,13 +24,12 @@ from sympy.simplify.fu import fu
 from sympy.utilities.codegen import JuliaCodeGen, codegen
 from urdf_parser_py.urdf import URDF
 
+import skidy
 from skidy.matrices import (SE3AdjInvMatrix, SE3AdjMatrix, SE3adMatrix, SE3Exp,
                             SE3Inv, SO3Exp, generalized_vectors,
                             inertia_matrix, mass_matrix_mixed_data,
                             matrix_to_xyz_rpy, xyz_rpy_to_matrix,
                             transformation_matrix)
-from skidy.parser import skd_to_yaml, skd_to_json
-
 
 class _AbstractCodeGeneration():
     def __init__(self) -> None:
@@ -3014,7 +3013,7 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
                 return num
         return ex
         
-    def load_from_urdf(self, path: str, symbolic: bool=True, 
+    def load_from_urdf(self, path: str, symbolic: bool=False, 
                        cse: bool=False, simplify_numbers: bool=True,  
                        tolerance: float=0.0001, max_denominator: int=9) -> None:
         """Load robot from urdf.
@@ -3023,7 +3022,7 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
             path (str): path to URDF.
             symbolic (bool, optional): 
                 generate symbols for numeric values. 
-                Defaults to True.
+                Defaults to False.
             cse (bool, optional): 
                 use common subexpression elimination. Defaults to False.
             simplify_numbers (bool, optional): 
@@ -3222,6 +3221,8 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
             self.ee = [transformation_matrix()]
         if self.gravity_vector is None:
             self.gravity_vector = Matrix([0,0,-9.81])
+        if self.ee_parent is None:
+            self.ee_parent = DOF
         return
 
     def to_yaml(self, path: str="robot.yaml") -> None:
@@ -3231,7 +3232,7 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
             path (str, optional): Path where to save .yaml file. 
                 Defaults to "robot.yaml".
         """
-        return skd_to_yaml(self,path)
+        return skidy.parser.skd_to_yaml(self,path)
     
     def to_json(self, path: str="robot.json") -> None:
         """Save robot as JSON file.
@@ -3240,7 +3241,7 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
             path (str, optional): Path where to save .json file. 
                 Defaults to "robot.json".
         """
-        return skd_to_json(self,path)
+        return skidy.parser.skd_to_json(self,path)
     
     def dh_to_screw_coord(self, DH_param_table: MutableDenseMatrix) -> None:
         """Build screw coordinate paramters (joint axis frames and 

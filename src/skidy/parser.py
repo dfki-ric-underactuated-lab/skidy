@@ -1,11 +1,12 @@
 import yaml
 import json
 from typing import Union, Iterable
-from skidy import (SymbolicKinDyn, joint_screw, 
-                                 symbolic_inertia_matrix, mass_matrix_mixed_data, 
-                                 SO3Exp, transformation_matrix, inertia_matrix,
-                                 quaternion_to_matrix, xyz_rpy_to_matrix,
-                                 rpy_to_matrix)
+from skidy.kinematics_generator import SymbolicKinDyn
+from skidy.matrices import (joint_screw, 
+                            symbolic_inertia_matrix, mass_matrix_mixed_data, 
+                            SO3Exp, transformation_matrix, inertia_matrix,
+                            quaternion_to_matrix, xyz_rpy_to_matrix,
+                            rpy_to_matrix)
 from sympy import Matrix, Identity, parse_expr, Expr, zeros
 import regex
 
@@ -578,7 +579,7 @@ def generate_template_python(path:str="edit_me.py", structure:str=None, dof:int=
     p.append("")
     if urdf:
         p.append("skd.load_from_urdf(path = urdfpath,")
-        p.append("                   symbolic=True, # symbolify equations? (eg. use Ixx instead of numeric value)")
+        p.append("                   symbolic=False, # symbolify equations? (eg. use Ixx instead of numeric value)")
         p.append("                   cse=False, # use common subexpression elimination? ")
         p.append("                   simplify_numbers=True, # round numbers if close to common fractions like 1/2 etc and replace eg 3.1416 by pi?")
         p.append("                   tolerance=0.0001, # tolerance for simplify numbers")
@@ -610,7 +611,7 @@ def generate_template_python(path:str="edit_me.py", structure:str=None, dof:int=
         f.write("\n".join(p))
 
 
-def robot_from_urdf(path: str, symbolic: bool=True, cse: bool=False, 
+def robot_from_urdf(path: str, symbolic: bool=False, cse: bool=False, 
                     simplify_numbers: bool=True, tolerance: float=0.0001, 
                     max_denominator: int=9) -> SymbolicKinDyn:
     """Load robot from urdf.
@@ -619,7 +620,7 @@ def robot_from_urdf(path: str, symbolic: bool=True, cse: bool=False,
             path (str): path to URDF.
             symbolic (bool, optional): 
                 generate symbols for numeric values. 
-                Defaults to True.
+                Defaults to False.
             cse (bool, optional): 
                 use common subexpression elimination. Defaults to False.
             simplify_numbers (bool, optional): 
@@ -782,7 +783,8 @@ def skd_to_yaml(skd: SymbolicKinDyn, path: str="robot.yaml", **kwargs) -> None:
     
     for i in range(len(y)):
         y[i] = y[i].replace("'","")
-    
+        # remove trailing zeros
+        y[i] = regex.sub("(?<=\W\d+\.\d+)0+(?=(\D|$))|(?<=\W\d+)\.0+(?=(\D|$))", "",y[i])
     if "return_dict" in kwargs and kwargs["return_dict"]:
         return yaml.load("\n".join(y))
         
@@ -814,7 +816,7 @@ def skd_to_json(skd: SymbolicKinDyn, path: str="robot.json") -> None:
         f.write(s)
 
 def urdf_to_yaml(urdf_path: str, yaml_path: str="robot.yaml", 
-                 symbolic: bool=True, cse: bool=False, 
+                 symbolic: bool=False, cse: bool=False, 
                  simplify_numbers: bool=True, tolerance: float=0.0001, 
                  max_denominator: int=9) -> SymbolicKinDyn:
     """Load robot from urdf and save it to YAML file.
@@ -825,7 +827,7 @@ def urdf_to_yaml(urdf_path: str, yaml_path: str="robot.yaml",
                 Defaults to "robot.yaml".
             symbolic (bool, optional): 
                 generate symbols for numeric values. 
-                Defaults to True.
+                Defaults to False.
             cse (bool, optional): 
                 use common subexpression elimination. Defaults to False.
             simplify_numbers (bool, optional): 
@@ -846,7 +848,7 @@ def urdf_to_yaml(urdf_path: str, yaml_path: str="robot.yaml",
     return skd_to_yaml(skd,yaml_path)
 
 def urdf_to_json(urdf_path: str, json_path: str="robot.json", 
-                 symbolic: bool=True, cse: bool=False, 
+                 symbolic: bool=False, cse: bool=False, 
                  simplify_numbers: bool=True, tolerance: float=0.0001, 
                  max_denominator: int=9) -> SymbolicKinDyn:
     """Load robot from urdf and save it to JSON file.
@@ -857,7 +859,7 @@ def urdf_to_json(urdf_path: str, json_path: str="robot.json",
                 Defaults to "robot.json".
             symbolic (bool, optional): 
                 generate symbols for numeric values. 
-                Defaults to True.
+                Defaults to False.
             cse (bool, optional): 
                 use common subexpression elimination. Defaults to False.
             simplify_numbers (bool, optional): 

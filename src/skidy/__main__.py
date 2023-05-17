@@ -1,11 +1,11 @@
 import os
 import sys
 import argparse
-from skidy import SymbolicKinDyn
 from skidy.parser import (
     robot_from_yaml, generate_template_yaml,
     robot_from_json, generate_template_json,
-    robot_from_urdf, generate_template_python 
+    robot_from_urdf, generate_template_python,
+    urdf_to_yaml, urdf_to_json 
 )
 from skidy import __version__
 
@@ -46,6 +46,7 @@ def main() -> None:
     generate_template.add_argument("--urdf",action="store_true", help="use urdf in generated python file")
     generate_template.add_argument("--yaml",action="store_true", help="enforce yaml file generation")
     generate_template.add_argument("--json",action="store_true", help="enforce json file generation")
+    generate_template.add_argument("--convert", metavar="URDF_PATH", type=str, default=None, help="Convert URDF to YAML or JSON.")
     # generate_template.add_argument("--python", action="store_true", help="enforce python file generation")
 
 
@@ -55,7 +56,7 @@ def main() -> None:
     name, ext = os.path.splitext(path)
     
     # generate empty yaml or json file
-    if  args.template:
+    if args.convert or args.template:
         structure = args.structure
         dof = args.dof
         # yaml
@@ -66,7 +67,12 @@ def main() -> None:
                 and not input(f"{path} already exists.\nOverwrite existing file? [Y/n] ") in {"","y","Y"}):
                 print("Abort execution.")
                 exit()
-            generate_template_yaml(path,structure,dof)    
+            if args.convert:
+                urdf_to_yaml(args.convert,path,symbolic=False, cse=args.cse,
+                                  simplify_numbers=True,tolerance=0.0001, 
+                                  max_denominator=9)
+            else:
+                generate_template_yaml(path,structure,dof)    
         # json
         if args.json or ext in {".json",".JSON"}:
             if ext not in {".json",".JSON"}:
@@ -75,7 +81,12 @@ def main() -> None:
                 and not input(f"{path} already exists.\nOverwrite existing file? [Y/n] ") in {"","y","Y"}):
                 print("Abort execution.")
                 exit()
-            generate_template_json(path,structure,dof)
+            if args.convert:
+                urdf_to_json(args.convert,path,symbolic=False, cse=args.cse,
+                                  simplify_numbers=True,tolerance=0.0001, 
+                                  max_denominator=9)
+            else:
+                generate_template_json(path,structure,dof)
         # python
         if args.python or ext in {".py"}:
             if ext not in {".py"}:
@@ -105,6 +116,11 @@ def main() -> None:
             
         elif ext in {".json",".JSON"}:
             skd = robot_from_json(path)
+            
+        elif ext in {".urdf"}:
+            skd = robot_from_urdf(path,symbolic=False, cse=args.cse,
+                                  simplify_numbers=True,tolerance=0.0001, 
+                                  max_denominator=8)
         
         # elif ext in {".urdf"}:
         #     skd = robot_from_urdf(path,cse=args.cse) # TODO: add options
