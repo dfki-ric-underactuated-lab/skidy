@@ -19,7 +19,7 @@ setup(
     install_requires=[
         "numpy",
         "sympy>=1.8",
-        "urdf_parser_py",
+        "urdf_parser_py>=0.0.4",
         "regex",
         "PyYAML",
         "pylatex",

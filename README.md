@@ -63,10 +63,10 @@ The project has the following dependencies:
     python3 -m pip install numpy
     ```
 
-- urdf_parser_py
+- urdf_parser_py (Version >= 0.0.4)
 
     ```bash
-    python3 -m pip install urdf_parser_py
+    python3 -m pip install --upgrade urdf_parser_py
     ```
 
 - regex
