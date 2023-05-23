@@ -289,6 +289,30 @@ def mass_matrix_mixed_data(m: Union[float, Expr], Theta: MutableDenseMatrix,
                 [COM[1]*m, (-COM[0])*m, 0, 0, 0, m]])
     return M
 
+def mass_matrix_mixed_data_identification(m: Union[float, Expr], Theta: MutableDenseMatrix, 
+                        h: MutableDenseMatrix) -> MutableDenseMatrix:
+    """Build mass-inertia matrix in SE(3) from mass, inertia and 
+    first moment of mass, i.e. m*com_vector.
+
+    Args:
+        m (float): Mass.
+        Theta (array_like): Inertia (3,3).
+        h (array_like): First moment of mass, i.e. m*com_vector. (3,1).
+
+    Returns:
+        sympy.Matrix: Mass-inertia matrix (6,6).
+    """
+    M = Matrix([[Theta[0, 0], Theta[0, 1], Theta[0, 2], 0, 
+                    (-h[2]), h[1]],
+                [Theta[0, 1], Theta[1, 1], Theta[1, 2],
+                    h[2], 0, (-h[0])],
+                [Theta[0, 2], Theta[1, 2], Theta[2, 2],
+                    (-h[1]), h[0], 0],
+                [0, h[2], (-h[1]), m, 0, 0],
+                [(-h[2]), 0, h[0], 0, m, 0],
+                [h[1], (-h[0]), 0, 0, 0, m]])
+    return M
+
 def mass_matrix_to_parameter_vector(
     M: MutableDenseMatrix
     ) -> Tuple[Expr,Expr,Expr,Expr,Expr,Expr,Expr,Expr,Expr,Expr]:
