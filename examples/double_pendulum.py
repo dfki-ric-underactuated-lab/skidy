@@ -12,6 +12,16 @@ q1, q2 = symbols("q1 q2")  # joint positions
 dq1, dq2 = symbols("dq1 dq2")  # joint velocities
 ddq1, ddq2 = symbols("ddq1 ddq2")  # joint accelerations
 
+parent = [0,
+          1]
+
+child = [[1],
+         []]
+
+support = [[1],
+           [1,2]]
+
+
 # mass and inertia values
 m1, m2 = symbols("m1 m2", real=1, constant=1)
 
@@ -70,7 +80,8 @@ s = SymbolicKinDyn(gravity_vector=gravity_vector,
                     body_ref_config=body_ref_config,
                     joint_screw_coord=joint_screw_coord,
                     config_representation="spatial", 
-                    Mb=Mb)
+                    Mb=Mb, parent=parent, child=child, support=support)
 s.closed_form_kinematics_body_fixed(q,qd,q2d)
 s.closed_form_inv_dyn_body_fixed(q,qd,q2d)
 s.generate_code(python=True, C=False, Matlab=False, latex=False,name="DoublePendulumPlant",project="DoublePendulum")
+# s.generate_graph("generated_code/graphs/DoublePendulum.pdf")

@@ -1,0 +1,287 @@
+---
+parent:
+  - 0
+  - 1
+  - 2
+  - 0
+  - 4
+  - 5
+  - 0
+  - 7
+  - 8
+  - 0
+  - 10
+  - 11
+
+child:
+  - [2]
+  - [3]
+  - []
+  - [5]
+  - [6]
+  - []
+  - [8]
+  - [9]
+  - []
+  - [11]
+  - [12]
+  - []
+
+support:
+  - [1]
+  - [1, 2]
+  - [1, 2, 3]
+  - [4]
+  - [4, 5]
+  - [4, 5, 6]
+  - [7]
+  - [7, 8]
+  - [7, 8, 9]
+  - [10]
+  - [10, 11]
+  - [10, 11, 12]
+
+ee_parent: [3, 6, 9, 12]
+
+gravity: [0, 0, -g]
+
+representation: body_fixed
+
+joint_screw_coord:
+  - [1, 0, 0, 0, 0, 0]
+  - [1, 0, 0, 0, 0, 0]
+  - [1, 0, 0, 0, 0, 0]
+  - [1, 0, 0, 0, 0, 0]
+  - [-1, 0, 0, 0, 0, 0]
+  - [-1, 0, 0, 0, 0, 0]
+  - [1, 0, 0, 0, 0, 0]
+  - [1, 0, 0, 0, 0, 0]
+  - [1, 0, 0, 0, 0, 0]
+  - [1, 0, 0, 0, 0, 0]
+  - [-1, 0, 0, 0, 0, 0]
+  - [-1, 0, 0, 0, 0, 0]
+
+body_ref_config:
+  - rotation:
+      [[1, 0, 0],
+       [0, 1, 0],
+       [0, 0, 1]]
+    translation: [lx0, -ly0, -lz0]
+
+  - rotation:
+      [[0, 1, 0],
+       [-1, 0, 0],
+       [0, 0, 1]]
+    translation: [lx1, -ly1, 0]
+
+  - rotation:
+      [[1, 0, 0],
+       [0, 1, 0],
+       [0, 0, 1]]
+    translation: [lx2, 0, -lz2]
+
+  - rotation:
+      [[1, 0, 0],
+       [0, -1, 0],
+       [0, 0, -1]]
+    translation: [lx0, ly0, -lz0]
+
+  - rotation:
+      [[0, -1, 0],
+       [-1, 0, 0],
+       [0, 0, -1]]
+    translation: [lx1, -ly1, 0]
+
+  - rotation:
+      [[1, 0, 0],
+       [0, 1, 0],
+       [0, 0, 1]]
+    translation: [lx2, 0, -lz2]
+
+  - rotation:
+      [[-1, 0, 0],
+       [0, -1, 0],
+       [0, 0, 1]]
+    translation: [-lx0, ly0, -lz0]
+
+  - rotation:
+      [[0, 1, 0],
+       [-1, 0, 0],
+       [0, 0, 1]]
+    translation: [lx1, -ly1, 0]
+
+  - rotation:
+      [[1, 0, 0],
+       [0, 1, 0],
+       [0, 0, 1]]
+    translation: [lx2, 0, -lz2]
+
+  - rotation:
+      [[-1, 0, 0],
+       [0, 1, 0],
+       [0, 0, -1]]
+    translation: [-lx0, -ly0, -lz0]
+
+  - rotation:
+      [[0, -1, 0],
+       [-1, 0, 0],
+       [0, 0, -1]]
+    translation: [lx1, -ly1, 0]
+
+  - rotation:
+      [[1, 0, 0],
+       [0, 1, 0],
+       [0, 0, 1]]
+    translation: [lx2, 0, -lz2]
+
+ee:
+  - rotation:
+      [[1, 0, 0],
+       [0, 1, 0],
+       [0, 0, 1]]
+    translation: [0, 0, 0]
+
+  - rotation:
+      [[1, 0, 0],
+       [0, 1, 0],
+       [0, 0, 1]]
+    translation: [0, 0, 0]
+
+  - rotation:
+      [[1, 0, 0],
+       [0, 1, 0],
+       [0, 0, 1]]
+    translation: [0, 0, 0]
+
+  - rotation:
+      [[1, 0, 0],
+       [0, 1, 0],
+       [0, 0, 1]]
+    translation: [0, 0, 0]
+
+mass_inertia:
+  - mass: m1
+    inertia:
+      Ixx: Ixx1
+      Ixy: 0
+      Ixz: 0
+      Iyy: Iyy1
+      Iyz: 0
+      Izz: Izz1
+    com: [cx1, -cy1, 0]
+
+  - mass: m2
+    inertia:
+      Ixx: Ixx2
+      Ixy: 0
+      Ixz: 0
+      Iyy: Iyy2
+      Iyz: 0
+      Izz: Izz2
+    com: [cx2, cy2, -cz2]
+
+  - mass: m3
+    inertia:
+      Ixx: Ixx3
+      Ixy: 0
+      Ixz: 0
+      Iyy: Iyy3
+      Iyz: 0
+      Izz: 0
+    com: [0, 0, -cz3]
+
+  - mass: m1
+    inertia:
+      Ixx: Ixx1
+      Ixy: 0
+      Ixz: 0
+      Iyy: Iyy1
+      Iyz: 0
+      Izz: Izz1
+    com: [cx1, -cy1, 0]
+
+  - mass: m2
+    inertia:
+      Ixx: Ixx2
+      Ixy: 0
+      Ixz: 0
+      Iyy: Iyy2
+      Iyz: 0
+      Izz: Izz2
+    com: [cx2, cy2, -cz2]
+
+  - mass: m3
+    inertia:
+      Ixx: Ixx3
+      Ixy: 0
+      Ixz: 0
+      Iyy: Iyy3
+      Iyz: 0
+      Izz: 0
+    com: [0, 0, -cz3]
+
+  - mass: m1
+    inertia:
+      Ixx: Ixx1
+      Ixy: 0
+      Ixz: 0
+      Iyy: Iyy1
+      Iyz: 0
+      Izz: Izz1
+    com: [cx1, -cy1, 0]
+
+  - mass: m2
+    inertia:
+      Ixx: Ixx2
+      Ixy: 0
+      Ixz: 0
+      Iyy: Iyy2
+      Iyz: 0
+      Izz: Izz2
+    com: [cx2, cy2, -cz2]
+
+  - mass: m3
+    inertia:
+      Ixx: Ixx3
+      Ixy: 0
+      Ixz: 0
+      Iyy: Iyy3
+      Iyz: 0
+      Izz: 0
+    com: [0, 0, -cz3]
+
+  - mass: m1
+    inertia:
+      Ixx: Ixx1
+      Ixy: 0
+      Ixz: 0
+      Iyy: Iyy1
+      Iyz: 0
+      Izz: Izz1
+    com: [cx1, -cy1, 0]
+
+  - mass: m2
+    inertia:
+      Ixx: Ixx2
+      Ixy: 0
+      Ixz: 0
+      Iyy: Iyy2
+      Iyz: 0
+      Izz: Izz2
+    com: [cx2, cy2, -cz2]
+
+  - mass: m3
+    inertia:
+      Ixx: Ixx3
+      Ixy: 0
+      Ixz: 0
+      Iyy: Iyy3
+      Iyz: 0
+      Izz: 0
+    com: [0, 0, -cz3]
+
+q: [q1, q2, q3, q4, q5, q6, q7, q8, q9, q10, q11, q12]
+qd: [dq1, dq2, dq3, dq4, dq5, dq6, dq7, dq8, dq9, dq10, dq11, dq12]
+q2d: [ddq1, ddq2, ddq3, ddq4, ddq5, ddq6, ddq7, ddq8, ddq9, ddq10, ddq11, ddq12]
+
+WEE: [0, 0, 0, 0, 0, 0]
