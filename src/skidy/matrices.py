@@ -289,6 +289,24 @@ def mass_matrix_mixed_data(m: Union[float, Expr], Theta: MutableDenseMatrix,
                 [COM[1]*m, (-COM[0])*m, 0, 0, 0, m]])
     return M
 
+def mass_matrix_to_parameter_vector(
+    M: MutableDenseMatrix
+    ) -> Tuple[Expr,Expr,Expr,Expr,Expr,Expr,Expr,Expr,Expr,Expr]:
+    """Get parameter vector for regressor matrix from mass-inertia matrix.
+        M -> m, m*cx, m*cy, m*cz, Ixx, Ixy, Ixz, Iyy, Iyz, Izz
+    
+    Args:
+        M (MutableDenseMatrix): (6,6) Mass-inertia matrix.
+        
+    Returns:
+        Tuple[Expr]: 
+            (m, m*cx, m*cy, m*cz, Ixx, Ixy, Ixz, Iyy, Iyz, Izz).
+    """
+    m = M[3,3]
+    I = M[:3,:3] 
+    cxyz = Matrix([M[2,4], M[0,5], M[1,3]])
+    return m, *cxyz, I[0,0], I[0,1], I[0,2], I[1,1], I[1,2], I[2,2]
+
 def rpy_to_matrix(coords: Union[list,MutableDenseMatrix]) -> MutableDenseMatrix:
     """Convert roll-pitch-yaw coordinates to a 3x3 homogenous rotation matrix.
 

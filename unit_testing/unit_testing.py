@@ -10,6 +10,7 @@ from textwrap import dedent
 
 import kinpy
 import numpy as np
+import sympy
 from sympy import (Identity, Matrix, cos, parse_expr, simplify, sin, symbols,
                    zeros)
 from urdf_parser_py.urdf import URDF
@@ -552,6 +553,15 @@ class AbstractInvDyn():
                 self.skd.Q2d
                 - self.skd._time_derivative(self.skd.Q, level=2)
             ),
+            zeros(2,1)
+        )
+        
+    def testRegressorMatrix(self):
+        self.assertEqual(
+            simplify(sympy.expand(
+                self.skd.Q
+                - self.skd.Yr * self.skd.Xr
+            )),
             zeros(2,1)
         )
 
@@ -1543,8 +1553,9 @@ class TestURDF(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         path = os.path.join(dirname(dirname(__file__)),"examples","urdf","hopping_leg.urdf")
-        with open(path, "r") as f:
-            robot = URDF.from_xml_string(f.read())
+        
+        robot = URDF.from_xml_file(path)
+        
         cls.chain = kinpy.build_chain_from_urdf(robot.to_xml_string())
         
         gravity = Matrix([0, 0, -9.81])
