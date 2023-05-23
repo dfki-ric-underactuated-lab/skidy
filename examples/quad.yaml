@@ -139,25 +139,25 @@ ee:
       [[1, 0, 0],
        [0, 1, 0],
        [0, 0, 1]]
-    translation: [0, 0, 0]
+    translation: [l3x, 0, 0]
 
   - rotation:
       [[1, 0, 0],
        [0, 1, 0],
        [0, 0, 1]]
-    translation: [0, 0, 0]
+    translation: [l3x, 0, 0]
 
   - rotation:
       [[1, 0, 0],
        [0, 1, 0],
        [0, 0, 1]]
-    translation: [0, 0, 0]
+    translation: [l3x, 0, 0]
 
   - rotation:
       [[1, 0, 0],
        [0, 1, 0],
        [0, 0, 1]]
-    translation: [0, 0, 0]
+    translation: [l3x, 0, 0]
 
 mass_inertia:
   - mass: m1
