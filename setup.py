@@ -16,6 +16,7 @@ setup(
     packages=find_packages("src",exclude="unit_testing"),
     package_dir={"": "src"},
     setup_requires=["numpy"],
+    python_requires=">=3.8",
     install_requires=[
         "numpy",
         "sympy>=1.8",

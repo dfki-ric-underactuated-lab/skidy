@@ -1,6 +1,3 @@
-"""
-.. include:: ../../README.md
-"""
 from skidy.kinematics_generator import SymbolicKinDyn
 from skidy.matrices import (
     SE3AdjInvMatrix, SE3AdjMatrix, SE3adMatrix, SE3Exp, 
