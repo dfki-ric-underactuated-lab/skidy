@@ -1,10 +1,12 @@
+from __future__ import annotations
+
 from sympy import Matrix, Identity, symbols, sin, cos, zeros, MutableDenseMatrix, Expr
-from typing import Union, List, Tuple
 import numpy as np
+from numpy.typing import ArrayLike
 
 def generalized_vectors(
-    DOF: int, startindex: int=0, derivatives: bool= False
-    ) -> Tuple[MutableDenseMatrix, MutableDenseMatrix, MutableDenseMatrix]:
+    DOF: int, startindex: int=0, derivatives: bool=False
+    ) -> tuple[MutableDenseMatrix, MutableDenseMatrix, MutableDenseMatrix]:
     """Generate symbolic generalized vectors q, qd and q2d and optional
     q3d and q4d.
     
@@ -71,7 +73,7 @@ def joint_screw(axis: list, vec: list=[0,0,0], revolute: bool=True) -> MutableDe
         
 
 def symbolic_inertia_matrix(
-    index: Union[int, str]="", pointmass: bool=False) -> MutableDenseMatrix:
+    index: int | str="", pointmass: bool=False) -> MutableDenseMatrix:
     """Create 3 x 3 symbolic inertia matrix with auto generated variable names.
 
     Args:
@@ -164,11 +166,11 @@ def SE3adMatrix(X: MutableDenseMatrix) -> MutableDenseMatrix:
                  [-X[4, 0], X[3, 0], 0, -X[1, 0], X[0, 0], 0]])
     return ad
 
-def SE3Exp(XX: MutableDenseMatrix, t: Union[float, Expr]) -> MutableDenseMatrix:
+def SE3Exp(XX: MutableDenseMatrix, t: float | Expr) -> MutableDenseMatrix:
     """compute exponential mapping for SE(3).
 
     Args:
-        XX ([type]): (6,1) spatial vector.
+        XX (sympy.Matrix): (6,1) spatial vector.
         t (sympy.Expr): rotation angle.
 
     Returns:
@@ -206,7 +208,7 @@ def SE3Inv(C: MutableDenseMatrix) -> MutableDenseMatrix:
                     [0, 0, 0, 1]])
     return CInv
 
-def SO3Exp(axis: MutableDenseMatrix, angle: Union[float, Expr]) -> MutableDenseMatrix:
+def SO3Exp(axis: MutableDenseMatrix, angle: float | Expr) -> MutableDenseMatrix:
     """Compute exponential mapping for SO(3).
 
     Args:
@@ -223,9 +225,9 @@ def SO3Exp(axis: MutableDenseMatrix, angle: Union[float, Expr]) -> MutableDenseM
     R = Matrix(Identity(3)) + sin(angle) * xhat + (1-cos(angle))*(xhat*xhat)
     return R
 
-def inertia_matrix(Ixx: Union[float, Expr]=0, Ixy: Union[float, Expr]=0, 
-                   Ixz: Union[float, Expr]=0, Iyy: Union[float, Expr]=0, 
-                   Iyz: Union[float, Expr]=0, Izz: Union[float, Expr]=0) -> MutableDenseMatrix:
+def inertia_matrix(Ixx: float | Expr=0, Ixy: float | Expr=0, 
+                   Ixz: float | Expr=0, Iyy: float | Expr=0, 
+                   Iyz: float | Expr=0, Izz: float | Expr=0) -> MutableDenseMatrix:
     """Create 3 x 3 inertia matrix from independent inertia values.
 
     Args:
@@ -265,13 +267,13 @@ def transformation_matrix(r: MutableDenseMatrix=Matrix(Identity(3)),
     T[:3,3] = t
     return T
 
-def mass_matrix_mixed_data(m: Union[float, Expr], Theta: MutableDenseMatrix, 
+def mass_matrix_mixed_data(m: float | Expr, Theta: MutableDenseMatrix, 
                         COM: MutableDenseMatrix) -> MutableDenseMatrix:
     """Build mass-inertia matrix in SE(3) from mass, inertia and 
     center of mass information.
 
     Args:
-        m (float): Mass.
+        m (float | sympy.Expr): Mass.
         Theta (array_like): Inertia (3,3).
         COM (array_like): Center of mass (3,1).
 
@@ -289,7 +291,7 @@ def mass_matrix_mixed_data(m: Union[float, Expr], Theta: MutableDenseMatrix,
                 [COM[1]*m, (-COM[0])*m, 0, 0, 0, m]])
     return M
 
-def mass_matrix_mixed_data_identification(m: Union[float, Expr], Theta: MutableDenseMatrix, 
+def mass_matrix_mixed_data_identification(m: float | Expr, Theta: MutableDenseMatrix, 
                         h: MutableDenseMatrix) -> MutableDenseMatrix:
     """Build mass-inertia matrix in SE(3) from mass, inertia and 
     first moment of mass, i.e. m*com_vector.
@@ -315,7 +317,7 @@ def mass_matrix_mixed_data_identification(m: Union[float, Expr], Theta: MutableD
 
 def mass_matrix_to_parameter_vector(
     M: MutableDenseMatrix
-    ) -> Tuple[Expr,Expr,Expr,Expr,Expr,Expr,Expr,Expr,Expr,Expr]:
+    ) -> tuple[Expr,Expr,Expr,Expr,Expr,Expr,Expr,Expr,Expr,Expr]:
     """Get parameter vector for regressor matrix from mass-inertia matrix.
         M -> m, m*cx, m*cy, m*cz, Ixx, Ixy, Ixz, Iyy, Iyz, Izz
     
@@ -323,7 +325,7 @@ def mass_matrix_to_parameter_vector(
         M (MutableDenseMatrix): (6,6) Mass-inertia matrix.
         
     Returns:
-        Tuple[Expr]: 
+        tuple[Expr]: 
             (m, m*cx, m*cy, m*cz, Ixx, Ixy, Ixz, Iyy, Iyz, Izz).
     """
     m = M[3,3]
@@ -331,10 +333,8 @@ def mass_matrix_to_parameter_vector(
     cxyz = Matrix([M[2,4], M[0,5], M[1,3]])
     return m, *cxyz, I[0,0], I[0,1], I[0,2], I[1,1], I[1,2], I[2,2]
 
-def rpy_to_matrix(coords: Union[list,MutableDenseMatrix]) -> MutableDenseMatrix:
+def rpy_to_matrix(coords: list | MutableDenseMatrix) -> MutableDenseMatrix:
     """Convert roll-pitch-yaw coordinates to a 3x3 homogenous rotation matrix.
-
-    Adapted from urdfpy 
 
     The roll-pitch-yaw axes in a typical URDF are defined as a
     rotation of ``r`` radians around the x-axis followed by a rotation of
@@ -344,15 +344,13 @@ def rpy_to_matrix(coords: Union[list,MutableDenseMatrix]) -> MutableDenseMatrix:
 
     .. _Wikipedia: https://en.wikipedia.org/wiki/Euler_angles#Rotation_matrix
 
-    Parameters
-    ----------
-    coords : (3,) float
-        The roll-pitch-yaw coordinates in order (x-rot, y-rot, z-rot).
+    Args:
+        coords (MutableDenseMatrix | list): 
+            The (3,) roll-pitch-yaw coordinates in order (x-rot, y-rot, z-rot).
 
-    Returns
-    -------
-    R : (3,3) float
-        The corresponding homogenous 3x3 rotation matrix.
+    Returns:
+        MutableDenseMatrix: 
+            The corresponding homogenous 3x3 rotation matrix.        
     """
     c3 = cos(coords[0])
     c2 = cos(coords[1])
@@ -366,27 +364,23 @@ def rpy_to_matrix(coords: Union[list,MutableDenseMatrix]) -> MutableDenseMatrix:
         [-s2, c2 * s3, c2 * c3]
     ])
 
-def xyz_rpy_to_matrix(xyz_rpy: Union[list,MutableDenseMatrix]) -> MutableDenseMatrix:
+def xyz_rpy_to_matrix(xyz_rpy: list | MutableDenseMatrix) -> MutableDenseMatrix:
     """Convert xyz_rpy coordinates to a 4x4 homogenous matrix.
 
-    Adapted from urdfpy
+    Args:
+        xyz_rpy (MutableDenseMatrix | list): 
+            The (6,) xyz_rpy vector.
 
-    Parameters
-    ----------
-    xyz_rpy : (6,) float
-        The xyz_rpy vector.
-
-    Returns
-    -------
-    matrix : (4,4) float
-        The homogenous transform matrix.
+    Returns:
+        MutableDenseMatrix: 
+            The (4,4) homogenous transform matrix.
     """
     matrix = Matrix(Identity(4))
     matrix[:3, 3] = xyz_rpy[:3]
     matrix[:3, :3] = rpy_to_matrix(xyz_rpy[3:])
     return matrix
 
-def matrix_to_rpy(R, solution=1):
+def matrix_to_rpy(R: ArrayLike, solution: int=1) -> np.ndarray:
     """Convert a 3x3 transform matrix to roll-pitch-yaw coordinates.
 
     The roll-pitchRyaw axes in a typical URDF are defined as a
@@ -401,17 +395,16 @@ def matrix_to_rpy(R, solution=1):
     created a given rotation matrix. Specify ``solution=1`` for the first one
     and ``solution=2`` for the second one.
 
-    Parameters
-    ----------
-    R : (3,3) float
-        A 3x3 homogenous rotation matrix.
-    solution : int
-        Either 1 or 2, indicating which solution to return.
+    Args:
+        R (ArrayLike): 
+            A 3x3 homogenous rotation matrix.
+        solution (int, optional): 
+            Either 1 or 2, indicating which solution to return. 
+            Defaults to 1.
 
-    Returns
-    -------
-    coords : (3,) float
-        The roll-pitch-yaw coordinates in order (x-rot, y-rot, z-rot).
+    Returns:
+        ndarray:
+            The (3,) roll-pitch-yaw coordinates in order (x-rot, y-rot, z-rot).
     """
     R = np.asanyarray(R, dtype=np.float64)
     r = 0.0
@@ -437,24 +430,21 @@ def matrix_to_rpy(R, solution=1):
     return np.array([r, p, y], dtype=np.float64)
 
 
-def matrix_to_xyz_rpy(matrix):
+def matrix_to_xyz_rpy(matrix: np.ndarray) -> np.ndarray:
     """Convert a 4x4 homogenous matrix to xyzrpy coordinates.
+    
+    Args:
+        matrix (ndarray): 
+            The (4, 4) homogenous transform matrix.
 
-    Parameters
-    ----------
-    matrix : (4,4) float
-        The homogenous transform matrix.
-
-    Returns
-    -------
-    xyz_rpy : (6,) float
-        The xyz_rpy vector.
+    Returns:
+        ndarray: The (6,) xyz_rpy vector.
     """
     xyz = matrix[:3,3]
     rpy = matrix_to_rpy(matrix[:3,:3])
     return np.hstack((xyz, rpy))
 
-def quaternion_to_matrix(Q: Union[list,MutableDenseMatrix]) -> MutableDenseMatrix:
+def quaternion_to_matrix(Q: list | MutableDenseMatrix) -> MutableDenseMatrix:
     """Convert a quaternion into SO(3) rotation matrix.
 
     Args:

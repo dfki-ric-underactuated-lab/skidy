@@ -1,3 +1,4 @@
+from __future__ import annotations
 import copy
 import multiprocessing
 import os
@@ -6,7 +7,7 @@ import random
 from collections import defaultdict
 from itertools import combinations
 from multiprocessing import Process, Queue
-from typing import Any, Callable, Dict, Generator, List, Tuple, Union
+from typing import Any, Callable, Generator, Optional
 
 import numpy
 import pydot
@@ -81,7 +82,7 @@ class _AbstractCodeGeneration():
         self.all_symbols = set()  # set with all used symbols
 
 
-    def get_expressions_dict(self, filterNone: bool=True) -> Dict[str,Union[sympy.Expr, None]]:
+    def get_expressions_dict(self, filterNone: bool=True) -> dict[str,sympy.Expr | None]:
         """Get dictionary with expression names (key) and generated 
         expressions (value).
 
@@ -985,7 +986,7 @@ class _AbstractCodeGeneration():
                 ))
         graph.write_pdf(path)
         
-    def _sort_variables(self, vars:List[sympy.Symbol]) -> List[sympy.Symbol]:
+    def _sort_variables(self, vars:list[sympy.Symbol]) -> list[sympy.Symbol]:
         """Sort variables for code generation starting with q, qd, qdd, 
         continuing with variable symbols (like fx in WEE) and ending 
         with constant symbols.
@@ -1056,24 +1057,24 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
     SPATIAL = "spatial"
     
     def __init__(self, 
-                 gravity_vector: MutableDenseMatrix=None, 
-                 ee: Union[MutableDenseMatrix,List[MutableDenseMatrix]]=None, 
-                 body_ref_config: List[MutableDenseMatrix]=[], 
-                 joint_screw_coord: List[MutableDenseMatrix]=[], 
+                 gravity_vector: Optional[MutableDenseMatrix | list]=None, 
+                 ee: Optional[MutableDenseMatrix | list[MutableDenseMatrix]]=None, 
+                 body_ref_config: list[MutableDenseMatrix]=[], 
+                 joint_screw_coord: list[MutableDenseMatrix]=[], 
                  config_representation: str="spatial", 
-                 Mb: List[MutableDenseMatrix]=[], 
-                 parent: List[int]=[], 
-                 support: List[List[int]]=[], 
-                 child: List[List[int]]=[], 
-                 ee_parent: Union[int,List[int]]=None,
-                 q:MutableDenseMatrix=None, 
-                 qd: MutableDenseMatrix=None, 
-                 q2d: MutableDenseMatrix=None, 
-                 q3d: MutableDenseMatrix=None, 
-                 q4d: MutableDenseMatrix=None, 
-                 WEE: Union[MutableDenseMatrix,List[MutableDenseMatrix]]=zeros(6, 1),
-                 WDEE: Union[MutableDenseMatrix,List[MutableDenseMatrix]]=zeros(6, 1),
-                 W2DEE: Union[MutableDenseMatrix,List[MutableDenseMatrix]]=zeros(6, 1),
+                 Mb: list[MutableDenseMatrix]=[], 
+                 parent: list[int]=[], 
+                 support: list[list[int]]=[], 
+                 child: list[list[int]]=[], 
+                 ee_parent: Optional[int | list[int]]=None,
+                 q: Optional[MutableDenseMatrix]=None, 
+                 qd: Optional[MutableDenseMatrix]=None, 
+                 q2d: Optional[MutableDenseMatrix]=None, 
+                 q3d: Optional[MutableDenseMatrix]=None, 
+                 q4d: Optional[MutableDenseMatrix]=None, 
+                 WEE: MutableDenseMatrix | list[MutableDenseMatrix]=zeros(6, 1),
+                 WDEE: MutableDenseMatrix | list[MutableDenseMatrix]=zeros(6, 1),
+                 W2DEE: MutableDenseMatrix | list[MutableDenseMatrix]=zeros(6, 1),
                  **kwargs) -> None:
         """SymbolicKinDyn
         Symbolic tool to compute equations of motion of serial chain 
@@ -1242,7 +1243,7 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
             return self.A
     
     @body_ref_config.setter
-    def body_ref_config(self, value: List[MutableDenseMatrix]) -> None:
+    def body_ref_config(self, value: list[MutableDenseMatrix]) -> None:
         n = len(value)
         if n:
             self.n = n
@@ -1259,16 +1260,20 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
             return self.Y
     
     @joint_screw_coord.setter
-    def joint_screw_coord(self, value: List[MutableDenseMatrix]) -> None:
+    def joint_screw_coord(self, value: list[MutableDenseMatrix]) -> None:
         if self.config_representation == self.BODY_FIXED:
             self.X = value
         elif self.config_representation == self.SPATIAL:
             self.Y = value
     
     def closed_form_kinematics_body_fixed(
-        self, q:sympy.MutableDenseMatrix=None, qd: MutableDenseMatrix=None, 
-        q2d: MutableDenseMatrix=None, simplify: bool=True, 
-        cse: bool=False, parallel: bool=True) -> MutableDenseMatrix:
+        self, 
+        q: Optional[MutableDenseMatrix]=None, 
+        qd: Optional[MutableDenseMatrix]=None, 
+        q2d: Optional[MutableDenseMatrix]=None, 
+        simplify: bool=True, 
+        cse: bool=False, 
+        parallel: bool=True) -> MutableDenseMatrix:
         """Position, Velocity and Acceleration Kinematics using Body 
         fixed representation of the twists in closed form.
 
@@ -1347,14 +1352,14 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
 
     def closed_form_inv_dyn_body_fixed(
         self, 
-        q:sympy.MutableDenseMatrix=None, 
-        qd: MutableDenseMatrix=None, 
-        q2d: MutableDenseMatrix=None, 
-        q3d: MutableDenseMatrix=None, 
-        q4d: MutableDenseMatrix=None, 
-        WEE: Union[MutableDenseMatrix,List[MutableDenseMatrix]]=..., 
-        WDEE: Union[MutableDenseMatrix,List[MutableDenseMatrix]]=..., 
-        W2DEE: Union[MutableDenseMatrix,List[MutableDenseMatrix]]=..., 
+        q: Optional[MutableDenseMatrix]=None, 
+        qd: Optional[MutableDenseMatrix]=None, 
+        q2d: Optional[MutableDenseMatrix]=None, 
+        q3d: Optional[MutableDenseMatrix]=None, 
+        q4d: Optional[MutableDenseMatrix]=None, 
+        WEE: MutableDenseMatrix | list[MutableDenseMatrix]=..., 
+        WDEE: MutableDenseMatrix | list[MutableDenseMatrix]=..., 
+        W2DEE: MutableDenseMatrix | list[MutableDenseMatrix]=..., 
         simplify: bool=True, cse: bool=False, 
         parallel: bool=True) -> MutableDenseMatrix:
         """Inverse dynamics using body fixed representation of the 
@@ -1689,11 +1694,11 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
     def _closed_form_inv_dyn_body_fixed(self, q: MutableDenseMatrix, 
                                         qd: MutableDenseMatrix, 
                                         q2d: MutableDenseMatrix,
-                                        q3d: MutableDenseMatrix=None, 
-                                        q4d: MutableDenseMatrix=None, 
-                                        WEE: List[MutableDenseMatrix]=[zeros(6, 1)], 
-                                        WDEE: List[MutableDenseMatrix]=[zeros(6, 1)], 
-                                        W2DEE: List[MutableDenseMatrix]=[zeros(6, 1)], 
+                                        q3d: Optional[MutableDenseMatrix]=None, 
+                                        q4d: Optional[MutableDenseMatrix]=None, 
+                                        WEE: list[MutableDenseMatrix]=[zeros(6, 1)], 
+                                        WDEE: list[MutableDenseMatrix]=[zeros(6, 1)], 
+                                        W2DEE: list[MutableDenseMatrix]=[zeros(6, 1)], 
                                         simplify: bool=True, 
                                         cse: bool=False) -> MutableDenseMatrix:
         """Inverse dynamics using body fixed representation of the 
@@ -2268,11 +2273,11 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
         q: MutableDenseMatrix, 
         qd: MutableDenseMatrix, 
         q2d: MutableDenseMatrix, 
-        q3d: MutableDenseMatrix, 
-        q4d: MutableDenseMatrix, 
-        WEE: List[MutableDenseMatrix]=[zeros(6, 1)], 
-        WDEE: List[MutableDenseMatrix]=[zeros(6, 1)], 
-        W2DEE: List[MutableDenseMatrix]=[zeros(6, 1)], 
+        q3d: Optional[MutableDenseMatrix]=None, 
+        q4d: Optional[MutableDenseMatrix]=None, 
+        WEE: list[MutableDenseMatrix]=[zeros(6, 1)], 
+        WDEE: list[MutableDenseMatrix]=[zeros(6, 1)], 
+        W2DEE: list[MutableDenseMatrix]=[zeros(6, 1)], 
         simplify: bool=True, cse: bool=False) -> MutableDenseMatrix:
         """Inverse dynamics using body fixed representation of the 
         twists in closed form. 
@@ -2387,7 +2392,7 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
             Mb[i*6:i*6+6, i*6:i*6+6] = self.Mb[i]
 
         # Block diagonal matrix b (6n x 6n) used in Coriolis matrix
-        def _b():
+        def _b() -> MutableDenseMatrix:
             nonlocal self
             b = zeros(6*self.n, 6*self.n)
             for i in range(self.n):
@@ -2451,7 +2456,7 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
         if not any([i.is_Float for i in Xr]):
         
         
-            def _Yr():
+            def _Yr() -> MutableDenseMatrix:
                 nonlocal self
                 S = Matrix(Identity(len(Xr)))
                 
@@ -2483,7 +2488,7 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
                         
             #  First time derivative of Block diagonal matrix b (6n x 6n) 
             # used in Coriolis matrix
-            def _bd():
+            def _bd() -> MutableDenseMatrix:
                 nonlocal self
                 bd = zeros(6*self.n, 6*self.n)
                 for i in range(self.n):
@@ -2540,7 +2545,7 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
                 
             # Second time derivative of Block diagonal matrix b (6n x 6n) 
             # used in Coriolis matrix
-            def _b2d():
+            def _b2d() -> MutableDenseMatrix:
                 nonlocal self
                 b2d = zeros(6*self.n, 6*self.n)
                 for i in range(self.n):
@@ -2706,7 +2711,7 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
             new_expr += term
         return new_expr + const
 
-    def collect_and_subs(self, ex: sympy.Expr, terms: dict):
+    def collect_and_subs(self, ex: sympy.Expr, terms: dict) -> sympy.Expr:
         for key in terms:
             if key.is_Atom:
                 ex = ex.subs(key,terms[key])
@@ -2840,8 +2845,8 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
         self.parent = parent
             
     def _nsimplify(
-        self, num: float, *args, max_denominator: int=0, tolerance: float=None, **kwargs
-        ) -> Union[sympy.Expr, float]:
+        self, num: float, *args, max_denominator: int=0, tolerance: Optional[float]=None, **kwargs
+        ) -> sympy.Expr | float:
         """Find a simple sympy representation for a number like 1/2 
         instead of 0.5. This function extends sympy.nsimplify with a 
         parameter to specify a maximum denominator to avoid simplifications
@@ -2856,7 +2861,7 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
                 tolerance for simplify_numbers. Defaults to 0.0001.
             
         Returns:
-            Union[sympy.Expr, float]: simplified number.
+            sympy.Expr | float: simplified number.
         """
         if tolerance:
             if numpy.abs(num) < tolerance:
@@ -3271,7 +3276,7 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
             pass
 
     def _individual_numbered_symbols(
-        self, exclude: list=[], i: List[int]=[0]) -> Generator[sympy.Symbol, None, None]:
+        self, exclude: list=[], i: list[int]=[0]) -> Generator[sympy.Symbol, None, None]:
         """create individual symbol names for subexpressions using 
         multiprocessing.
 
@@ -3321,7 +3326,7 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
             self.all_symbols.update({sym})
         return e[0]
 
-    def _get_expressions(self) -> List[sympy.Expr]:
+    def _get_expressions(self) -> list[sympy.Expr]:
         """Get list of all generated expressions.
 
         Returns:
@@ -3333,7 +3338,7 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
 
     def _calc_A_matrix(
         self, q: MutableDenseMatrix
-        ) -> Tuple[List[MutableDenseMatrix], MutableDenseMatrix]:
+        ) -> tuple[list[MutableDenseMatrix], MutableDenseMatrix]:
         """Calculate forward kinematics and the block diagonal matrix 
         A (6n x 6n) of the Adjoint of body frame for serial robots.
 
@@ -3347,7 +3352,7 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
                 not found.
 
         Returns:
-            Tuple[List[MutableDenseMatrix], MutableDenseMatrix]: (FK, A)
+            tuple[list[MutableDenseMatrix], MutableDenseMatrix]: (FK, A)
         """
         # calc Forward kinematics
         if self._FK_C is not None:
@@ -3391,7 +3396,9 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
             self._A = A
         return FK_C, A
 
-    def _calc_A_matrix_tree(self, q: MutableDenseMatrix):
+    def _calc_A_matrix_tree(
+        self, q: MutableDenseMatrix
+        ) -> tuple[list[MutableDenseMatrix], MutableDenseMatrix]:
         """Calculate forward kinematics and the block diagonal matrix 
         A (6n x 6n) of the Adjoint of body frame for tree like robot 
         structures.
@@ -3406,7 +3413,7 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
                 not found.
 
         Returns:
-            Tuple[List[MutableDenseMatrix], MutableDenseMatrix]: (FK, A)
+            tuple[list[MutableDenseMatrix], MutableDenseMatrix]: (FK, A)
         """
         if self._FK_C is not None:
             FK_C = self._FK_C
@@ -3576,7 +3583,7 @@ class SymbolicKinDyn(_AbstractCodeGeneration):
                                 )
         return expression
     
-    def __repr__(self):
+    def __repr__(self) -> str:
         return (f"SymbolicKinDyn(ee={self.ee}, "
                f"body_ref_config={self.body_ref_config}, "
                f"joint_screw_coord={self.joint_screw_coord}, "

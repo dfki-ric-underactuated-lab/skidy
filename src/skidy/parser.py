@@ -1,6 +1,8 @@
+from __future__ import annotations
+
 import yaml
 import json
-from typing import Union, Iterable
+from typing import Iterable, Optional
 from skidy.kinematics_generator import SymbolicKinDyn
 from skidy.matrices import (joint_screw, 
                             symbolic_inertia_matrix, mass_matrix_mixed_data, 
@@ -36,14 +38,14 @@ def robot_from_json(path: str) -> SymbolicKinDyn:
         y = json.load(stream)
     return dict_parser(y)
 
-def parse_hierarchical_expr(x:Union[list,dict,str], 
+def parse_hierarchical_expr(x: list | dict | str, 
                             include_keys:Iterable={}, 
-                            exclude_keys:Iterable={}) -> Union[list,dict,Expr]:
+                            exclude_keys:Iterable={}) -> list | dict | Expr:
     """Convert strings in data structure (list or dict) to sympy 
     expressions.
 
     Args:
-        x (list or dict or str): 
+        x (list | dict | str): 
             Hierarchical structure which might contain symbolic 
             expression as string. 
         include_keys (Iterable): 
@@ -54,7 +56,7 @@ def parse_hierarchical_expr(x:Union[list,dict,str],
             Defaults to {}.
             
     Returns:
-        list or dict or sympy.Expr: 
+        list | dict | sympy.Expr: 
             Same data structure with strings converted to sympy.Expr. 
     """
     if type(x) in {dict, list}:
@@ -298,7 +300,7 @@ def dict_parser(d: dict) -> SymbolicKinDyn:
                          WEE=WEE, WDEE=WDEE, W2DEE=W2DEE)
     return skd
 
-def generate_template_yaml(path: str="edit_me.yaml", structure: str = None, 
+def generate_template_yaml(path: str="edit_me.yaml", structure: Optional[str]=None, 
                         dof: int=0, tree: bool=True, **kwargs) -> None:
     """Generate template yaml file to modify for own robot.
 
@@ -416,7 +418,7 @@ def generate_template_yaml(path: str="edit_me.yaml", structure: str = None,
         f.write("\n".join(y))
     
     
-def generate_template_json(path: str="edit_me.json", structure: str = None, 
+def generate_template_json(path: str="edit_me.json", structure: Optional[str]=None, 
                         dof: int=0, tree: bool=True) -> None:
     """Generate template json file to modify for own robot.
 
@@ -444,7 +446,9 @@ def generate_template_json(path: str="edit_me.json", structure: str = None,
         f.write(s)
 
 
-def generate_template_python(path:str="edit_me.py", structure:str=None, dof:int=0, tree:bool=True, urdf=False):
+def generate_template_python(path: str="edit_me.py", 
+                             structure: Optional[str]=None, dof: int=0, 
+                             tree: bool=True, urdf: bool=False) -> None:
     """Generate template python file to modify for own robot.
 
     Args:
@@ -643,7 +647,7 @@ def robot_from_urdf(path: str, symbolic: bool=False, cse: bool=False,
                        cse, tolerance, max_denominator)
     return skd
 
-def skd_to_yaml(skd: SymbolicKinDyn, path: str="robot.yaml", **kwargs) -> None:
+def skd_to_yaml(skd: SymbolicKinDyn, path: str="robot.yaml", **kwargs) -> None | dict:
     """Generate YAML file from SymbolicKinDyn object.
 
     Args:
