@@ -32,7 +32,7 @@ from skidy.matrices import (SE3AdjInvMatrix, SE3AdjMatrix, SE3adMatrix, SE3Exp,
                             matrix_to_xyz_rpy, xyz_rpy_to_matrix,
                             transformation_matrix, mass_matrix_to_parameter_vector)
 
-class _AbstractCodeGeneration():
+class CodeGenerator_():
     def __init__(self) -> None:
         # variables for Code Generation:
         self.fkin = None  # forward_kinematics
@@ -151,6 +151,759 @@ class _AbstractCodeGeneration():
             return filtered
         return all_expressions
 
+    def generate_python_code(self, name: str="plant", folder: str="./python", 
+                             cache: bool=False, use_global_vars: bool = True):
+        """Generate python code from generated expressions. 
+        Needs 'closed_form_inv_dyn_body_fixed' and/or 
+        'closed_form_kinematics_body_fixed' to run first.
+
+
+        Args:
+            name (str, optional): 
+                Name of class and file. 
+                Defaults to "plant".
+            folder (str, optional): 
+                Folder where to save code. 
+                Defaults to "./python".
+            cache (bool, optional):
+                Cache results of sin and cos function in generated python 
+                code. Defaults to False.
+            use_global_vars (bool, optional): 
+                Constant vars are class variables. Defaults to True.
+        """
+        
+        names, expressions, _, constant_syms, not_assigned_syms = self._prepare_code_generation(folder, use_global_vars)
+        
+        
+        print("Generate Python code")
+        # create folder
+        if not os.path.exists(folder):
+            os.mkdir(folder)
+
+        p = NumPyPrinter()
+
+        # start python file with import
+        s = ["import numpy"]
+        if cache:
+            s.append("from functools import lru_cache")
+        s.append("\n")
+        # class name
+        s.append("class "+regex.sub("^\w",lambda x: x.group().upper(),name)+"():")
+        # define __init__ function
+        s.append("    def __init__(self, %s) -> None:" % (
+            ", ".join(
+                [str(not_assigned_syms[i])+": float" 
+                    for i in range(len(not_assigned_syms))] 
+                + [str(i)+": float=" + str(self.assignment_dict[i]) 
+                    for i in self.assignment_dict])))
+        if len(not_assigned_syms) > 0:
+            s.append("        "
+                        + ", ".join(["self."+str(not_assigned_syms[i]) 
+                                    for i in range(len(not_assigned_syms))])
+                        + " = " 
+                        + ", ".join([str(not_assigned_syms[i]) 
+                                    for i in range(len(not_assigned_syms))])
+                        )
+
+        # append preassigned values to __init__ function
+        if len(self.assignment_dict) > 0:
+            s.append("        "
+                        + ", ".join(sorted(["self."+str(i) 
+                                            for i in self.assignment_dict]))
+                        + " = " 
+                        + ", ".join(sorted([str(i) 
+                                            for i in self.assignment_dict]))
+                        )
+
+        # append cse expressions to __init__ function
+        if len(self.subex_dict) > 0:
+            for i in sorted([str(j) for j in self.subex_dict], key=lambda x: int(regex.findall("(?<=sub)\d*",x)[0])):
+                modstring = p.doprint(self.subex_dict[symbols(i)])
+                for j in sorted([str(h) 
+                                    for h in self.subex_dict[symbols(i)].free_symbols],
+                                reverse=1):
+                    modstring = regex.sub(
+                        str(j), "self."+str(j), modstring)
+                    # remove double self
+                    modstring = regex.sub("self.self.", "self.", modstring)
+                s.append("        self."+str(i)+" = " + modstring)
+
+        # avoid empty init function
+        if (not len(self.subex_dict) > 0 
+            and not len(self.assignment_dict) > 0
+            and not len(not_assigned_syms) > 0
+            ):
+            s.append("        pass")
+        
+        # define functions
+        for i in range(len(expressions)):
+            var_syms = self._sort_variables(self.var_syms.intersection(
+                expressions[i].free_symbols))
+            optional_var_syms = self._sort_variables(self.optional_var_syms.intersection(
+                expressions[i].free_symbols))
+            const_syms = self._sort_variables(
+                set(constant_syms).intersection(
+                    expressions[i].free_symbols))
+            if len(var_syms) > 0 or len(optional_var_syms) > 0:
+                s.append("\n    def "+names[i]+"(self, %s) -> numpy.ndarray:" % (
+                    ", ".join([str(var_syms[i])+": float" 
+                                for i in range(len(var_syms))]
+                                + [str(optional_var_syms[i])+": float=0" 
+                                for i in range(len(optional_var_syms))])))
+
+            else:
+                s.append("\n    def "+names[i]+"(self) -> numpy.ndarray:")
+            
+            if const_syms: # insert self. in front of const_syms
+                s.append("        "
+                        + names[i] 
+                        + " = " 
+                        + regex.sub(f"(?<=\W|^)(?={'|'.join([str(i) for i in const_syms])}(\W|\Z))",
+                                    "self.",
+                                    p.doprint(expressions[i])))
+            else: 
+                s.append("        "
+                        + names[i] 
+                        + " = " 
+                        + p.doprint(expressions[i]))
+            s.append("        return " + names[i])
+
+        if cache:
+            s = list(map(lambda x: x.replace("numpy.sin", "cached_sin"), s))
+            s = list(map(lambda x: x.replace("numpy.cos", "cached_cos"), s))
+            
+            s.append("")
+            s.append("@lru_cache(maxsize=128)")
+            s.append("def cached_sin(x: float) -> float:")
+            s.append("    return numpy.sin(x)")
+            s.append("")
+            s.append("@lru_cache(maxsize=128)")
+            s.append("def cached_cos(x: float) -> float:")
+            s.append("    return numpy.cos(x)")
+            
+        # replace numpy with np for better readability
+        s = list(map(lambda x: x.replace("numpy.", "np."), s))
+        s[0] = "import numpy as np\n\n"
+
+        # join list to string
+        s = "\n".join(s)
+
+        # write python file
+        with open(os.path.join(folder, name + ".py"), "w+") as f:
+            f.write(s)
+        print("Done")
+    
+    def generate_cython_code(self, name: str="plant", folder: str="./cython", 
+                             cache: bool=False, use_global_vars: bool = True):
+        """Generate cython code from generated expressions. 
+        Needs 'closed_form_inv_dyn_body_fixed' and/or 
+        'closed_form_kinematics_body_fixed' to run first.
+
+
+        Args:
+            name (str, optional): 
+                Name of class and file. 
+                Defaults to "plant".
+            folder (str, optional): 
+                Folder where to save code. 
+                Defaults to "./cython".
+            cache (bool, optional):
+                Cache results of sin and cos function in generated cython 
+                code. Defaults to False.
+            use_global_vars (bool, optional): 
+                Constant vars are class variables. Defaults to True.
+        """
+        
+        names, expressions, _, constant_syms, not_assigned_syms = self._prepare_code_generation(folder, use_global_vars)
+        
+        print("Generate Cython code")
+        # create folder
+        if not os.path.exists(folder):
+            os.mkdir(folder)
+
+        p = NumPyPrinter()
+
+        # start python file with import
+        s = ["import numpy"]
+        s.append("cimport numpy\n")
+        s.append("cimport cython\n")
+        if cache:
+            s.append("from functools import lru_cache\n")
+        s.append("")
+        s.append("numpy.import_array()")
+        # s.append("DTYPE = numpy.float64")
+        # s.append("ctypedef numpy.float64_t DTYPE_t")
+        
+        s.append("\n")
+        # class name
+        s.append("@cython.boundscheck(False)")
+        s.append("@cython.wraparound(False)")
+        s.append("cdef class "+regex.sub("^\w",lambda x: x.group().upper(),name)+"():")
+        s.append("    cdef public double %s\n"%(
+            ", ".join(
+                [str(not_assigned_syms[i]) 
+                    for i in range(len(not_assigned_syms))] 
+                + [str(i) 
+                    for i in self.assignment_dict])))
+        if self.subex_dict:
+            s.append("    cdef double %s\n"%(
+                ", ".join(
+                    [str(i) 
+                    for i in self.subex_dict])))
+                
+        
+        # define __cinit__ function
+        s.append("    def __cinit__(self, %s):" % (
+            ", ".join(
+                ["double "+str(not_assigned_syms[i]) 
+                    for i in range(len(not_assigned_syms))] 
+                + ["double "+str(i)+" = " + str(self.assignment_dict[i]) 
+                    for i in self.assignment_dict])))
+        if len(not_assigned_syms) > 0:
+            s.append("        "
+                        + ", ".join(["self."+str(not_assigned_syms[i]) 
+                                    for i in range(len(not_assigned_syms))])
+                        + " = " 
+                        + ", ".join([str(not_assigned_syms[i]) 
+                                    for i in range(len(not_assigned_syms))])
+                        )
+
+        # append preassigned values to __cinit__ function
+        if len(self.assignment_dict) > 0:
+            s.append("        "
+                        + ", ".join(sorted(["self."+str(i) 
+                                            for i in self.assignment_dict]))
+                        + " = " 
+                        + ", ".join(sorted([str(i) 
+                                            for i in self.assignment_dict]))
+                        )
+
+        # append cse expressions to __cinit__ function
+        if len(self.subex_dict) > 0:
+            for i in sorted([str(j) for j in self.subex_dict], key=lambda x: int(regex.findall("(?<=sub)\d*",x)[0])):
+                modstring = p.doprint(self.subex_dict[symbols(i)])
+                for j in sorted([str(h) 
+                                    for h in self.subex_dict[symbols(i)].free_symbols],
+                                reverse=1):
+                    modstring = regex.sub(
+                        str(j), "self."+str(j), modstring)
+                    modstring = regex.sub("(?<=(\W|^)(?<!\.)\d+)(?!\.)(?=\W|\Z)",".0", modstring) # replace integer with floats
+                    # remove double self
+                    modstring = regex.sub("self.self.", "self.", modstring)
+                s.append("        self."+str(i)+" = " + modstring)
+
+        # avoid empty init function
+        if (not len(self.subex_dict) > 0 
+            and not len(self.assignment_dict) > 0
+            and not len(not_assigned_syms) > 0
+            ):
+            s.append("        pass")
+        
+        # define functions
+        for i in range(len(expressions)):
+            var_syms = self._sort_variables(self.var_syms.intersection(
+                expressions[i].free_symbols))
+            optional_var_syms = self._sort_variables(self.optional_var_syms.intersection(
+                expressions[i].free_symbols))
+            const_syms = self._sort_variables(
+                set(constant_syms).intersection(
+                    expressions[i].free_symbols))
+            s.append("") # empty line
+            s.append("    @cython.boundscheck(False)")
+            s.append("    @cython.wraparound(False)")
+            if len(var_syms) > 0 or len(optional_var_syms) > 0:
+                # s.append(f"    cpdef double[:,::1] "+names[i]+"(self, %s):" % (
+                s.append(f"    cpdef numpy.ndarray[double, ndim={len(expressions[i].shape)}] "+names[i]+"(self, %s):" % (
+                # s.append(f"\n    cpdef np.ndarray[DTYPE_t,ndim={len(expressions[i].shape)}] "+names[i]+"(self, %s):" % (
+                    ", ".join(["double "+str(var_syms[i]) 
+                                for i in range(len(var_syms))]
+                                + ["double "+str(optional_var_syms[i])+"=0.0" 
+                                    for i in range(len(optional_var_syms))])))
+
+            else:
+                s.append(f"    cpdef numpy.ndarray[double, ndim={len(expressions[i].shape)}] "+names[i]+"(self):")
+            
+            # s.append(f"        cdef double[:,::1] {names[i]} = numpy.empty({expressions[i].shape}, dtype=double)")
+            s.append(f"        cdef numpy.ndarray[double, ndim={len(expressions[i].shape)}] {names[i]} = numpy.empty({expressions[i].shape}, dtype=np.double)")
+            for j in range(expressions[i].shape[0]):
+                for k in range(expressions[i].shape[1]):
+                    if const_syms:
+                        # add self before const_syms
+                        ex_string = regex.sub(f"(?<=\W|^)(?={'|'.join([str(i) for i in const_syms])}(\W|\Z))","self.",p.doprint(expressions[i][j,k]))
+                        # replace integer with floats
+                        ex_string = regex.sub("(?<=(\W|^)(?<!\.)\d+)(?!\.)(?=\W|\Z)",".0", ex_string) 
+                        s.append("        "
+                                + names[i]
+                                + f"[{j}, {k}]" 
+                                + " = " 
+                                + ex_string)
+                                #  + regex.sub("(?<=((?<=[^\.])\W)\d+)(?=\W)(?!\.)",".0",regex.sub(f"(?<=\W|^)(?={'|'.join([str(i) for i in const_syms])}(\W|\Z))","self.",p.doprint(expressions[i]))))
+                    else:
+                        ex_string = p.doprint(expressions[i])
+                        # replace integer with floats
+                        ex_string = regex.sub("(?<=(\W|^)(?<!\.)\d+)(?!\.)(?=\W|\Z)",".0", ex_string) 
+                        s.append("        "
+                                + names[i] 
+                                + f"[{j}, {k}]" 
+                                + " = " 
+                                + ex_string)
+                        
+            s.append("        return " + names[i])
+
+        if cache:
+            s = list(map(lambda x: x.replace("numpy.sin", "cached_sin"), s))
+            s = list(map(lambda x: x.replace("numpy.cos", "cached_cos"), s))
+            
+            s.append("")
+            s.append("@lru_cache(maxsize=128)")
+            s.append("def cached_sin(double x):")
+            s.append("    return numpy.sin(x)")
+            s.append("")
+            s.append("@lru_cache(maxsize=128)")
+            s.append("def cached_cos(double x):")
+            s.append("    return numpy.cos(x)")
+        
+        # replace numpy with np for better readability
+        s = list(map(lambda x: x.replace("numpy.", "np."), s))
+        s[0] = "import numpy as np"
+        s[1] = "cimport numpy as np\n"
+
+        # join list to string
+        s = "\n".join(s)
+
+        # create setup file to compile cython code
+        su = ("import os.path\n"
+                + "from setuptools import setup\n"
+                + "from Cython.Build import cythonize\n"
+                + "\n"
+                + "setup(\n"
+                + f"    name='{name}',\n"
+                + f"    ext_modules=cythonize(os.path.join(os.path.dirname(__file__), '{name + '.pyx'}'), \n"
+                +  "                          compiler_directives={'language_level' : '3'}),\n"
+                + "    zip_safe=False,\n"
+                + ")\n"
+        )
+
+
+        # write cython file
+        with open(os.path.join(folder, name + ".pyx"), "w+") as f:
+            f.write(s)
+        
+        # write setup file
+        with open(os.path.join(folder, "setup_" + name + ".py"), "w+") as f:
+            f.write(su)
+        
+        print("Done")
+
+        
+    def generate_C_code(self, name: str="plant", folder: str="./C", 
+                        project: str="project", use_global_vars: bool = True):
+        """Generate C code from generated expressions. 
+        Needs 'closed_form_inv_dyn_body_fixed' and/or 
+        'closed_form_kinematics_body_fixed' to run first.
+
+
+        Args:
+            name (str, optional): 
+                Name of file (without extension). 
+                Defaults to "plant".
+            folder (str, optional): 
+                Folder where to save code. 
+                Defaults to "./C".
+            project (str, optional): 
+                Project name in C header. Defaults to "project".
+            use_global_vars (bool, optional): 
+                Constant vars like mass etc are global variables. Defaults to True.
+        """
+        names, expressions, all_expressions, constant_syms, not_assigned_syms = self._prepare_code_generation(folder, use_global_vars)
+        
+        print("Generate C code")
+        # generate folder
+        if not os.path.exists(folder):
+            os.mkdir(folder)
+
+        # generate c files
+        if use_global_vars:
+            [(c_name, c_code), (h_name, c_header)] = codegen(
+                [tuple((names[i], expressions[i])) 
+                    for i in range(len(expressions))],
+                "C99", name, project, header=False, 
+                empty=True, global_vars=constant_syms)
+        else:
+            [(c_name, c_code), (h_name, c_header)] = codegen(
+                [tuple((names[i], expressions[i])) 
+                    for i in range(len(expressions))],
+                "C99", name, project, header=False, empty=True)
+        # change strange variable names
+        c_code = regex.sub(r"out_\d{10}[\d]+", "out", c_code)
+        c_header = regex.sub(r"out_\d{10}[\d]+", "out", c_header)
+
+        c_lines = c_code.splitlines(True)
+        i = 0
+        # correct dimension of output array pointers
+        while i < len(c_lines):
+            # find function definition
+            if any(n+"(" in c_lines[i] for n in names):
+                # which expression is defined
+                [fname] = [n for n in names if n+"(" in c_lines[i]]
+                # find shape of expression
+                cols = all_expressions[fname].shape[1]
+                i += 1
+                # replace all 1D arrays with 2D arrays for matrices
+                while "}" not in c_lines[i]:
+                    out = regex.findall("out\[[\d]+\]", c_lines[i])
+                    if out and cols > 1:
+                        [num] = regex.findall("[\d]+", out[0])
+                        num = int(num)
+                        c_lines[i] = c_lines[i].replace(
+                            out[0], f"out[{num//cols}][{num%cols}]")
+                    i += 1
+            i += 1
+        c_code = "".join(c_lines)
+        
+        # save assinged parameters to another c file
+        c_def_name = f"{c_name[:-2]}_parameters.c"
+        header_insert = []
+        c_definitions = [f'#include "{h_name}"\n']
+        c_definitions.append("#include <math.h>\n")
+        c_definitions.append("\n")
+        
+        if not_assigned_syms:
+            header_insert.append(f"/* Please uncomment and assign values in '{c_def_name}'\n")
+            c_definitions.append(f"/* Please assign values and uncomment in '{h_name}'\n")
+            for var in sorted([str(i) for i in not_assigned_syms]):
+                header_insert.append(f"extern const float {var};\n")
+                if var == "g":
+                    c_definitions.append(f"const float {var} = 9.81;\n")
+                else:
+                    c_definitions.append(f"const float {var} = 0;\n")
+            header_insert.append("*/ \n")
+            c_definitions.append("*/ \n")
+        
+        for var in sorted([str(i) for i in self.assignment_dict]):
+            val = ccode(self.assignment_dict[symbols(var)])
+            header_insert.append(f"extern const float {var};\n")
+            c_definitions.append(f"const float {var} = {val};\n")
+
+
+        # append cse expressions
+        for var in sorted([str(j) for j in self.subex_dict], key=lambda x: int(regex.findall("(?<=sub)\d*",x)[0])):
+            val = ccode(self.subex_dict[symbols(var)])
+            header_insert.append(f"extern const float {var};\n")
+            c_definitions.append(f"const float {var} = {val};\n")
+
+        
+        
+        if header_insert:
+            header_insert.append("\n")
+            h_lines = c_header.splitlines(True)
+            for i in range(len(h_lines)):
+                if "#endif" in h_lines[i]:
+                    h_lines[i:i] = header_insert 
+                    break
+            c_header = "".join(h_lines)
+
+        # write code files
+        with open(os.path.join(folder, c_name), "w+") as f:
+            f.write(c_code)
+        with open(os.path.join(folder, h_name), "w+") as f:
+            f.write(c_header)
+        if header_insert:
+            with open(os.path.join(folder, c_def_name), "w+") as f:
+                f.writelines(c_definitions)
+            
+        print("Done")
+
+    def generate_julia_code(self, name: str="plant", folder: str="./julia", 
+                            use_global_vars: bool = True):
+        """Generate julia code from generated expressions. 
+        Needs 'closed_form_inv_dyn_body_fixed' and/or 
+        'closed_form_kinematics_body_fixed' to run first.
+
+
+        Args:
+            name (str, optional): 
+                Name of file (without extension). 
+                Defaults to "plant".
+            folder (str, optional): 
+                Folder where to save code. 
+                Defaults to "./julia".
+            use_global_vars (bool, optional): 
+                Constant vars like mass etc are global variables. Defaults to True.
+        """
+        names, expressions, _, constant_syms, not_assigned_syms = self._prepare_code_generation(folder, use_global_vars)
+        print("Generate julia code")
+        # generate folder
+        if not os.path.exists(folder):
+            os.mkdir(folder)
+
+        jcg = JuliaCodeGen()
+        if use_global_vars:
+            routines = [jcg.routine(names[i],
+                                    expressions[i],
+                                    self._sort_variables(
+                                        (self.var_syms 
+                                            | self.optional_var_syms)
+                                        & expressions[i].free_symbols),
+                                    global_vars=constant_syms) 
+                        for i in range(len(expressions))]
+            
+            # save assigned parameters to beginning of julia file
+            j_definitions = []
+            
+            if not_assigned_syms:
+                j_definitions.append("# Please assign values\n")
+                for var in sorted([str(i) for i in not_assigned_syms]):
+                    if var == "g":
+                        j_definitions.append(f"{var} = 9.81\n")
+                    else:
+                        j_definitions.append(f"{var} = 0\n")
+                j_definitions.append("\n")
+
+            if self.assignment_dict:                
+                for var in sorted([str(i) for i in self.assignment_dict]):
+                    val = julia_code(self.assignment_dict[symbols(var)])
+                    j_definitions.append(f"{var} = {val}\n")
+                j_definitions.append("\n")
+
+            # append cse expressions
+            if self.subex_dict:
+                j_definitions.append("# subexpressions due to cse\n")
+                for var in sorted([str(j) for j in self.subex_dict], key=lambda x: int(regex.findall("(?<=sub)\d*",x)[0])):
+                    val = julia_code(self.subex_dict[symbols(var)])
+                    j_definitions.append(f"{var} = {val}\n")
+                j_definitions.append("\n")
+
+            j_constants = "".join(j_definitions)
+        else:
+            routines = [jcg.routine(names[i],
+                                    expressions[i],
+                                    self._sort_variables(
+                                        expressions[i].free_symbols),
+                                    global_vars=None) 
+                        for i in range(len(expressions))]
+            j_constants = ""
+            
+        j_name, j_code = jcg.write(routines, name, header=False)[0]
+        j_code = j_constants + j_code
+        
+        # ensure operator ^ instead of **
+        j_code = j_code.replace("**","^")
+        
+        # write code files
+        with open(os.path.join(folder, j_name), "w+") as f:
+            f.write(j_code)
+        
+        print("Done")
+
+    def generate_matlab_code(self, name: str="plant", 
+                             folder: str="./matlab"):
+        """Generate matlab / octave code from generated expressions. 
+        Needs 'closed_form_inv_dyn_body_fixed' and/or 
+        'closed_form_kinematics_body_fixed' to run first.
+
+
+        Args:
+            name (str, optional): 
+                Name of class and file. 
+                Defaults to "plant".
+            folder (str, optional): 
+                Folder where to save code. 
+                Defaults to "./matlab".
+        """
+        names, expressions, _, _, not_assigned_syms = self._prepare_code_generation(folder, True)
+        
+        # create folder
+        if not os.path.exists(folder):
+            os.mkdir(folder)
+        
+        m_class = []
+        m_class.append(f"classdef {name}\n")
+        m_properties = not_assigned_syms[:]
+        m_properties.extend([i for i in self.assignment_dict])
+        # properties
+        m_class.append(f"\tproperties\n")
+        for var in m_properties:
+            m_class.append(f"\t\t{str(var)}\n")
+        # add cse subexpressions as private properties
+        if self.subex_dict:
+            m_class.append("\tend\n\n")
+            m_class.append(f"\tproperties (Access = private)\n")
+            for var in [i for i in sorted([str(j) for j in self.subex_dict], key=lambda x: int(regex.findall("(?<=sub)\d*",x)[0]))]:
+                m_class.append(f"\t\t{str(var)}\n")
+            # add subex to m_properties list
+            m_properties.extend([i for i in sorted([str(j) for j in self.subex_dict], key=lambda x: int(regex.findall("(?<=sub)\d*",x)[0]))])
+        m_class.append("\tend\n\n")
+        
+        # methods
+        m_class.append(f"\tmethods\n")
+        
+        # init function
+        # function arguments
+        var_substr = ", ".join(
+                [str(not_assigned_syms[i]) 
+                    for i in range(len(not_assigned_syms))] 
+                + [str(j) for j in self.assignment_dict])
+        m_class.append(f"\t\tfunction obj = {name}({var_substr})\n")
+        
+        # default values for not assigned variables
+        if not_assigned_syms:
+            m_class.append(f"\t\t\t% TODO: Assign missing variables here:\n")
+            for var in not_assigned_syms:
+                if str(var) == "g":
+                    m_class.append(f"\t\t\t% if ~exist('{str(var)}','var'); {str(var)} = 9.81; end\n")
+                else:
+                    m_class.append(f"\t\t\t% if ~exist('{str(var)}','var'); {str(var)} = 0; end\n")
+        # default values for assigned variables
+        for var in self.assignment_dict:
+            val = octave_code(self.assignment_dict[var])
+            m_class.append(f"\t\t\tif ~exist('{str(var)}','var'); {str(var)} = {val}; end\n")
+        m_class.append("")
+        # save variables to parameters
+        for var in not_assigned_syms:
+            m_class.append(f"\t\t\tobj.{str(var)} = {str(var)};\n")
+        for var in self.assignment_dict:
+            m_class.append(f"\t\t\tobj.{str(var)} = {str(var)};\n")
+        # calculate subexpressions
+        for var in sorted([str(j) for j in self.subex_dict], key=lambda x: int(regex.findall("(?<=sub)\d*",x)[0])):
+            val = regex.sub("(?<=\W|^)sub","obj.sub",octave_code(self.subex_dict[symbols(var)]))
+            m_class.append(f"\t\t\tobj.{str(var)} = {val};\n")       
+        m_class.append("\t\tend\n\n")
+        
+        # Add generated functions
+        for i in range(len(expressions)):
+            # generate function
+            [(m_name, m_code)] = codegen(
+                (names[i], expressions[i]), "Octave", 
+                header=False, empty=True, 
+                argument_sequence=self._sort_variables(self.all_symbols)
+                )
+            # remove already set variables
+            m_func = m_code.splitlines(True)
+            m_func = [f"\t\t{line}" for line in m_func]
+            m_func[0] = m_func[0].replace("(","(obj, ")
+            m_func[0] = regex.sub(
+                "(" + '|'.join([f', {str(v)}(?=\W)' for v in m_properties])+")",
+                "", m_func[0])
+            # remove unused variable symbols
+            m_func[0] = regex.sub(
+                "(" + '|'.join([f', {str(v)}(?=\W)' for v in self.var_syms.union(self.optional_var_syms).difference(expressions[i].free_symbols)])+")",
+                "", m_func[0])
+            # use obj.variables defined in class parameters
+            for i in range(1, len(m_func)):
+                m_func[i] = regex.sub(f"(?<=\W|^)(?=({'|'.join([str(s) for s in m_properties])})\W)","obj.",m_func[i])        
+            m_func.append("\n")
+            m_class.extend(m_func)
+        
+        m_class.append("\tend\n")
+        m_class.append("end\n")
+        with open(os.path.join(folder, f"{name}.m"), "w+") as f:
+            f.writelines(m_class)
+    
+    def generate_latex_document(self, name: str="plant", folder: str="./latex", 
+                                landscape: bool=False):
+        """Generate LaTeX document from generated expressions. 
+        Needs 'closed_form_inv_dyn_body_fixed' and/or 
+        'closed_form_kinematics_body_fixed' to run first.
+
+        Args:
+            name (str, optional): 
+                Name of file. 
+                Defaults to "plant".
+            folder (str, optional): 
+                Folder where to save code. 
+                Defaults to "./latex".
+            landscape (bool, optional):
+                Generate LaTeX document in landscape mode to fit longer equations.
+                Defaults to False.
+        """
+        names, expressions, _, _, _ = self._prepare_code_generation(folder, False)
+        # create folder
+        if not os.path.exists(folder):
+            os.mkdir(folder)
+
+        # Document with `\maketitle` command activated
+        doc = Document(documentclass="article", inputenc="utf8")
+        if landscape:
+            doc.packages.append(NoEscape(r"\usepackage[landscape,a4paper,top=2cm,bottom=2cm,left=2.5cm,right=2.5cm,marginparwidth=1.75cm]{geometry}"))
+        else: 
+            doc.packages.append(NoEscape(r"\usepackage[a4paper,top=2cm,bottom=2cm,left=2.5cm,right=2.5cm,marginparwidth=1.75cm]{geometry}"))
+        doc.packages.append(NoEscape(r"\usepackage{amsmath}"))
+        doc.packages.append(NoEscape(r"\usepackage{graphicx}"))
+        doc.packages.append(NoEscape(r"\usepackage{breqn}[breakdepth={100}]"))
+        
+        doc.preamble.append(Command("title", "Equations of Motion"))
+        doc.preamble.append(Command("author", "Author: SymbolicKinDyn"))
+        doc.preamble.append(Command("date", NoEscape(r"\today")))
+        doc.append(NoEscape(r"\maketitle"))
+        doc.append(NoEscape(r"\tableofcontents"))
+        doc.append(NoEscape(r"\newpage"))
+        
+        # create symbols and indices for equations
+        for i in range(len(expressions)):
+            letter = ""
+            if "jacobian" in names[i]: letter = "J"
+            elif "twist" in names[i]: letter = r"V"
+            elif "kinematics" in names[i]: letter = r"^0T_E"
+            elif "inertia" in names[i]: letter = "M"
+            elif "coriolis" in names[i]: letter = "C"
+            elif "gravity" in names[i]: letter = "g"
+            elif "regressor" in names[i]: letter = "Y"
+            elif "parameter_vector" in names[i]: letter = "X"
+            elif "dynamics" in names[i]: letter = r"\tau"
+            elif "acceleration" in names[i]: letter = r"\dot V"
+            if "ddot" in names[i]: letter = r"\ddot "+letter
+            elif "dot" in names[i]: letter = r"\dot "+letter
+            if "_ee" in names[i]: letter = r"^E" + letter
+            elif ("twist" in names[i] 
+                    or "jacobian" in names[i] 
+                    or "acceleration" in names[i]): letter = r"^0" + letter
+            if "hybrid" in names[i]: letter += r"_h"
+            elif "body" in names[i]: letter += r"_b"
+            
+            replacements = [("ddddq", r"\\ddddot q"),
+                            ("ddddtheta", r"\\ddddot \\theta"),
+                            ("dddq", r"\\dddot q"),
+                            ("dddtheta", r"\\dddot \\theta"),
+                            ("ddq", r"\\ddot q"), 
+                            ("ddtheta", r"\\ddot \\theta"), 
+                            ("dq", r"\\dot q"),
+                            ("dtheta", r"\\dot \\theta")
+                            ]
+            with doc.create(Section(regex.sub("_"," ",names[i]))):
+                maxlen = 0
+                for row in range(expressions[i].shape[0]):
+                    length = 0
+                    for column in range(expressions[i].shape[1]):
+                            length += len(regex.sub(r"(\\left|\\right|\{|\}|\\|_|\^|dot|ddot| |begin|matrix)","",str(expressions[i][row,column])))
+                    maxlen = max(maxlen, length)
+                if maxlen < 120+int(landscape)*100:
+                    eq = LatexPrinter().doprint(expressions[i])
+                    for pat, repl in replacements:
+                        eq = regex.sub(pat, repl, eq)
+                    # doc.append(NoEscape(r"\begin{footnotesize}"))
+                    doc.append(NoEscape(r"\[ \resizebox{\ifdim\width>\columnwidth\columnwidth\else\width\fi}{!}{$%"))
+                    doc.append(NoEscape(r"\boldsymbol{"f"{letter}""} = "f"{eq}"))
+                    doc.append(NoEscape(r"$} \]"))
+                else:
+                    doc.append(NoEscape(r"\begin{dgroup*}"))
+                    for row in range(expressions[i].shape[0]):
+                        for column in range(expressions[i].shape[1]):
+                            eq = LatexPrinter().doprint(expressions[i][row,column])
+                            for pat, repl in replacements:
+                                eq = regex.sub(pat, repl, eq)
+                            doc.append(NoEscape(r"\begin{dmath*}"))
+                            doc.append(NoEscape(f"{letter}_"+"{"+f"{row+1}{','+str(column+1) if expressions[i].shape[1]>1 else ''}" + "}" + " = " + f"{eq}"))
+                            doc.append(NoEscape(r"\end{dmath*}"))
+                    doc.append(NoEscape(r"\end{dgroup*}"))
+                    
+                # doc.append(NoEscape(r"\end{footnotesize}"))
+                # doc.append("\n")
+        
+        # save tex file and compile pdf
+        doc.generate_pdf(os.path.join(folder, name), clean_tex=False)
+
+    
     def generate_code(self, python: bool=False, C: bool=False, Matlab: bool=False, 
                       cython: bool=False, julia: bool=False, latex: bool=False, 
                       cache: bool=False, landscape: bool=False,
@@ -193,678 +946,24 @@ class _AbstractCodeGeneration():
                 Defaults to "plant".
             project (str, optional): 
                 Project name in C header. Defaults to "Project".
-
         """
-        # create Folder
+        # create folder
         if not os.path.exists(folder):
             os.mkdir(folder)
-
-        # dict of expression names and expressions
-        all_expressions = self.get_expressions_dict()
-
-        # get individual tuples for expression names and expressions
-        (names, expressions) = zip(*all_expressions.items())
-
-        # generate set with all used symbols
-        all_syms = set()
-        for e in expressions:
-            all_syms.update(e.free_symbols)
-
-        if use_global_vars:
-            # generate list of constant symbols
-            constant_syms = self._sort_variables(
-                all_syms
-                .difference(self.var_syms)
-                .difference(self.optional_var_syms)
-                .union(self.subex_dict))
-            # generate list with preassigned symbols like subexpressions
-            # from common subexpression elimination
-            not_assigned_syms = self._sort_variables(
-                all_syms
-                .difference(self.var_syms)
-                .difference(self.optional_var_syms)
-                .difference(self.assignment_dict)
-                .difference(self.subex_dict)
-                )
-        else:
-            constant_syms = []
-            not_assigned_syms = []
-
+            
         if python:
-            print("Generate Python code")
-            # create folder
-            if not os.path.exists(os.path.join(folder, "python")):
-                os.mkdir(os.path.join(folder, "python"))
-
-            p = NumPyPrinter()
-
-            # start python file with import
-            s = ["import numpy"]
-            if cache:
-                s.append("from functools import lru_cache")
-            s.append("\n")
-            # class name
-            s.append("class "+regex.sub("^\w",lambda x: x.group().upper(),name)+"():")
-            # define __init__ function
-            s.append("    def __init__(self, %s) -> None:" % (
-                ", ".join(
-                    [str(not_assigned_syms[i])+": float" 
-                     for i in range(len(not_assigned_syms))] 
-                    + [str(i)+": float=" + str(self.assignment_dict[i]) 
-                       for i in self.assignment_dict])))
-            if len(not_assigned_syms) > 0:
-                s.append("        "
-                         + ", ".join(["self."+str(not_assigned_syms[i]) 
-                                      for i in range(len(not_assigned_syms))])
-                         + " = " 
-                         + ", ".join([str(not_assigned_syms[i]) 
-                                      for i in range(len(not_assigned_syms))])
-                         )
-
-            # append preassigned values to __init__ function
-            if len(self.assignment_dict) > 0:
-                s.append("        "
-                         + ", ".join(sorted(["self."+str(i) 
-                                             for i in self.assignment_dict]))
-                         + " = " 
-                         + ", ".join(sorted([str(i) 
-                                             for i in self.assignment_dict]))
-                         )
-
-            # append cse expressions to __init__ function
-            if len(self.subex_dict) > 0:
-                for i in sorted([str(j) for j in self.subex_dict], key=lambda x: int(regex.findall("(?<=sub)\d*",x)[0])):
-                    modstring = p.doprint(self.subex_dict[symbols(i)])
-                    for j in sorted([str(h) 
-                                     for h in self.subex_dict[symbols(i)].free_symbols],
-                                    reverse=1):
-                        modstring = regex.sub(
-                            str(j), "self."+str(j), modstring)
-                        # remove double self
-                        modstring = regex.sub("self.self.", "self.", modstring)
-                    s.append("        self."+str(i)+" = " + modstring)
-
-            # avoid empty init function
-            if (not len(self.subex_dict) > 0 
-                and not len(self.assignment_dict) > 0
-                and not len(not_assigned_syms) > 0
-                ):
-                s.append("        pass")
-            
-            # define functions
-            for i in range(len(expressions)):
-                var_syms = self._sort_variables(self.var_syms.intersection(
-                    expressions[i].free_symbols))
-                optional_var_syms = self._sort_variables(self.optional_var_syms.intersection(
-                    expressions[i].free_symbols))
-                const_syms = self._sort_variables(
-                    set(constant_syms).intersection(
-                        expressions[i].free_symbols))
-                if len(var_syms) > 0 or len(optional_var_syms) > 0:
-                    s.append("\n    def "+names[i]+"(self, %s) -> numpy.ndarray:" % (
-                        ", ".join([str(var_syms[i])+": float" 
-                                   for i in range(len(var_syms))]
-                                  + [str(optional_var_syms[i])+": float=0" 
-                                   for i in range(len(optional_var_syms))])))
-
-                else:
-                    s.append("\n    def "+names[i]+"(self) -> numpy.ndarray:")
-                
-                if const_syms: # insert self. in front of const_syms
-                    s.append("        "
-                            + names[i] 
-                            + " = " 
-                            + regex.sub(f"(?<=\W|^)(?={'|'.join([str(i) for i in const_syms])}(\W|\Z))",
-                                        "self.",
-                                        p.doprint(expressions[i])))
-                else: 
-                    s.append("        "
-                            + names[i] 
-                            + " = " 
-                            + p.doprint(expressions[i]))
-                s.append("        return " + names[i])
-
-            if cache:
-                s = list(map(lambda x: x.replace("numpy.sin", "cached_sin"), s))
-                s = list(map(lambda x: x.replace("numpy.cos", "cached_cos"), s))
-                
-                s.append("")
-                s.append("@lru_cache(maxsize=128)")
-                s.append("def cached_sin(x: float) -> float:")
-                s.append("    return numpy.sin(x)")
-                s.append("")
-                s.append("@lru_cache(maxsize=128)")
-                s.append("def cached_cos(x: float) -> float:")
-                s.append("    return numpy.cos(x)")
-                
-            # replace numpy with np for better readability
-            s = list(map(lambda x: x.replace("numpy.", "np."), s))
-            s[0] = "import numpy as np\n\n"
-
-            # join list to string
-            s = "\n".join(s)
-
-            # write python file
-            with open(os.path.join(folder, "python", name + ".py"), "w+") as f:
-                f.write(s)
-            print("Done")
-
+            self.generate_python_code(name, os.path.join(folder,"python"),cache, use_global_vars)
         if cython:
-            print("Generate Cython code")
-            # create folder
-            if not os.path.exists(os.path.join(folder, "cython")):
-                os.mkdir(os.path.join(folder, "cython"))
-
-            p = NumPyPrinter()
-
-            # start python file with import
-            s = ["import numpy"]
-            s.append("cimport numpy\n")
-            s.append("cimport cython\n")
-            if cache:
-                s.append("from functools import lru_cache\n")
-            s.append("")
-            s.append("numpy.import_array()")
-            # s.append("DTYPE = numpy.float64")
-            # s.append("ctypedef numpy.float64_t DTYPE_t")
-            
-            s.append("\n")
-            # class name
-            s.append("@cython.boundscheck(False)")
-            s.append("@cython.wraparound(False)")
-            s.append("cdef class "+regex.sub("^\w",lambda x: x.group().upper(),name)+"():")
-            s.append("    cdef public double %s\n"%(
-                ", ".join(
-                    [str(not_assigned_syms[i]) 
-                        for i in range(len(not_assigned_syms))] 
-                    + [str(i) 
-                      for i in self.assignment_dict])))
-            if self.subex_dict:
-                s.append("    cdef double %s\n"%(
-                    ", ".join(
-                        [str(i) 
-                        for i in self.subex_dict])))
-                    
-            
-            # define __cinit__ function
-            s.append("    def __cinit__(self, %s):" % (
-                ", ".join(
-                    ["double "+str(not_assigned_syms[i]) 
-                     for i in range(len(not_assigned_syms))] 
-                    + ["double "+str(i)+" = " + str(self.assignment_dict[i]) 
-                       for i in self.assignment_dict])))
-            if len(not_assigned_syms) > 0:
-                s.append("        "
-                         + ", ".join(["self."+str(not_assigned_syms[i]) 
-                                      for i in range(len(not_assigned_syms))])
-                         + " = " 
-                         + ", ".join([str(not_assigned_syms[i]) 
-                                      for i in range(len(not_assigned_syms))])
-                         )
-
-            # append preassigned values to __cinit__ function
-            if len(self.assignment_dict) > 0:
-                s.append("        "
-                         + ", ".join(sorted(["self."+str(i) 
-                                             for i in self.assignment_dict]))
-                         + " = " 
-                         + ", ".join(sorted([str(i) 
-                                             for i in self.assignment_dict]))
-                         )
-
-            # append cse expressions to __cinit__ function
-            if len(self.subex_dict) > 0:
-                for i in sorted([str(j) for j in self.subex_dict], key=lambda x: int(regex.findall("(?<=sub)\d*",x)[0])):
-                    modstring = p.doprint(self.subex_dict[symbols(i)])
-                    for j in sorted([str(h) 
-                                     for h in self.subex_dict[symbols(i)].free_symbols],
-                                    reverse=1):
-                        modstring = regex.sub(
-                            str(j), "self."+str(j), modstring)
-                        modstring = regex.sub("(?<=(\W|^)(?<!\.)\d+)(?!\.)(?=\W|\Z)",".0", modstring) # replace integer with floats
-                        # remove double self
-                        modstring = regex.sub("self.self.", "self.", modstring)
-                    s.append("        self."+str(i)+" = " + modstring)
-
-            # avoid empty init function
-            if (not len(self.subex_dict) > 0 
-                and not len(self.assignment_dict) > 0
-                and not len(not_assigned_syms) > 0
-                ):
-                s.append("        pass")
-            
-            # define functions
-            for i in range(len(expressions)):
-                var_syms = self._sort_variables(self.var_syms.intersection(
-                    expressions[i].free_symbols))
-                optional_var_syms = self._sort_variables(self.optional_var_syms.intersection(
-                    expressions[i].free_symbols))
-                const_syms = self._sort_variables(
-                    set(constant_syms).intersection(
-                        expressions[i].free_symbols))
-                s.append("") # empty line
-                s.append("    @cython.boundscheck(False)")
-                s.append("    @cython.wraparound(False)")
-                if len(var_syms) > 0 or len(optional_var_syms) > 0:
-                    # s.append(f"    cpdef double[:,::1] "+names[i]+"(self, %s):" % (
-                    s.append(f"    cpdef numpy.ndarray[double, ndim={len(expressions[i].shape)}] "+names[i]+"(self, %s):" % (
-                    # s.append(f"\n    cpdef np.ndarray[DTYPE_t,ndim={len(expressions[i].shape)}] "+names[i]+"(self, %s):" % (
-                        ", ".join(["double "+str(var_syms[i]) 
-                                   for i in range(len(var_syms))]
-                                  + ["double "+str(optional_var_syms[i])+"=0.0" 
-                                     for i in range(len(optional_var_syms))])))
-
-                else:
-                    s.append(f"    cpdef numpy.ndarray[double, ndim={len(expressions[i].shape)}] "+names[i]+"(self):")
-                
-                # s.append(f"        cdef double[:,::1] {names[i]} = numpy.empty({expressions[i].shape}, dtype=double)")
-                s.append(f"        cdef numpy.ndarray[double, ndim={len(expressions[i].shape)}] {names[i]} = numpy.empty({expressions[i].shape}, dtype=np.double)")
-                for j in range(expressions[i].shape[0]):
-                    for k in range(expressions[i].shape[1]):
-                        if const_syms:
-                            # add self before const_syms
-                            ex_string = regex.sub(f"(?<=\W|^)(?={'|'.join([str(i) for i in const_syms])}(\W|\Z))","self.",p.doprint(expressions[i][j,k]))
-                            # replace integer with floats
-                            ex_string = regex.sub("(?<=(\W|^)(?<!\.)\d+)(?!\.)(?=\W|\Z)",".0", ex_string) 
-                            s.append("        "
-                                    + names[i]
-                                    + f"[{j}, {k}]" 
-                                    + " = " 
-                                    + ex_string)
-                                    #  + regex.sub("(?<=((?<=[^\.])\W)\d+)(?=\W)(?!\.)",".0",regex.sub(f"(?<=\W|^)(?={'|'.join([str(i) for i in const_syms])}(\W|\Z))","self.",p.doprint(expressions[i]))))
-                        else:
-                            ex_string = p.doprint(expressions[i])
-                            # replace integer with floats
-                            ex_string = regex.sub("(?<=(\W|^)(?<!\.)\d+)(?!\.)(?=\W|\Z)",".0", ex_string) 
-                            s.append("        "
-                                    + names[i] 
-                                    + f"[{j}, {k}]" 
-                                    + " = " 
-                                    + ex_string)
-                            
-                s.append("        return " + names[i])
-
-            if cache:
-                s = list(map(lambda x: x.replace("numpy.sin", "cached_sin"), s))
-                s = list(map(lambda x: x.replace("numpy.cos", "cached_cos"), s))
-                
-                s.append("")
-                s.append("@lru_cache(maxsize=128)")
-                s.append("def cached_sin(double x):")
-                s.append("    return numpy.sin(x)")
-                s.append("")
-                s.append("@lru_cache(maxsize=128)")
-                s.append("def cached_cos(double x):")
-                s.append("    return numpy.cos(x)")
-            
-            # replace numpy with np for better readability
-            s = list(map(lambda x: x.replace("numpy.", "np."), s))
-            s[0] = "import numpy as np"
-            s[1] = "cimport numpy as np\n"
-
-            # join list to string
-            s = "\n".join(s)
-
-            # create setup file to compile cython code
-            su = ("import os.path\n"
-                  + "from setuptools import setup\n"
-                  + "from Cython.Build import cythonize\n"
-                  + "\n"
-                  + "setup(\n"
-                  + f"    name='{name}',\n"
-                  + f"    ext_modules=cythonize(os.path.join(os.path.dirname(__file__), '{name + '.pyx'}'), \n"
-                  +  "                          compiler_directives={'language_level' : '3'}),\n"
-                  + "    zip_safe=False,\n"
-                  + ")\n"
-            )
-
-
-            # write cython file
-            with open(os.path.join(folder, "cython", name + ".pyx"), "w+") as f:
-                f.write(s)
-            
-            # write setup file
-            with open(os.path.join(folder, "cython", "setup_" + name + ".py"), "w+") as f:
-                f.write(su)
-            
-            print("Done")
-
+            self.generate_cython_code(name, os.path.join(folder,"cython"),cache, use_global_vars)
         if C:
-            print("Generate C code")
-            if not os.path.exists(os.path.join(folder, "C")):
-                os.mkdir(os.path.join(folder, "C"))
-
-            # generate c files
-            if use_global_vars:
-                [(c_name, c_code), (h_name, c_header)] = codegen(
-                    [tuple((names[i], expressions[i])) 
-                     for i in range(len(expressions))],
-                    "C99", name, project, header=False, 
-                    empty=True, global_vars=constant_syms)
-            else:
-                [(c_name, c_code), (h_name, c_header)] = codegen(
-                    [tuple((names[i], expressions[i])) 
-                     for i in range(len(expressions))],
-                    "C99", name, project, header=False, empty=True)
-            # change strange variable names
-            c_code = regex.sub(r"out_\d{10}[\d]+", "out", c_code)
-            c_header = regex.sub(r"out_\d{10}[\d]+", "out", c_header)
-
-            c_lines = c_code.splitlines(True)
-            i = 0
-            # correct dimension of output array pointers
-            while i < len(c_lines):
-                # find function definition
-                if any(n+"(" in c_lines[i] for n in names):
-                    # which expression is defined
-                    [fname] = [n for n in names if n+"(" in c_lines[i]]
-                    # find shape of expression
-                    cols = all_expressions[fname].shape[1]
-                    i += 1
-                    # replace all 1D arrays with 2D arrays for matrices
-                    while "}" not in c_lines[i]:
-                        out = regex.findall("out\[[\d]+\]", c_lines[i])
-                        if out and cols > 1:
-                            [num] = regex.findall("[\d]+", out[0])
-                            num = int(num)
-                            c_lines[i] = c_lines[i].replace(
-                                out[0], f"out[{num//cols}][{num%cols}]")
-                        i += 1
-                i += 1
-            c_code = "".join(c_lines)
-            
-            # save assinged parameters to another c file
-            c_def_name = f"{c_name[:-2]}_parameters.c"
-            header_insert = []
-            c_definitions = [f'#include "{h_name}"\n']
-            c_definitions.append("#include <math.h>\n")
-            c_definitions.append("\n")
-            
-            if not_assigned_syms:
-                header_insert.append(f"/* Please uncomment and assign values in '{c_def_name}'\n")
-                c_definitions.append(f"/* Please assign values and uncomment in '{h_name}'\n")
-                for var in sorted([str(i) for i in not_assigned_syms]):
-                    header_insert.append(f"extern const float {var};\n")
-                    if var == "g":
-                        c_definitions.append(f"const float {var} = 9.81;\n")
-                    else:
-                        c_definitions.append(f"const float {var} = 0;\n")
-                header_insert.append("*/ \n")
-                c_definitions.append("*/ \n")
-            
-            for var in sorted([str(i) for i in self.assignment_dict]):
-                val = ccode(self.assignment_dict[symbols(var)])
-                header_insert.append(f"extern const float {var};\n")
-                c_definitions.append(f"const float {var} = {val};\n")
-
-
-            # append cse expressions
-            for var in sorted([str(j) for j in self.subex_dict], key=lambda x: int(regex.findall("(?<=sub)\d*",x)[0])):
-                val = ccode(self.subex_dict[symbols(var)])
-                header_insert.append(f"extern const float {var};\n")
-                c_definitions.append(f"const float {var} = {val};\n")
-
-            
-            
-            if header_insert:
-                header_insert.append("\n")
-                h_lines = c_header.splitlines(True)
-                for i in range(len(h_lines)):
-                    if "#endif" in h_lines[i]:
-                        h_lines[i:i] = header_insert 
-                        break
-                c_header = "".join(h_lines)
-
-            # write code files
-            with open(os.path.join(folder, "C", c_name), "w+") as f:
-                f.write(c_code)
-            with open(os.path.join(folder, "C", h_name), "w+") as f:
-                f.write(c_header)
-            if header_insert:
-                with open(os.path.join(folder, "C", c_def_name), "w+") as f:
-                    f.writelines(c_definitions)
-                
-            print("Done")
-
+            self.generate_C_code(name, os.path.join(folder,"C"), project, use_global_vars)
         if julia:
-            print("Generate julia code")
-            if not os.path.exists(os.path.join(folder, "julia")):
-                os.mkdir(os.path.join(folder, "julia"))
-
-            jcg = JuliaCodeGen(project=project)
-            if use_global_vars:
-                routines = [jcg.routine(names[i],
-                                        expressions[i],
-                                        self._sort_variables(
-                                            (self.var_syms 
-                                             | self.optional_var_syms)
-                                            & expressions[i].free_symbols),
-                                        global_vars=constant_syms) 
-                            for i in range(len(expressions))]
-                
-                # save assigned parameters to beginning of julia file
-                j_definitions = []
-                
-                if not_assigned_syms:
-                    j_definitions.append("# Please assign values\n")
-                    for var in sorted([str(i) for i in not_assigned_syms]):
-                        if var == "g":
-                            j_definitions.append(f"{var} = 9.81\n")
-                        else:
-                            j_definitions.append(f"{var} = 0\n")
-                    j_definitions.append("\n")
-
-                if self.assignment_dict:                
-                    for var in sorted([str(i) for i in self.assignment_dict]):
-                        val = julia_code(self.assignment_dict[symbols(var)])
-                        j_definitions.append(f"{var} = {val}\n")
-                    j_definitions.append("\n")
-
-                # append cse expressions
-                if self.subex_dict:
-                    j_definitions.append("# subexpressions due to cse\n")
-                    for var in sorted([str(j) for j in self.subex_dict], key=lambda x: int(regex.findall("(?<=sub)\d*",x)[0])):
-                        val = julia_code(self.subex_dict[symbols(var)])
-                        j_definitions.append(f"{var} = {val}\n")
-                    j_definitions.append("\n")
-
-                j_constants = "".join(j_definitions)
-            else:
-                routines = [jcg.routine(names[i],
-                                        expressions[i],
-                                        self._sort_variables(
-                                            expressions[i].free_symbols),
-                                        global_vars=None) 
-                            for i in range(len(expressions))]
-                j_constants = ""
-                
-            j_name, j_code = jcg.write(routines,name, header=False)[0]
-            j_code = j_constants + j_code
-            
-            # ensure operator ^ instead of **
-            j_code = j_code.replace("**","^")
-            
-            # write code files
-            with open(os.path.join(folder, "julia", j_name), "w+") as f:
-                f.write(j_code)
-            
-            print("Done")
-
-
-
+            self.generate_julia_code(name, os.path.join(folder,"julia"), use_global_vars)
         if Matlab:
-            # create folder
-            if not os.path.exists(os.path.join(folder, "matlab")):
-                os.mkdir(os.path.join(folder, "matlab"))
-            m_class = []
-            m_class.append(f"classdef {name}\n")
-            m_properties = not_assigned_syms[:]
-            m_properties.extend([i for i in self.assignment_dict])
-            # properties
-            m_class.append(f"\tproperties\n")
-            for var in m_properties:
-                m_class.append(f"\t\t{str(var)}\n")
-            # add cse subexpressions as private properties
-            if self.subex_dict:
-                m_class.append("\tend\n\n")
-                m_class.append(f"\tproperties (Access = private)\n")
-                for var in [i for i in sorted([str(j) for j in self.subex_dict], key=lambda x: int(regex.findall("(?<=sub)\d*",x)[0]))]:
-                    m_class.append(f"\t\t{str(var)}\n")
-                # add subex to m_properties list
-                m_properties.extend([i for i in sorted([str(j) for j in self.subex_dict], key=lambda x: int(regex.findall("(?<=sub)\d*",x)[0]))])
-            m_class.append("\tend\n\n")
-            
-            # methods
-            m_class.append(f"\tmethods\n")
-            
-            # init function
-            # function arguments
-            var_substr = ", ".join(
-                    [str(not_assigned_syms[i]) 
-                     for i in range(len(not_assigned_syms))] 
-                    + [str(j) for j in self.assignment_dict])
-            m_class.append(f"\t\tfunction obj = {name}({var_substr})\n")
-            
-            # default values for not assigned variables
-            if not_assigned_syms:
-                m_class.append(f"\t\t\t% TODO: Assign missing variables here:\n")
-                for var in not_assigned_syms:
-                    if str(var) == "g":
-                        m_class.append(f"\t\t\t% if ~exist('{str(var)}','var'); {str(var)} = 9.81; end\n")
-                    else:
-                        m_class.append(f"\t\t\t% if ~exist('{str(var)}','var'); {str(var)} = 0; end\n")
-            # default values for assigned variables
-            for var in self.assignment_dict:
-                val = octave_code(self.assignment_dict[var])
-                m_class.append(f"\t\t\tif ~exist('{str(var)}','var'); {str(var)} = {val}; end\n")
-            m_class.append("")
-            # save variables to parameters
-            for var in not_assigned_syms:
-                m_class.append(f"\t\t\tobj.{str(var)} = {str(var)};\n")
-            for var in self.assignment_dict:
-                m_class.append(f"\t\t\tobj.{str(var)} = {str(var)};\n")
-            # calculate subexpressions
-            for var in sorted([str(j) for j in self.subex_dict], key=lambda x: int(regex.findall("(?<=sub)\d*",x)[0])):
-                val = regex.sub("(?<=\W|^)sub","obj.sub",octave_code(self.subex_dict[symbols(var)]))
-                m_class.append(f"\t\t\tobj.{str(var)} = {val};\n")       
-            m_class.append("\t\tend\n\n")
-            
-            # Add generated functions
-            for i in range(len(expressions)):
-                # generate function
-                [(m_name, m_code)] = codegen(
-                    (names[i], expressions[i]), "Octave", project=project, 
-                    header=False, empty=True, 
-                    argument_sequence=self._sort_variables(self.all_symbols)
-                    )
-                # remove already set variables
-                m_func = m_code.splitlines(True)
-                m_func = [f"\t\t{line}" for line in m_func]
-                m_func[0] = m_func[0].replace("(","(obj, ")
-                m_func[0] = regex.sub(
-                    "(" + '|'.join([f', {str(v)}(?=\W)' for v in m_properties])+")",
-                    "", m_func[0])
-                # remove unused variable symbols
-                m_func[0] = regex.sub(
-                    "(" + '|'.join([f', {str(v)}(?=\W)' for v in self.var_syms.union(self.optional_var_syms).difference(expressions[i].free_symbols)])+")",
-                    "", m_func[0])
-                # use obj.variables defined in class parameters
-                for i in range(1, len(m_func)):
-                    m_func[i] = regex.sub(f"(?<=\W|^)(?=({'|'.join([str(s) for s in m_properties])})\W)","obj.",m_func[i])        
-                m_func.append("\n")
-                m_class.extend(m_func)
-            
-            m_class.append("\tend\n")
-            m_class.append("end\n")
-            with open(os.path.join(folder, "matlab", f"{name}.m"), "w+") as f:
-                f.writelines(m_class)
-        
+            self.generate_matlab_code(name, os.path.join(folder,"matlab"))
         if latex:
-            # create folder
-            if not os.path.exists(os.path.join(folder, "latex")):
-                os.mkdir(os.path.join(folder, "latex"))
+            self.generate_latex_document(name, os.path.join(folder,"latex"), landscape)
 
-            # Document with `\maketitle` command activated
-            doc = Document(documentclass="article", inputenc="utf8")
-            if landscape:
-                doc.packages.append(NoEscape(r"\usepackage[landscape,a4paper,top=2cm,bottom=2cm,left=2.5cm,right=2.5cm,marginparwidth=1.75cm]{geometry}"))
-            else: 
-                doc.packages.append(NoEscape(r"\usepackage[a4paper,top=2cm,bottom=2cm,left=2.5cm,right=2.5cm,marginparwidth=1.75cm]{geometry}"))
-            doc.packages.append(NoEscape(r"\usepackage{amsmath}"))
-            doc.packages.append(NoEscape(r"\usepackage{graphicx}"))
-            doc.packages.append(NoEscape(r"\usepackage{breqn}[breakdepth={100}]"))
-            
-            doc.preamble.append(Command("title", "Equations of Motion"))
-            doc.preamble.append(Command("author", "Author: SymbolicKinDyn"))
-            doc.preamble.append(Command("date", NoEscape(r"\today")))
-            doc.append(NoEscape(r"\maketitle"))
-            doc.append(NoEscape(r"\tableofcontents"))
-            doc.append(NoEscape(r"\newpage"))
-            
-            # create symbols and indices for equations
-            for i in range(len(expressions)):
-                letter = ""
-                if "jacobian" in names[i]: letter = "J"
-                elif "twist" in names[i]: letter = r"V"
-                elif "kinematics" in names[i]: letter = r"^0T_E"
-                elif "inertia" in names[i]: letter = "M"
-                elif "coriolis" in names[i]: letter = "C"
-                elif "gravity" in names[i]: letter = "g"
-                elif "regressor" in names[i]: letter = "Y"
-                elif "parameter_vector" in names[i]: letter = "X"
-                elif "dynamics" in names[i]: letter = r"\tau"
-                elif "acceleration" in names[i]: letter = r"\dot V"
-                if "ddot" in names[i]: letter = r"\ddot "+letter
-                elif "dot" in names[i]: letter = r"\dot "+letter
-                if "_ee" in names[i]: letter = r"^E" + letter
-                elif ("twist" in names[i] 
-                      or "jacobian" in names[i] 
-                      or "acceleration" in names[i]): letter = r"^0" + letter
-                if "hybrid" in names[i]: letter += r"_h"
-                elif "body" in names[i]: letter += r"_b"
-                
-                replacements = [("ddddq", r"\\ddddot q"),
-                                ("ddddtheta", r"\\ddddot \\theta"),
-                                ("dddq", r"\\dddot q"),
-                                ("dddtheta", r"\\dddot \\theta"),
-                                ("ddq", r"\\ddot q"), 
-                                ("ddtheta", r"\\ddot \\theta"), 
-                                ("dq", r"\\dot q"),
-                                ("dtheta", r"\\dot \\theta")
-                                ]
-                with doc.create(Section(regex.sub("_"," ",names[i]))):
-                    maxlen = 0
-                    for row in range(expressions[i].shape[0]):
-                        length = 0
-                        for column in range(expressions[i].shape[1]):
-                             length += len(regex.sub(r"(\\left|\\right|\{|\}|\\|_|\^|dot|ddot| |begin|matrix)","",str(expressions[i][row,column])))
-                        maxlen = max(maxlen, length)
-                    if maxlen < 120+int(landscape)*100:
-                        eq = LatexPrinter().doprint(expressions[i])
-                        for pat, repl in replacements:
-                            eq = regex.sub(pat, repl, eq)
-                        # doc.append(NoEscape(r"\begin{footnotesize}"))
-                        doc.append(NoEscape(r"\[ \resizebox{\ifdim\width>\columnwidth\columnwidth\else\width\fi}{!}{$%"))
-                        doc.append(NoEscape(r"\boldsymbol{"f"{letter}""} = "f"{eq}"))
-                        doc.append(NoEscape(r"$} \]"))
-                    else:
-                        doc.append(NoEscape(r"\begin{dgroup*}"))
-                        for row in range(expressions[i].shape[0]):
-                            for column in range(expressions[i].shape[1]):
-                                eq = LatexPrinter().doprint(expressions[i][row,column])
-                                for pat, repl in replacements:
-                                    eq = regex.sub(pat, repl, eq)
-                                doc.append(NoEscape(r"\begin{dmath*}"))
-                                doc.append(NoEscape(f"{letter}_"+"{"+f"{row+1}{','+str(column+1) if expressions[i].shape[1]>1 else ''}" + "}" + " = " + f"{eq}"))
-                                doc.append(NoEscape(r"\end{dmath*}"))
-                        doc.append(NoEscape(r"\end{dgroup*}"))
-                        
-                    # doc.append(NoEscape(r"\end{footnotesize}"))
-                    # doc.append("\n")
-            
-            # save tex file and compile pdf
-            doc.generate_pdf(os.path.join(folder, "latex",name), clean_tex=False)
-    
     def generate_graph(self, path: str="output.pdf", include_mb: bool=False) -> None:
         """Write pdf graph from robot structure.
 
@@ -986,6 +1085,46 @@ class _AbstractCodeGeneration():
                 ))
         graph.write_pdf(path)
         
+    def _prepare_code_generation(self, folder, use_global_vars):
+        # create Folder
+        if not os.path.exists(folder):
+            os.mkdir(folder)
+
+        # dict of expression names and expressions
+        all_expressions = self.get_expressions_dict()
+
+        # get individual tuples for expression names and expressions
+        (names, expressions) = zip(*all_expressions.items())
+
+        # generate set with all used symbols
+        all_syms = set()
+        for e in expressions:
+            all_syms.update(e.free_symbols)
+
+        if use_global_vars:
+            # generate list of constant symbols
+            constant_syms = self._sort_variables(
+                all_syms
+                .difference(self.var_syms)
+                .difference(self.optional_var_syms)
+                .union(self.subex_dict))
+            # generate list with preassigned symbols like subexpressions
+            # from common subexpression elimination
+            not_assigned_syms = self._sort_variables(
+                all_syms
+                .difference(self.var_syms)
+                .difference(self.optional_var_syms)
+                .difference(self.assignment_dict)
+                .difference(self.subex_dict)
+                )
+        else:
+            constant_syms = []
+            not_assigned_syms = []
+            
+        return names, expressions, all_expressions, constant_syms, not_assigned_syms
+
+        
+    
     def _sort_variables(self, vars:list[sympy.Symbol]) -> list[sympy.Symbol]:
         """Sort variables for code generation starting with q, qd, qdd, 
         continuing with variable symbols (like fx in WEE) and ending 
@@ -1052,7 +1191,7 @@ class _AbstractCodeGeneration():
         sorted_syms += symsort(rest)
         return sorted_syms
 
-class SymbolicKinDyn(_AbstractCodeGeneration):
+class SymbolicKinDyn(CodeGenerator_):
     BODY_FIXED = "body_fixed"
     SPATIAL = "spatial"
     
