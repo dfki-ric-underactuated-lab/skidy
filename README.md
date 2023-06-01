@@ -1052,7 +1052,16 @@ Note that this can take some time, especially for non-simplified equations and c
 
 ### 2.3. URDF
 
-URDF files are currently only supported in combination with a python script. But there is a function to generate a template python file, which loads your URDF. In the python file it is necessary to define:
+There are two ways to use URDF files. 
+First, you can convert your URDF file to YAML or JSON using:
+
+```bash
+skidy --convert my_robot.urdf my_robot.yaml
+```
+
+Here, you can add end-effector transforms, and modify whatever you want.
+
+Second, you can load your URDF using python. There is a function to generate a template python file, which loads your URDF. In the python file it is necessary to define:
 
 1. the URDF path
 2. the gravity vector

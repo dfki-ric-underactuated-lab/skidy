@@ -1206,7 +1206,17 @@ Note that this can take some time, especially for non-simplified equations and c
 
 <h3 id="23-urdf">2.3. URDF</h3>
 
-<p>URDF files are currently only supported in combination with a python script. But there is a function to generate a template python file, which loads your URDF. In the python file it is necessary to define:</p>
+<p>There are two ways to use URDF files. 
+First, you can convert your URDF file to YAML or JSON using:</p>
+
+<div class="pdoc-code codehilite">
+<pre><span></span><code>skidy<span class="w"> </span>--convert<span class="w"> </span>my_robot.urdf<span class="w"> </span>my_robot.yaml
+</code></pre>
+</div>
+
+<p>Here, you can add end-effector transforms, and modify whatever you want.</p>
+
+<p>Second, you can load your URDF using python. There is a function to generate a template python file, which loads your URDF. In the python file it is necessary to define:</p>
 
 <ol>
 <li>the URDF path</li>
