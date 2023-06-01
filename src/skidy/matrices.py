@@ -126,7 +126,7 @@ def SE3AdjMatrix(C: MutableDenseMatrix) -> MutableDenseMatrix:
     """Compute (6x6) Adjoint matrix for SE(3)
 
     Args:
-        C ([type]): SE(3) Pose.
+        C (sympy.Matrix): SE(3) Pose.
 
     Returns:
     sympy.Matrix: (6x6) Adjoint matrix
@@ -247,14 +247,14 @@ def inertia_matrix(Ixx: float | Expr=0, Ixy: float | Expr=0,
     return I
 
 def transformation_matrix(r: MutableDenseMatrix=Matrix(Identity(3)), 
-                         t: MutableDenseMatrix=zeros(3, 1)) -> MutableDenseMatrix:
+                         t: MutableDenseMatrix | list=zeros(3, 1)) -> MutableDenseMatrix:
     """Build transformation matrix from rotation and translation.
 
     Args:
         r (sympy.Matrix): 
             SO(3) Rotation matrix (3,3). 
             Defaults to sympy.Matrix(Identity(3))
-        t (sympy.Matrix): 
+        t (sympy.Matrix | list): 
             Translation vector (3,1). Defaults to sympy.zeros(3,1)
 
     Returns:
