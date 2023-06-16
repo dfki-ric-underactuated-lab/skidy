@@ -548,6 +548,9 @@ class CodeGenerator_():
                 [fname] = [n for n in names if n+"(" in c_lines[i]]
                 # find shape of expression
                 cols = all_expressions[fname].shape[1]
+                if cols > 1:
+                    c_lines[i] = c_lines[i].replace("double *out","double **out")
+                    c_header = regex.sub(f"(?<= {fname}\(.*)\*out(?=\))","**out",c_header)
                 i += 1
                 # replace all 1D arrays with 2D arrays for matrices
                 while "}" not in c_lines[i]:
