@@ -643,8 +643,9 @@ def robot_from_urdf(path: str, symbolic: bool=False, cse: bool=False,
             skidy.SymbolicKinDyn object.
     """            
     skd = SymbolicKinDyn()
-    skd.load_from_urdf(path, symbolic, simplify_numbers, 
-                       cse, tolerance, max_denominator)
+    skd.load_from_urdf(path=path, symbolic=symbolic, cse=cse, 
+                       simplify_numbers=simplify_numbers, tolerance=tolerance, 
+                       max_denominator=max_denominator)
     return skd
 
 def skd_to_yaml(skd: SymbolicKinDyn, path: str="robot.yaml", **kwargs) -> None | dict:
@@ -847,9 +848,9 @@ def urdf_to_yaml(urdf_path: str, yaml_path: str="robot.yaml",
                 "revolute", "continuous" and "prismatic".
     """            
     skd = SymbolicKinDyn()
-    skd.load_from_urdf(urdf_path, symbolic, cse, simplify_numbers, 
-                       tolerance, max_denominator)
-    return skd_to_yaml(skd,yaml_path)
+    skd.load_from_urdf(path=urdf_path, symbolic=symbolic, cse=cse, simplify_numbers=simplify_numbers, 
+                       tolerance=tolerance, max_denominator=max_denominator)
+    return skd_to_yaml(skd=skd,path=yaml_path)
 
 def urdf_to_json(urdf_path: str, json_path: str="robot.json", 
                  symbolic: bool=False, cse: bool=False, 
@@ -879,6 +880,7 @@ def urdf_to_json(urdf_path: str, json_path: str="robot.json",
                 "revolute", "continuous" and "prismatic".
     """            
     skd = SymbolicKinDyn()
-    skd.load_from_urdf(urdf_path, symbolic, simplify_numbers, 
-                       cse, tolerance, max_denominator)
-    return skd_to_json(skd,json_path)
+    skd.load_from_urdf(path=urdf_path, symbolic=symbolic, cse=cse, 
+                       simplify_numbers=simplify_numbers, tolerance=tolerance, 
+                       max_denominator=max_denominator)
+    return skd_to_json(skd=skd,path=json_path)
