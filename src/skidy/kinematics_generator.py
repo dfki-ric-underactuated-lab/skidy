@@ -2930,7 +2930,7 @@ class SymbolicKinDyn(CodeGenerator_):
         # find parent link names and search for fixed joints
         for name in link_names:
             for joint in robot.joints:
-                if joint.child == name:
+                if joint.child == name and joint.parent in link_names:
                     parent_names.append(joint.parent)
                     body_index.append(None) # specify later
                     if joint.joint_type == "fixed":
@@ -2942,7 +2942,10 @@ class SymbolicKinDyn(CodeGenerator_):
                 parent_names.append(None)
                 connection_type.append(None)
                 body_index.append(0)
-
+        print(link_names)
+        print(parent_names)
+        print(connection_type)
+        
         # generate body indices concatenating fixed bodies
         while None in body_index:
             i1 = body_index.index(None) # i of current link
@@ -2954,7 +2957,7 @@ class SymbolicKinDyn(CodeGenerator_):
                 body_index[i1] = -1
                 continue
             i2 = link_names.index(parent_names[i1]) # i of parent link
-            while body_index[i2] == -1: # find forst non fixed parent
+            while body_index[i2] == -1: # find first non fixed parent
                 i2 = link_names.index(parent_names[i2])
             index = body_index[i2]+1 # body index
             while index in body_index: # find first unused index
