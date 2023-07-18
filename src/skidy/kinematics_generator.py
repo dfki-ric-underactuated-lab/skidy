@@ -2942,9 +2942,6 @@ class SymbolicKinDyn(CodeGenerator_):
                 parent_names.append(None)
                 connection_type.append(None)
                 body_index.append(0)
-        print(link_names)
-        print(parent_names)
-        print(connection_type)
         
         # generate body indices concatenating fixed bodies
         while None in body_index:
