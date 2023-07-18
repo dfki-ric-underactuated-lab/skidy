@@ -847,8 +847,8 @@ def urdf_to_yaml(urdf_path: str, yaml_path: str="robot.yaml",
                 "revolute", "continuous" and "prismatic".
     """            
     skd = SymbolicKinDyn()
-    skd.load_from_urdf(urdf_path, symbolic, simplify_numbers, 
-                       cse, tolerance, max_denominator)
+    skd.load_from_urdf(urdf_path, symbolic, cse, simplify_numbers, 
+                       tolerance, max_denominator)
     return skd_to_yaml(skd,yaml_path)
 
 def urdf_to_json(urdf_path: str, json_path: str="robot.json", 
