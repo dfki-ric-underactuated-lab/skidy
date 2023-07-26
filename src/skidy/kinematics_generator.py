@@ -587,7 +587,7 @@ class CodeGenerator_():
         else: # add subexpressions
             cpp.append(f"    : {assignments} " + "{\n")
             for i in sorted([str(j) for j in self.subex_dict], key=lambda x: int(regex.findall("(?<=sub)\d*",x)[0])):
-                cpp.append(f"    {i}_ = {replace_const_syms(cxxcode(self.subex_dict[symbols(i)]))}")
+                cpp.append(f"    {i}_ = {replace_const_syms(cxxcode(self.subex_dict[symbols(i)]))};\n")
             cpp.append("}\n\n")
         
         # member functions
