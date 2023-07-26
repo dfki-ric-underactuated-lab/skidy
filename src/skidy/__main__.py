@@ -19,8 +19,9 @@ def main() -> None:
     parser.add_argument('--version', action='version',
                     version='skidy {version}'.format(version=__version__))
     parser.add_argument("-s", "--simplify", action="store_true", help="simplify expressions")
-    parser.add_argument("-c", "--cse", action="store_true", help="use common subexpression elimination to shorten expressions")
+    parser.add_argument("--cse", action="store_true", help="use common subexpression elimination to shorten expressions")
     parser.add_argument("-p", "--python", action="store_true", help="generate python code")
+    parser.add_argument("-c","--cpp", action="store_true", help="generate C++ code")
     parser.add_argument("-C","--C", action="store_true", help="generate C code")
     parser.add_argument("-m","--matlab", action="store_true", help="generate Matlab/Octave code")
     parser.add_argument("-j","--julia", action="store_true", help="generate julia code")
@@ -104,6 +105,7 @@ def main() -> None:
         
         if (not args.python 
             and not args.C 
+            and not args.cpp
             and not args.matlab 
             and not args.julia 
             and not args.latex 
@@ -137,6 +139,7 @@ def main() -> None:
         
         if (args.python 
             or args.C 
+            or args.cpp
             or args.matlab 
             or args.julia 
             or args.latex 
@@ -151,6 +154,7 @@ def main() -> None:
     
             skd.generate_code(python=args.python, 
                               C=args.C, 
+                              cpp=args.cpp,
                               Matlab=args.matlab, 
                               cython=args.cython, 
                               julia=args.julia, 

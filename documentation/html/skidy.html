@@ -66,6 +66,8 @@ skidy    </h1>
                         <div class="docstring"><h1 id="skidy-symbolic-kinematics-and-dynamics-generator">skidy - symbolic kinematics and dynamics generator</h1>
 
 <ul>
+<li><a href="#skidy---symbolic-kinematics-and-dynamics-generator">skidy - symbolic kinematics and dynamics generator</a>
+<ul>
 <li><a href="#1-installation">1. Installation</a>
 <ul>
 <li><a href="#install-package-from-source">Install package from source</a></li>
@@ -84,6 +86,7 @@ skidy    </h1>
 <li><a href="#3-unit-testing">3. Unit testing</a></li>
 <li><a href="#4-benchmarking">4. Benchmarking</a></li>
 <li><a href="#5-license">5. License</a></li>
+</ul></li>
 </ul>
 
 <p>Symbolic kinematics and dynamics model generation using Equations of Motion in closed form.</p>
@@ -649,7 +652,7 @@ If the robot has more than one end-effector, one wrench per end_effector has to 
 </code></pre>
 </div>
 
-<p>In the options you have to specify what kind of code (python <code>-p</code>, Matlab <code>-m</code>, C <code>-C</code>, julia <code>-j</code>, cython <code>--cython</code>, latex <code>-l</code>) you'd like to generate and whether the equations should be simplified <code>-s</code>.</p>
+<p>In the options you have to specify what kind of code (python <code>-p</code>, Matlab <code>-m</code>, C++ <code>-c</code>, C <code>-C</code>, julia <code>-j</code>, cython <code>--cython</code>, latex <code>-l</code>) you'd like to generate and whether the equations should be simplified <code>-s</code>.</p>
 
 <p>Use</p>
 
@@ -752,7 +755,7 @@ To generate your robot template use</p>
 <span class="n">skd</span><span class="o">.</span><span class="n">closed_form_inv_dyn_body_fixed</span><span class="p">(</span><span class="n">q</span><span class="p">,</span> <span class="n">qd</span><span class="p">,</span> <span class="n">q2d</span><span class="p">,</span> <span class="n">WEE</span><span class="o">=</span><span class="n">WEE</span><span class="p">,</span> <span class="n">simplify</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 
 <span class="c1"># Generate Code</span>
-<span class="n">skd</span><span class="o">.</span><span class="n">generate_code</span><span class="p">(</span><span class="n">python</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">C</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">Matlab</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">latex</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+<span class="n">skd</span><span class="o">.</span><span class="n">generate_code</span><span class="p">(</span><span class="n">python</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">cpp</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">C</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">Matlab</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">latex</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
                  <span class="n">folder</span><span class="o">=</span><span class="s2">&quot;./generated_code&quot;</span><span class="p">,</span> <span class="n">use_global_vars</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
                  <span class="n">name</span><span class="o">=</span><span class="s2">&quot;plant&quot;</span><span class="p">,</span> <span class="n">project</span><span class="o">=</span><span class="s2">&quot;Project&quot;</span><span class="p">)</span>
 </code></pre>
@@ -1195,13 +1198,13 @@ With the parameter <code>pointmass=True</code> the resulting inertia matrix look
 
 <div class="pdoc-code codehilite">
 <pre><span></span><code><span class="c1"># Generate Code</span>
-<span class="n">skd</span><span class="o">.</span><span class="n">generate_code</span><span class="p">(</span><span class="n">python</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">C</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">Matlab</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">latex</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+<span class="n">skd</span><span class="o">.</span><span class="n">generate_code</span><span class="p">(</span><span class="n">python</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">cpp</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">C</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">Matlab</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">latex</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
                  <span class="n">folder</span><span class="o">=</span><span class="s2">&quot;./generated_code&quot;</span><span class="p">,</span> <span class="n">use_global_vars</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
                  <span class="n">name</span><span class="o">=</span><span class="s2">&quot;plant&quot;</span><span class="p">,</span> <span class="n">project</span><span class="o">=</span><span class="s2">&quot;Project&quot;</span><span class="p">)</span>
 </code></pre>
 </div>
 
-<p>Generate Python, Matlab, C (C99), Julia, Cython and/or LaTeX code from the generated equations.
+<p>Generate Python, Matlab, C++, C (C99), Julia, Cython and/or LaTeX code from the generated equations.
 Note that this can take some time, especially for non-simplified equations and complex robots.</p>
 
 <h3 id="23-urdf">2.3. URDF</h3>
@@ -1274,7 +1277,7 @@ First, you can convert your URDF file to YAML or JSON using:</p>
 <span class="n">skd</span><span class="o">.</span><span class="n">closed_form_inv_dyn_body_fixed</span><span class="p">(</span><span class="n">q</span><span class="p">,</span> <span class="n">qd</span><span class="p">,</span> <span class="n">q2d</span><span class="p">,</span> <span class="n">WEE</span><span class="o">=</span><span class="n">WEE</span><span class="p">,</span> <span class="n">simplify</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 
 <span class="c1"># Generate Code</span>
-<span class="n">skd</span><span class="o">.</span><span class="n">generate_code</span><span class="p">(</span><span class="n">python</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">C</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">Matlab</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">latex</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+<span class="n">skd</span><span class="o">.</span><span class="n">generate_code</span><span class="p">(</span><span class="n">python</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">cpp</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">C</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">Matlab</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">latex</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
                  <span class="n">folder</span><span class="o">=</span><span class="s2">&quot;./generated_code&quot;</span><span class="p">,</span> <span class="n">use_global_vars</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
                  <span class="n">name</span><span class="o">=</span><span class="s2">&quot;plant&quot;</span><span class="p">,</span> <span class="n">project</span><span class="o">=</span><span class="s2">&quot;Project&quot;</span><span class="p">)</span>
 </code></pre>
@@ -1419,13 +1422,13 @@ Additionally, we import several helper functions for defining the matrices which
 
 <div class="pdoc-code codehilite">
 <pre><span></span><code><span class="c1"># Generate Code</span>
-<span class="n">skd</span><span class="o">.</span><span class="n">generate_code</span><span class="p">(</span><span class="n">python</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">C</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">Matlab</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">latex</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+<span class="n">skd</span><span class="o">.</span><span class="n">generate_code</span><span class="p">(</span><span class="n">python</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">cpp</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">C</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">Matlab</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">latex</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
                  <span class="n">folder</span><span class="o">=</span><span class="s2">&quot;./generated_code&quot;</span><span class="p">,</span> <span class="n">use_global_vars</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
                  <span class="n">name</span><span class="o">=</span><span class="s2">&quot;plant&quot;</span><span class="p">,</span> <span class="n">project</span><span class="o">=</span><span class="s2">&quot;Project&quot;</span><span class="p">)</span>
 </code></pre>
 </div>
 
-<p>Generate Python, Matlab, C (C99), Julia, Cython and/or LaTeX code from the generated equations.
+<p>Generate Python, Matlab, C++, C (C99), Julia, Cython and/or LaTeX code from the generated equations.
 Note that this can take time, especially for non-simplified equations and complex robots.</p>
 
 <h2 id="3-unit-testing">3. Unit testing</h2>

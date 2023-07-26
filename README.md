@@ -1,17 +1,18 @@
 # skidy - symbolic kinematics and dynamics generator
 
-- [1. Installation](#1-installation)
-  - [Install package from source](#install-package-from-source)
-  - [Dependencies](#dependencies)
-- [2. Usage](#2-usage)
-  - [2.1. YAML and JSON](#21-yaml-and-json)
-    - [2.1.1. Create robot model as YAML file](#211-create-robot-model-as-yaml-file)
-    - [2.1.2. Code generation using YAML](#212-code-generation-using-yaml)
-  - [2.2. Python](#22-python)
-  - [2.3. URDF](#23-urdf)
-- [3. Unit testing](#3-unit-testing)
-- [4. Benchmarking](#4-benchmarking)
-- [5. License](#5-license)
+- [skidy - symbolic kinematics and dynamics generator](#skidy---symbolic-kinematics-and-dynamics-generator)
+  - [1. Installation](#1-installation)
+    - [Install package from source](#install-package-from-source)
+    - [Dependencies](#dependencies)
+  - [2. Usage](#2-usage)
+    - [2.1. YAML and JSON](#21-yaml-and-json)
+      - [2.1.1. Create robot model as YAML file](#211-create-robot-model-as-yaml-file)
+      - [2.1.2. Code generation using YAML](#212-code-generation-using-yaml)
+    - [2.2. Python](#22-python)
+    - [2.3. URDF](#23-urdf)
+  - [3. Unit testing](#3-unit-testing)
+  - [4. Benchmarking](#4-benchmarking)
+  - [5. License](#5-license)
 
 Symbolic kinematics and dynamics model generation using Equations of Motion in closed form.
 
@@ -538,7 +539,7 @@ To start the code generation process use:
 python3 -m skidy [options] path/to/robot.yaml
 ```
 
-In the options you have to specify what kind of code (python `-p`, Matlab `-m`, C `-C`, julia `-j`, cython `--cython`, latex `-l`) you'd like to generate and whether the equations should be simplified `-s`.
+In the options you have to specify what kind of code (python `-p`, Matlab `-m`, C++ `-c`, C `-C`, julia `-j`, cython `--cython`, latex `-l`) you'd like to generate and whether the equations should be simplified `-s`.
 
 Use
 
@@ -639,7 +640,7 @@ skd.closed_form_kinematics_body_fixed(q, qd, q2d, simplify=True)
 skd.closed_form_inv_dyn_body_fixed(q, qd, q2d, WEE=WEE, simplify=True)
 
 # Generate Code
-skd.generate_code(python=True, C=False, Matlab=False, latex=False,
+skd.generate_code(python=True, cpp=False, C=False, Matlab=False, latex=False,
                  folder="./generated_code", use_global_vars=True,
                  name="plant", project="Project")
 ```
@@ -1042,12 +1043,12 @@ skd.closed_form_inv_dyn_body_fixed(q, qd, q2d, q3d, q4d, WEE, WDEE, W2DEE, simpl
 
 ```python
 # Generate Code
-skd.generate_code(python=True, C=False, Matlab=False, latex=False,
+skd.generate_code(python=True, cpp=False, C=False, Matlab=False, latex=False,
                  folder="./generated_code", use_global_vars=True,
                  name="plant", project="Project")
 ```
 
-Generate Python, Matlab, C (C99), Julia, Cython and/or LaTeX code from the generated equations.
+Generate Python, Matlab, C++, C (C99), Julia, Cython and/or LaTeX code from the generated equations.
 Note that this can take some time, especially for non-simplified equations and complex robots.
 
 ### 2.3. URDF
@@ -1116,7 +1117,7 @@ skd.closed_form_kinematics_body_fixed(q, qd, q2d, simplify=True)
 skd.closed_form_inv_dyn_body_fixed(q, qd, q2d, WEE=WEE, simplify=True)
 
 # Generate Code
-skd.generate_code(python=True, C=False, Matlab=False, latex=False,
+skd.generate_code(python=True, cpp=False, C=False, Matlab=False, latex=False,
                  folder="./generated_code", use_global_vars=True,
                  name="plant", project="Project")
 ```
@@ -1244,12 +1245,12 @@ Generate forward kinematics and inverse dynamics equations. See chapter [Python]
 
 ```python
 # Generate Code
-skd.generate_code(python=True, C=False, Matlab=False, latex=False,
+skd.generate_code(python=True, cpp=False, C=False, Matlab=False, latex=False,
                  folder="./generated_code", use_global_vars=True,
                  name="plant", project="Project")
 ```
 
-Generate Python, Matlab, C (C99), Julia, Cython and/or LaTeX code from the generated equations.
+Generate Python, Matlab, C++, C (C99), Julia, Cython and/or LaTeX code from the generated equations.
 Note that this can take time, especially for non-simplified equations and complex robots.
 
 ## 3. Unit testing

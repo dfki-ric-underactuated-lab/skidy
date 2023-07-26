@@ -15,9 +15,9 @@ import regex
 import sympy
 import sympy.physics.mechanics
 from pylatex import Command, Document, NoEscape, Section
-from sympy import (Identity, Matrix, MutableDenseMatrix, cancel, ccode, factor,
-                   julia_code, lambdify, nsimplify, octave_code, pi, powsimp,
-                   symbols, zeros)
+from sympy import (Identity, Matrix, MutableDenseMatrix, cancel, ccode, cxxcode, 
+                   factor, julia_code, lambdify, nsimplify, octave_code, pi, 
+                   powsimp, symbols, zeros)
 from sympy.printing.latex import LatexPrinter
 from sympy.printing.numpy import NumPyPrinter
 from sympy.simplify.cse_main import numbered_symbols
@@ -150,7 +150,7 @@ class CodeGenerator_():
                         if v is not None}
             return filtered
         return all_expressions
-
+    
     def generate_python_code(self, name: str="plant", folder: str="./python", 
                              cache: bool=False, use_global_vars: bool = True):
         """Generate python code from generated expressions. 
@@ -494,8 +494,134 @@ class CodeGenerator_():
             f.write(su)
         
         print("Done")
+ 
+    def generate_cpp_code(self, name: str = "plant", folder: str = "./cpp") -> None:
+        """Generate C++ code from generated expressions. 
+        Needs 'closed_form_inv_dyn_body_fixed' and/or 
+        'closed_form_kinematics_body_fixed' to run first.
 
+
+        Args:
+            name (str, optional): 
+                Name of class and file. 
+                Defaults to "plant".
+            folder (str, optional): 
+                Folder where to save code. 
+                Defaults to "./cpp".
+        """
         
+        # function to modify generated c++ code
+        def replace_const_syms(s: str) -> str:
+            # add underscore after constant_syms
+            # s = regex.sub(f"(?<=\W|^)(?={'|'.join([str(i) for i in constant_syms])}(\W|\Z))","_",s)
+            s = regex.sub(f"(?<=(\W|^)({'|'.join([str(i) for i in constant_syms])})(?=\W|\Z))","_",s)
+            # replace integer with floats
+            s = regex.sub("(?<=(\W|^)(?<!\.)\d+)(?!\.)(?=\W|\Z)",".0", s) 
+            return s
+        
+        names, expressions, _, constant_syms, not_assigned_syms = self._prepare_code_generation(folder, True)
+        
+        # create folder
+        if not os.path.exists(folder):
+            os.mkdir(folder)
+
+        cpp = []
+        
+        
+        header_name = f"{name}.hpp"
+        # create header
+        hpp = []
+        # inclued
+        hpp.append("#pragma once\n\n")
+        hpp.append("#include <Eigen/Dense>\n\n")
+        
+        # class
+        hpp.append(f"class {name} "+"{\n")
+        hpp.append("public:\n")
+        args = ", ".join(["double " + str(i) 
+                             for i in not_assigned_syms] 
+                         + ["double " + str(i) + " = " + str(self.assignment_dict[i]) 
+                             for i in self.assignment_dict])
+        hpp.append(f"    {name}({args});\n\n") # constructor
+        
+        # expressions
+        for i in range(len(expressions)):
+            # symbols for args
+            var_syms = self._sort_variables(self.var_syms.intersection(
+                expressions[i].free_symbols))
+            # symbols for kwargs
+            optional_var_syms = self._sort_variables(self.optional_var_syms.intersection(
+                expressions[i].free_symbols))
+            
+            r, c = expressions[i].shape
+            # args 
+            symstr = ', '.join([f"double {str(s)}" for s in var_syms]+[f"double {str(s)} = 0.0" for s in optional_var_syms])
+            hpp.append(f"    Eigen::Matrix<double, {r}, {c}> {names[i]}({symstr}) const;\n")
+        # private vars -> constant syms
+        hpp.append("\nprivate:\n")
+        for i in not_assigned_syms:
+            hpp.append(f"    double {str(i)}_;\n") # vars
+        for i in self.assignment_dict:
+            hpp.append(f"    double {str(i)}_;\n") # vars
+        for i in self.subex_dict:
+            hpp.append(f"    double {str(i)}_;\n") # vars
+        hpp.append("};\n")
+        
+        # create cpp
+        # includes
+        cpp.append(f'#include "{header_name}"\n')
+        cpp.append("#include <cmath>\n\n")
+        
+        # constructor
+        args = ", ".join(["double " + str(i) 
+                             for i in not_assigned_syms] 
+                         + ["double " + str(i) 
+                             for i in self.assignment_dict])
+        cpp.append(f"{name}::{name}({args})\n") # constructor
+        assignments = ", ".join([f"{str(i)}_({str(i)})" 
+                                     for i in not_assigned_syms] 
+                                 + [f"{str(i)}_({str(i)})" 
+                                     for i in self.assignment_dict])
+        if not self.subex_dict:
+            cpp.append(f"    : {assignments} {{}}\n\n")
+        else: # add subexpressions
+            cpp.append(f"    : {assignments} " + "{\n")
+            for i in sorted([str(j) for j in self.subex_dict], key=lambda x: int(regex.findall("(?<=sub)\d*",x)[0])):
+                cpp.append(f"    {i}_ = {replace_const_syms(cxxcode(self.subex_dict[symbols(i)]))}")
+            cpp.append("}\n\n")
+        
+        # member functions
+        for i in range(len(expressions)):
+            # symbols for args
+            var_syms = self._sort_variables(self.var_syms.intersection(
+                expressions[i].free_symbols))
+            # symbols for kwargs
+            optional_var_syms = self._sort_variables(self.optional_var_syms.intersection(
+                expressions[i].free_symbols))
+            
+            r, c = expressions[i].shape
+            symstr = ', '.join([f"double {str(s)}" for s in var_syms+optional_var_syms])
+            cpp.append(f"Eigen::Matrix<double, {r}, {c}> {name}::{names[i]}({symstr}) const "+"{\n")
+            cpp.append(f"    Eigen::Matrix<double, {r}, {c}> {names[i]};\n")
+            indent = " " * (len(names[i]) + 8)
+            for j in range(r):
+                exp = ", ".join([replace_const_syms(cxxcode(expressions[i][j,k])) for k in range(c)])
+                if not j: # only first item
+                    cpp.append(f"    {names[i]} << {exp},\n")
+                elif j < r-1:
+                    cpp.append(f"{indent}{exp},\n")
+                else: # last row
+                    cpp.append(f"{indent}{exp};\n")
+            cpp.append(f"    return {names[i]};\n")
+            cpp.append("}\n\n")
+
+        # write hpp file
+        with open(os.path.join(folder, name + ".hpp"), "w+") as f:
+            f.writelines(hpp)
+        # write cpp file
+        with open(os.path.join(folder, name + ".cpp"), "w+") as f:
+            f.writelines(cpp)
+    
     def generate_C_code(self, name: str="plant", folder: str="./C", 
                         project: str="project", use_global_vars: bool = True):
         """Generate C code from generated expressions. 
@@ -907,7 +1033,7 @@ class CodeGenerator_():
         doc.generate_pdf(os.path.join(folder, name), clean_tex=False)
 
     
-    def generate_code(self, python: bool=False, C: bool=False, Matlab: bool=False, 
+    def generate_code(self, python: bool=False, cpp: bool=False, C: bool=False, Matlab: bool=False, 
                       cython: bool=False, julia: bool=False, latex: bool=False, 
                       cache: bool=False, landscape: bool=False,
                       folder: str="./generated_code", use_global_vars: bool=True, 
@@ -921,6 +1047,8 @@ class CodeGenerator_():
         Args:
             python (bool, optional): 
                 Generate Python code. Defaults to False.
+            cpp (bool, optional): 
+                Generate C++ code. Defaults to False.
             C (bool, optional): 
                 Generate C99 code. Defaults to False.
             Matlab (bool, optional): 
@@ -960,6 +1088,8 @@ class CodeGenerator_():
             self.generate_cython_code(name, os.path.join(folder,"cython"),cache, use_global_vars)
         if C:
             self.generate_C_code(name, os.path.join(folder,"C"), project, use_global_vars)
+        if cpp:
+            self.generate_cpp_code(name, os.path.join(folder,"cpp"))
         if julia:
             self.generate_julia_code(name, os.path.join(folder,"julia"), use_global_vars)
         if Matlab:
