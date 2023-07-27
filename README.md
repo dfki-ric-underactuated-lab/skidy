@@ -541,7 +541,7 @@ assignments:
   g: 9.81
 ```
 
-Under the optional `assignments` keyword you can create an dictionary which maps the symbolic values to numeric values. These numeric values will be used as default values for the parameters in the generated code.
+Under the optional `assignments` keyword you can create a dictionary which maps the symbolic values to numeric values. These numeric values will be used as default values for the parameters in the generated code.
 #### 2.1.2. Code generation using YAML
 
 To start the code generation process use:
