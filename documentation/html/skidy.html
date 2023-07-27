@@ -284,7 +284,7 @@ To generate your robot template use</p>
 
 <span class="nt">ee_parent</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2</span>
 
-<span class="nt">gravity</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">0</span><span class="p p-Indicator">,</span><span class="nv">0</span><span class="p p-Indicator">,</span><span class="nv">g</span><span class="p p-Indicator">]</span>
+<span class="nt">gravity</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">0</span><span class="p p-Indicator">,</span><span class="nv">0</span><span class="p p-Indicator">,</span><span class="nv">-g</span><span class="p p-Indicator">]</span>
 
 <span class="nt">representation</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">spatial</span>
 
@@ -338,6 +338,9 @@ To generate your robot template use</p>
 <span class="nt">qd</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">dq1</span><span class="p p-Indicator">,</span><span class="nv">dq2</span><span class="p p-Indicator">]</span>
 <span class="nt">q2d</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">ddq1</span><span class="p p-Indicator">,</span><span class="nv">ddq2</span><span class="p p-Indicator">]</span>
 <span class="nt">WEE</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">0</span><span class="p p-Indicator">,</span><span class="nv">0</span><span class="p p-Indicator">,</span><span class="nv">0</span><span class="p p-Indicator">,</span><span class="nv">0</span><span class="p p-Indicator">,</span><span class="nv">0</span><span class="p p-Indicator">,</span><span class="nv">0</span><span class="p p-Indicator">]</span>
+
+<span class="nt">assignments</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">g</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">9.81</span>
 </code></pre>
 </div>
 
@@ -372,7 +375,7 @@ To generate your robot template use</p>
 <hr />
 
 <div class="pdoc-code codehilite">
-<pre><span></span><code><span class="nt">gravity</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">0</span><span class="p p-Indicator">,</span><span class="nv">0</span><span class="p p-Indicator">,</span><span class="nv">g</span><span class="p p-Indicator">]</span>
+<pre><span></span><code><span class="nt">gravity</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">0</span><span class="p p-Indicator">,</span><span class="nv">0</span><span class="p p-Indicator">,</span><span class="nv">-g</span><span class="p p-Indicator">]</span>
 </code></pre>
 </div>
 
@@ -642,6 +645,16 @@ If the robot has more than one end-effector, one wrench per end_effector has to 
 <span class="nt">W2DEE</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">ddMx</span><span class="p p-Indicator">,</span><span class="nv">ddMy</span><span class="p p-Indicator">,</span><span class="nv">ddMz</span><span class="p p-Indicator">,</span><span class="nv">ddFx</span><span class="p p-Indicator">,</span><span class="nv">ddFy</span><span class="p p-Indicator">,</span><span class="nv">ddFz</span><span class="p p-Indicator">]</span>
 </code></pre>
 </div>
+
+<hr />
+
+<div class="pdoc-code codehilite">
+<pre><span></span><code><span class="nt">assignments</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">q</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">9.81</span>
+</code></pre>
+</div>
+
+<p>Under the optional <code>assignments</code> keyword you can create an dictionary which maps the symbolic values to numeric values. These numeric values will be used as default values for the parameters in the generated code.</p>
 
 <h4 id="212-code-generation-using-yaml">2.1.2. Code generation using YAML</h4>
 

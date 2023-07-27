@@ -45,3 +45,10 @@ q: [q1,q2]
 qd: [dq1,dq2]
 q2d: [ddq1,ddq2]
 WEE: [0,0,0,0,0,0]
+
+assignments:
+  g: 9.81
+  L1: 0.2
+  L2: 0.2
+  m1: 0.5
+  m2: 0.3

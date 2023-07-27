@@ -188,7 +188,7 @@ support:
 
 ee_parent: 2
 
-gravity: [0,0,g]
+gravity: [0,0,-g]
 
 representation: spatial
 
@@ -243,6 +243,9 @@ qd: [dq1,dq2]
 q2d: [ddq1,ddq2]
 WEE: [0,0,0,0,0,0]
 
+assignments:
+  g: 9.81
+
 ```
 
 The code explained:
@@ -273,7 +276,7 @@ The parameters are generated to represent a serial robot by default. Modify para
 ---
 
 ```yaml
-gravity: [0,0,g]
+gravity: [0,0,-g]
 ```
 
 Gravity vector.
@@ -531,6 +534,14 @@ WDEE: [dMx,dMy,dMz,dFx,dFy,dFz]
 W2DEE: [ddMx,ddMy,ddMz,ddFx,ddFy,ddFz]
 ```
 
+___
+
+```yaml
+assignments:
+  g: 9.81
+```
+
+Under the optional `assignments` keyword you can create an dictionary which maps the symbolic values to numeric values. These numeric values will be used as default values for the parameters in the generated code.
 #### 2.1.2. Code generation using YAML
 
 To start the code generation process use:

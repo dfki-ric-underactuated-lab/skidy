@@ -1348,7 +1348,10 @@ class CodeGenerator_():
         else:
             constant_syms = []
             not_assigned_syms = []
-            
+        
+        # clean assingment dict
+        self.assignment_dict = {key:value for key, value in self.assignment_dict.items() if key in constant_syms}
+    
         return names, expressions, all_expressions, constant_syms, not_assigned_syms
 
         
@@ -1442,6 +1445,7 @@ class SymbolicKinDyn(CodeGenerator_):
                  WEE: MutableDenseMatrix | list[MutableDenseMatrix]=zeros(6, 1),
                  WDEE: MutableDenseMatrix | list[MutableDenseMatrix]=zeros(6, 1),
                  W2DEE: MutableDenseMatrix | list[MutableDenseMatrix]=zeros(6, 1),
+                 assignments: dict = {}, 
                  **kwargs) -> None:
         """SymbolicKinDyn
         Symbolic tool to compute equations of motion of serial chain 
@@ -1525,7 +1529,10 @@ class SymbolicKinDyn(CodeGenerator_):
                 If there is more than one end-effector, you can use a 
                 list containing all wrenches instead.
                 Defaults to zeros(6, 1).
-            
+            assignments (dict, optional): 
+                dict which maps sympy.symbols to numeric values. The 
+                assignments are used as default values in the generated
+                code. Defaults to {}.
         """
         super().__init__()
         self.n = None  # degrees of freedom
@@ -1590,6 +1597,9 @@ class SymbolicKinDyn(CodeGenerator_):
         self.WEE = WEE
         self.WDEE = WDEE
         self.W2DEE = W2DEE
+        
+        # assignments:
+        self.assignment_dict.update(assignments)
 
         
     @property

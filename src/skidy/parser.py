@@ -260,6 +260,10 @@ def dict_parser(d: dict) -> SymbolicKinDyn:
             else:
                 raise ValueError("Unable to process mass_inertia.")
     
+    if "assignments" in d:
+        if type(d["assignments"]) is dict:
+            assignments = {parse_expr(i): d["assignments"][i] for i in d["assignments"] }
+    
     q = Matrix(d["q"]) if "q" in d else None        
     qd = Matrix(d["qd"]) if "qd" in d else None        
     q2d = Matrix(d["q2d"]) if "q2d" in d else None        
@@ -297,7 +301,8 @@ def dict_parser(d: dict) -> SymbolicKinDyn:
                          Mb=Mb, parent=parent, support=support, 
                          child=child, ee_parent=ee_parent,
                          q=q,qd=qd,q2d=q2d,q3d=q3d,q4d=q4d,
-                         WEE=WEE, WDEE=WDEE, W2DEE=W2DEE)
+                         WEE=WEE, WDEE=WDEE, W2DEE=W2DEE, 
+                         assignments=assignments)
     return skd
 
 def generate_template_yaml(path: str="edit_me.yaml", structure: Optional[str]=None, 
@@ -405,7 +410,9 @@ def generate_template_yaml(path: str="edit_me.yaml", structure: Optional[str]=No
     y.append(f"q2d: [{','.join(['ddq'+str(i+1) for i in range(dof)])}]")
     y.append("WEE: [0,0,0,0,0,0]")
     y.append("")
-    
+    y.append("assignments:")
+    y.append("  g: 9.81")
+    y.append("")
     if "return_dict" in kwargs and kwargs["return_dict"]:
         return yaml.load("\n".join(y))
         
