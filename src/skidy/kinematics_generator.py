@@ -564,9 +564,11 @@ class CodeGenerator_():
             r, c = expressions[i].shape
             # args 
             symstr = ', '.join([f"double {str(s)}" for s in var_syms]+[f"double {str(s)} = 0.0" for s in optional_var_syms])
+            hpp.append(f"    void {names[i]}(Eigen::Matrix<double, {r}, {c}>& {names[i]}{', ' if symstr else ''}{symstr}) const;\n")
+            # overload without ref
             hpp.append(f"    Eigen::Matrix<double, {r}, {c}> {names[i]}({symstr}) const;\n")
             
-            # function overloading
+            # function overloading with matrices as args
             if symstr: # only when it has some args 
                 q = ""
                 qd = ""
@@ -587,8 +589,9 @@ class CodeGenerator_():
                     WDEE = f"const Eigen::Matrix<double, {len(self.WDEE)}, 1>& WDEE = Eigen::Matrix<double, {len(self.WDEE)}, 1>::Zero(), " if sym in self.WDEE else WDEE
                     W2DEE = f"const Eigen::Matrix<double, {len(self.W2DEE)}, 1>& W2DEE = Eigen::Matrix<double, {len(self.W2DEE)}, 1>::Zero(), " if sym in self.W2DEE else W2DEE
                 symstr = (q + qd + q2d + q3d + q4d + WEE + WDEE + W2DEE)[:-2]
+                hpp.append(f"    void {names[i]}(Eigen::Matrix<double, {r}, {c}>& {names[i]}, {symstr}) const;\n")
                 hpp.append(f"    Eigen::Matrix<double, {r}, {c}> {names[i]}({symstr}) const;\n")
-
+            hpp.append("\n")
         # private vars -> constant syms
         hpp.append("\nprivate:\n")
         for i in not_assigned_syms:
@@ -633,8 +636,8 @@ class CodeGenerator_():
             
             r, c = expressions[i].shape
             symstr = ', '.join([f"double {str(s)}" for s in var_syms+optional_var_syms])
-            cpp.append(f"Eigen::Matrix<double, {r}, {c}> {name}::{names[i]}({symstr}) const "+"{\n")
-            cpp.append(f"    Eigen::Matrix<double, {r}, {c}> {names[i]};\n")
+            arguments = ', '.join([f"{str(s)}" for s in var_syms+optional_var_syms])
+            cpp.append(f"void {name}::{names[i]}(Eigen::Matrix<double, {r}, {c}>& {names[i]}{', ' if symstr else ''}{symstr}) const"+"{\n")
             indent = " " * (len(names[i]) + 8)
             for j in range(r):
                 exp = ", ".join([replace_const_syms(cxxcode(expressions[i][j,k])) for k in range(c)])
@@ -644,11 +647,17 @@ class CodeGenerator_():
                     cpp.append(f"{indent}{exp},\n")
                 else: # last row
                     cpp.append(f"{indent}{exp};\n")
+            cpp.append("}\n\n")
+            
+            # function overloading without reference
+            cpp.append(f"Eigen::Matrix<double, {r}, {c}> {name}::{names[i]}({symstr}) const "+"{\n")
+            cpp.append(f"    Eigen::Matrix<double, {r}, {c}> {names[i]};\n")
+            cpp.append(f"    {name}::{names[i]}({names[i]}{', ' if arguments else ''}{arguments});\n")
             cpp.append(f"    return {names[i]};\n")
             cpp.append("}\n\n")
             
             
-            # function overloading
+            # function overloading with Matrix inputs
             if symstr: # only when it has some args 
                 q = ""
                 qd = ""
@@ -686,6 +695,12 @@ class CodeGenerator_():
                         W2DEE = f"const Eigen::Matrix<double, {len(self.W2DEE)}, 1>& W2DEE, "
                         assignments += f"W2DEE[{find_row(sym, self.W2DEE)}], "
                 symstr = (q + qd + q2d + q3d + q4d + WEE + WDEE + W2DEE)[:-2]
+                
+                cpp.append(f"void {name}::{names[i]}(Eigen::Matrix<double, {r}, {c}>& {names[i]}, {symstr}) const "+"{\n")
+                cpp.append(f"    {name}::{names[i]}({names[i]}, {assignments[:-2]});\n")
+                cpp.append("}\n\n")
+                
+                
                 cpp.append(f"Eigen::Matrix<double, {r}, {c}> {name}::{names[i]}({symstr}) const "+"{\n")
                 cpp.append(f"    return {name}::{names[i]}({assignments[:-2]});\n")
                 cpp.append("}\n\n")
