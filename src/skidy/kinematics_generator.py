@@ -519,6 +519,14 @@ class CodeGenerator_():
             s = regex.sub("(?<=(\W|^)(?<!\.)\d+)(?!\.)(?=\W|\Z)",".0", s) 
             return s
         
+        # function to find row of symbol in matrix
+        def find_row(sym, mat):
+                for i in range(len(mat)):
+                    if sym == mat[i]: 
+                        return i
+                else:
+                    raise Exception("Symbol not found")
+            
         names, expressions, _, constant_syms, not_assigned_syms = self._prepare_code_generation(folder, True)
         
         # create folder
@@ -557,6 +565,30 @@ class CodeGenerator_():
             # args 
             symstr = ', '.join([f"double {str(s)}" for s in var_syms]+[f"double {str(s)} = 0.0" for s in optional_var_syms])
             hpp.append(f"    Eigen::Matrix<double, {r}, {c}> {names[i]}({symstr}) const;\n")
+            
+            # function overloading
+            if symstr: # only when it has some args 
+                q = ""
+                qd = ""
+                q2d = ""
+                q3d = ""
+                q4d = ""
+                for sym in var_syms:
+                    q = f"const Eigen::Matrix<double, {len(self.q)}, 1>& q, " if sym in self.q else q
+                    qd = f"const Eigen::Matrix<double, {len(self.qd)}, 1>& qd, " if sym in self.qd else qd
+                    q2d = f"const Eigen::Matrix<double, {len(self.q2d)}, 1>& q2d, " if sym in self.q2d else q2d
+                    q3d = f"const Eigen::Matrix<double, {len(self.q3d)}, 1>& q3d, " if self.q3d and sym in self.q3d else q3d
+                    q4d = f"const Eigen::Matrix<double, {len(self.q4d)}, 1>& q4d, " if self.q4d and sym in self.q4d else q4d
+                WEE = ""
+                WDEE = ""
+                W2DEE = ""
+                for sym in optional_var_syms:
+                    WEE = f"const Eigen::Matrix<double, {len(self.WEE)}, 1>& WEE = Eigen::Matrix<double, {len(self.WEE)}, 1>::Zero(), " if sym in self.WEE else WEE
+                    WDEE = f"const Eigen::Matrix<double, {len(self.WDEE)}, 1>& WDEE = Eigen::Matrix<double, {len(self.WDEE)}, 1>::Zero(), " if sym in self.WDEE else WDEE
+                    W2DEE = f"const Eigen::Matrix<double, {len(self.W2DEE)}, 1>& W2DEE = Eigen::Matrix<double, {len(self.W2DEE)}, 1>::Zero(), " if sym in self.W2DEE else W2DEE
+                symstr = (q + qd + q2d + q3d + q4d + WEE + WDEE + W2DEE)[:-2]
+                hpp.append(f"    Eigen::Matrix<double, {r}, {c}> {names[i]}({symstr}) const;\n")
+
         # private vars -> constant syms
         hpp.append("\nprivate:\n")
         for i in not_assigned_syms:
@@ -614,6 +646,50 @@ class CodeGenerator_():
                     cpp.append(f"{indent}{exp};\n")
             cpp.append(f"    return {names[i]};\n")
             cpp.append("}\n\n")
+            
+            
+            # function overloading
+            if symstr: # only when it has some args 
+                q = ""
+                qd = ""
+                q2d = ""
+                q3d = ""
+                q4d = ""
+                assignments = ""
+                for sym in var_syms:
+                    if sym in self.q:
+                        q = f"const Eigen::Matrix<double, {len(self.q)}, 1>& q, "
+                        assignments += f"q[{find_row(sym, self.q)}], "
+                    if sym in self.qd:
+                        qd = f"const Eigen::Matrix<double, {len(self.qd)}, 1>& qd, "
+                        assignments += f"qd[{find_row(sym, self.qd)}], "
+                    if sym in self.q2d:
+                        q2d = f"const Eigen::Matrix<double, {len(self.q2d)}, 1>& q2d, "
+                        assignments += f"q2d[{find_row(sym, self.q2d)}], "
+                    if self.q3d and sym in self.q3d:
+                        q3d = f"const Eigen::Matrix<double, {len(self.q3d)}, 1>& q3d, "
+                        assignments += f"q3d[{find_row(sym, self.q3d)}], "
+                    if self.q4d and sym in self.q4d:
+                        q4d = f"const Eigen::Matrix<double, {len(self.q4d)}, 1>& q4d, "
+                        assignments += f"q4d[{find_row(sym, self.q4d)}], "
+                WEE = ""
+                WDEE = ""
+                W2DEE = ""
+                for sym in optional_var_syms:
+                    if sym in self.WEE:
+                        WEE = f"const Eigen::Matrix<double, {len(self.WEE)}, 1>& WEE, "
+                        assignments += f"WEE[{find_row(sym, self.WEE)}], "
+                    if sym in self.WDEE:
+                        WDEE = f"const Eigen::Matrix<double, {len(self.WDEE)}, 1>& WDEE, "
+                        assignments += f"WDEE[{find_row(sym, self.WDEE)}], "
+                    if sym in self.W2DEE:
+                        W2DEE = f"const Eigen::Matrix<double, {len(self.W2DEE)}, 1>& W2DEE, "
+                        assignments += f"W2DEE[{find_row(sym, self.W2DEE)}], "
+                symstr = (q + qd + q2d + q3d + q4d + WEE + WDEE + W2DEE)[:-2]
+                cpp.append(f"Eigen::Matrix<double, {r}, {c}> {name}::{names[i]}({symstr}) const "+"{\n")
+                cpp.append(f"    return {name}::{names[i]}({assignments[:-2]});\n")
+                cpp.append("}\n\n")
+                
 
         # write hpp file
         with open(os.path.join(folder, name + ".hpp"), "w+") as f:
