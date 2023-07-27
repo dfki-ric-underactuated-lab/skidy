@@ -554,6 +554,8 @@ class CodeGenerator_():
         
         # expressions
         for i in range(len(expressions)):
+            hpp.append(f"    // {names[i]}\n")
+            
             # symbols for args
             var_syms = self._sort_variables(self.var_syms.intersection(
                 expressions[i].free_symbols))
@@ -604,7 +606,8 @@ class CodeGenerator_():
         
         # create cpp
         # includes
-        cpp.append(f'#include "{header_name}"\n')
+        cpp.append(f'#include "{header_name}"\n\n')
+        cpp.append("#include <Eigen/Dense>\n")
         cpp.append("#include <cmath>\n\n")
         
         # constructor
@@ -627,6 +630,7 @@ class CodeGenerator_():
         
         # member functions
         for i in range(len(expressions)):
+            cpp.append(f"// {names[i]}\n")
             # symbols for args
             var_syms = self._sort_variables(self.var_syms.intersection(
                 expressions[i].free_symbols))
