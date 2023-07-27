@@ -260,6 +260,7 @@ def dict_parser(d: dict) -> SymbolicKinDyn:
             else:
                 raise ValueError("Unable to process mass_inertia.")
     
+    assignments = {}
     if "assignments" in d:
         if type(d["assignments"]) is dict:
             assignments = {parse_expr(i): d["assignments"][i] for i in d["assignments"] }
