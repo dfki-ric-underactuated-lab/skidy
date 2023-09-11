@@ -8,6 +8,7 @@ from collections import defaultdict
 from itertools import combinations
 from multiprocessing import Process, Queue
 from typing import Any, Callable, Generator, Optional
+import warnings
 
 import numpy
 import pydot
@@ -28,7 +29,7 @@ from urdf_parser_py.urdf import URDF
 import skidy
 from skidy.matrices import (SE3AdjInvMatrix, SE3AdjMatrix, SE3adMatrix, SE3Exp,
                             SE3Inv, SO3Exp, generalized_vectors,
-                            inertia_matrix, mass_matrix_mixed_data,
+                            inertia_matrix, mass_matrix_mixed_data, mass_matrix_URDF_data,
                             matrix_to_xyz_rpy, xyz_rpy_to_matrix,
                             transformation_matrix, mass_matrix_to_parameter_vector)
 
@@ -1125,7 +1126,10 @@ class CodeGenerator_():
                 # doc.append("\n")
         
         # save tex file and compile pdf
-        doc.generate_pdf(os.path.join(folder, name), clean_tex=False)
+        try:
+            doc.generate_pdf(os.path.join(folder, name), clean_tex=False)
+        except:
+            warnings.warn("Latex document didn't compile successfully.")
 
     
     def generate_code(self, python: bool=False, cpp: bool=False, C: bool=False, Matlab: bool=False, 
@@ -3293,7 +3297,12 @@ class SymbolicKinDyn(CodeGenerator_):
         """        
         # load URDF
         robot = URDF.from_xml_file(path)
-        
+        try:
+            robot.get_root()
+        except AssertionError:
+            raise Exception("Invalid URDF."
+                            "Every link you refer to from a joint needs to be explicitly defined in the robot description. "
+                            'To fix this problem you can add "<link name="Base" /> (Include correct name instead of "Base"!)')
         self.config_representation = self.BODY_FIXED
         self.B = []
         self.X = []
@@ -3431,11 +3440,32 @@ class SymbolicKinDyn(CodeGenerator_):
                 I = inertia_matrix(*I_syms)
                 m = symbols("m_%s" % name)
                 cg = Matrix([*c_syms])
+                for j in range(3):
+                    if inertiaorigin[j,3] == 0:
+                        cg[j] = 0
+                    else:
+                        self.assignment_dict[cg[j]] = inertiaorigin[j,3]
+                    for k in range(j,3):
+                        if inertia[j,k] == 0:
+                            I[j,k] = 0
+                        else:
+                            self.assignment_dict[I[j,k]] = inertia[j,k]
+                # rpy syms for inertia origin
+                inertiaorig_rpy_syms = [*symbols(" ".join([name+"_%s" % s 
+                                                 for s in ["roll", "pitch", "yar"]]))]
+                rpy = zeros(3)
+                for j in range(3):
+                    if link.inertial.origin.rpy[j] != 0:
+                        self.assignment_dict[inertiaorig_rpy_syms[j]] = link.inertial.origin.rpy[j]
+                        rpy[j] = inertiaorig_rpy_syms[j]
+                inertiaorigin = xyz_rpy_to_matrix([*cg, *rpy])
             else:
                 I = Matrix(inertia)
                 m = mass
                 cg = Matrix(inertiaorigin[0:3, 3])
-            M = mass_matrix_mixed_data(m, I, cg)
+            M = mass_matrix_URDF_data(m, I, cg, inertiaorigin[:3,:3])
+            # M = SE3AdjInvMatrix(inertiaorigin).T* M* SE3AdjInvMatrix(inertiaorigin)
+            
             # if link is child of fixed joint
             if name in [x[1] for x in fixed_links]:
                 parent_joint = robot.joint_map[robot.parent_map[name][0]]
@@ -3463,6 +3493,8 @@ class SymbolicKinDyn(CodeGenerator_):
                 continue
             self.Mb.append(M)
             i += 1
+        
+        # number simplification (rounding)
         if simplify_numbers and not symbolic:
             for M in self.Mb:
                 for i in range(6):
@@ -3470,6 +3502,9 @@ class SymbolicKinDyn(CodeGenerator_):
                         M[i, j] = self._nsimplify(
                             M[i, j], [pi], tolerance=tolerance,
                             max_denominator=max_denominator)
+        elif symbolic:
+            for i in range(len(self.Mb)):
+                self.Mb[i] = self.simplify(self.Mb[i])
         if self.ee is None:
             self.ee = [transformation_matrix()]
         if self.gravity_vector is None:

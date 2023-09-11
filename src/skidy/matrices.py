@@ -280,13 +280,38 @@ def mass_matrix_mixed_data(m: float | Expr, Theta: MutableDenseMatrix,
     Returns:
         sympy.Matrix: Mass-inertia matrix (6,6).
     """
-    M = Matrix([[Theta[0, 0], Theta[0, 1], Theta[0, 2], 0, 
-                    (-COM[2])*m, COM[1]*m],
-                [Theta[0, 1], Theta[1, 1], Theta[1, 2],
-                    COM[2]*m, 0, (-COM[0]*m)],
-                [Theta[0, 2], Theta[1, 2], Theta[2, 2],
-                    (-COM[1])*m, COM[0]*m, 0],
-                [0, COM[2]*m, (-COM[1]*m), m, 0, 0],
+    M = Matrix([[Theta[0, 0], Theta[0, 1], Theta[0, 2], 0, (-COM[2])*m, COM[1]*m],
+                [Theta[0, 1], Theta[1, 1], Theta[1, 2], COM[2]*m, 0, (-COM[0])*m],
+                [Theta[0, 2], Theta[1, 2], Theta[2, 2], (-COM[1])*m, COM[0]*m, 0],
+                [0, COM[2]*m, (-COM[1])*m, m, 0, 0],
+                [(-COM[2])*m, 0, COM[0]*m, 0, m, 0],
+                [COM[1]*m, (-COM[0])*m, 0, 0, 0, m]])
+    return M
+
+def mass_matrix_URDF_data(m: float | Expr, Inertia: MutableDenseMatrix, 
+                        COM: MutableDenseMatrix, R: MutableDenseMatrix = Matrix(Identity(3))) -> MutableDenseMatrix:
+    """Build mass-inertia matrix in SE(3) from mass, inertia and 
+    center of mass information, as written in URDF.
+
+    Args:
+        m (float | sympy.Expr): Mass.
+        Inertia (array_like): Inertia (3,3).
+        COM (array_like): Center of mass (3,1).
+        R (array_like): SO3 rotation matrix (3,3). Defaults to Identity.
+
+    Returns:
+        sympy.Matrix: Mass-inertia matrix (6,6).
+    """
+    Inertia = R * Inertia * R.T
+    Inertia -= Matrix([
+            [-m * (COM[1]**2 + COM[2]**2), m * COM[0] * COM[1], m * COM[0] * COM[2]],
+            [m * COM[0] * COM[1], -m * (COM[0]**2 + COM[2]**2), m * COM[1] * COM[2]],
+            [m * COM[0] * COM[2], m * COM[1] * COM[2], -m * (COM[0]**2 + COM[1]**2)]
+        ])
+    M = Matrix([[Inertia[0, 0], Inertia[0, 1], Inertia[0, 2], 0, (-COM[2])*m, COM[1]*m],
+                [Inertia[0, 1], Inertia[1, 1], Inertia[1, 2], COM[2]*m, 0, (-COM[0])*m],
+                [Inertia[0, 2], Inertia[1, 2], Inertia[2, 2], (-COM[1])*m, COM[0]*m, 0],
+                [0, COM[2]*m, (-COM[1])*m, m, 0, 0],
                 [(-COM[2])*m, 0, COM[0]*m, 0, m, 0],
                 [COM[1]*m, (-COM[0])*m, 0, 0, 0, m]])
     return M

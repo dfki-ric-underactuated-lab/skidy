@@ -794,6 +794,12 @@ def skd_to_yaml(skd: SymbolicKinDyn, path: str="robot.yaml", **kwargs) -> None |
 
     y.append("")
     
+    if skd.assignment_dict:
+        y.append("assignments:")
+        for i in skd.assignment_dict:
+            y.append(f"  {i}: {skd.assignment_dict[i]}")
+        y.append("")
+    
     for i in range(len(y)):
         y[i] = y[i].replace("'","")
         # remove trailing zeros

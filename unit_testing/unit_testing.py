@@ -1561,23 +1561,17 @@ class TestURDF(unittest.TestCase):
         gravity = Matrix([0, 0, -9.81])
 
         # end-effector configuration w.r.t. last link body fixed frame in the chain (4x4 SE3 Pose (sympy.Matrix))
-        ee = [transformation_matrix(r=SO3Exp(axis=[0, 0, 1], angle=0), t=[0, 0, 0]),
-            # transformation_matrix(r=SO3Exp(axis=[0, 0, 1], angle=0), t=[0, 0, 0]),
-            # transformation_matrix(r=SO3Exp(axis=[0, 0, 1], angle=0), t=[0, 0, 0]),
-            # transformation_matrix(r=SO3Exp(axis=[0, 0, 1], angle=0), t=[0, 0, 0]),    
-            ]
-        # ee_parent = [3,6,9,12]
-        ee_parent = 3
+        ee = [transformation_matrix(r=SO3Exp(axis=[0, 0, 1], angle=0), t=[0, 0, 0])]
         skd = skidy.SymbolicKinDyn(gravity_vector=gravity,
                             ee=ee,
-                            ee_parent=ee_parent)
+                            )
 
         skd.load_from_urdf(path=path,
                         # symbolify equations? (eg. use Ixx instead of numeric value)
                         symbolic=False,
                         cse=False,  # use common subexpression elimination?
                         # round numbers if close to common fractions like 1/2 etc and replace eg 3.1416 by pi?
-                        simplify_numbers=True,
+                        simplify_numbers=False,
                         tolerance=0.0001,  # tolerance for simplify numbers
                         # define max denominator for simplify numbers to avoid simplification to something like 13/153
                         max_denominator=8,
@@ -1587,15 +1581,15 @@ class TestURDF(unittest.TestCase):
         WEE = zeros(6, 1)
 
         # run Calculations
-        skd.closed_form_kinematics_body_fixed(q, qd, q2d, simplify=True)
-        skd.closed_form_inv_dyn_body_fixed(q, qd, q2d, WEE=WEE, simplify=True)
+        skd.closed_form_kinematics_body_fixed(q, qd, q2d, simplify=False)
+        skd.closed_form_inv_dyn_body_fixed(q, qd, q2d, WEE=WEE, simplify=False)
         
         # save to class
         cls.skd = skd
         cls.path = path
 
     def testFK(self):
-        q = [random.random(), random.random(), random.random()]
+        q = np.array([random.random() for _ in range(self.skd.n)])
         names =  self.chain.get_joint_parameter_names()
         th = {names[i]: q[i] for i in range(3)}
         fk_kp = self.chain.forward_kinematics(th)["link_2"]
@@ -1603,51 +1597,116 @@ class TestURDF(unittest.TestCase):
             skidy.quaternion_to_matrix(fk_kp.rot),
             fk_kp.pos
         )
-        fkin = (self.skd.fkin
-                .subs(self.skd.q[0],q[0])
-                .subs(self.skd.q[1],q[1])
-                .subs(self.skd.q[2],q[2])
-                ).doit()
-                        
+        fkin = self.skd.fkin
+        for i in range(self.skd.n):
+            fkin = fkin.subs(self.skd.q[i], q[i]).doit()
+           
         self.assertTrue(
             np.allclose(np.asarray(fk, dtype=np.double),
                         np.asarray(fkin, dtype=np.double),
-                        atol=0.0001)
+                        atol=0.0000001)
         )
         
     @unittest.skipIf(pinocchio is None, "Skip test as I cannot import pinocchio")
     def testInvDyn(self):
-        q = np.array([random.random(), random.random(), random.random()])
-        dq = np.array([random.random(), random.random(), random.random()])
-        ddq = np.array([random.random(), random.random(), random.random()])
-        # dq = np.zeros(3)
-        # ddq = np.zeros(3)
+        q = np.array([random.random() for _ in range(self.skd.n)])
+        dq = np.array([random.random() for _ in range(self.skd.n)])
+        ddq = np.array([random.random() for _ in range(self.skd.n)])
         
         # setup pinocchio model
         model = pinocchio.buildModelFromUrdf(self.path)
         data = model.createData()
         
         # invDyn
-        idyn = pinocchio.rnea(model,data,q,dq,ddq)
-        Q = (self.skd.Q
-             .subs(self.skd.q[0], q[0])
-             .subs(self.skd.q[1], q[1])
-             .subs(self.skd.q[2], q[2])
-             .subs(self.skd.qd[0], dq[0])
-             .subs(self.skd.qd[1], dq[1])
-             .subs(self.skd.qd[2], dq[2])
-             .subs(self.skd.q2d[0], ddq[0])
-             .subs(self.skd.q2d[1], ddq[1])
-             .subs(self.skd.q2d[2], ddq[2])
-             ).doit()
+        Q = self.skd.Q
+        for i in range(self.skd.n):
+            Q = Q.subs(self.skd.q[i], q[i]).subs(self.skd.qd[i],dq[i]).subs(self.skd.q2d[i], ddq[i]).doit()
+        
+        Q_pin = pinocchio.rnea(model,data,q,dq,ddq)
         
         self.assertTrue(
             np.allclose(
                 np.asarray(Q,dtype=np.double),
-                np.asarray(idyn, dtype=np.double).reshape(np.asarray(Q).shape),
-                atol = 0.01
+                np.asarray(Q_pin, dtype=np.double).reshape(np.asarray(Q).shape),
+                atol = 0.0000001
             )
         )
+    
+    
+    @unittest.skipIf(pinocchio is None, "Skip test as I cannot import pinocchio")
+    def testM(self):
+        q = np.array([random.random() for _ in range(self.skd.n)])
+        
+        # setup pinocchio model
+        model = pinocchio.buildModelFromUrdf(self.path)
+        data = model.createData()
+        
+        M = self.skd.M
+        for i in range(self.skd.n):
+            M = M.subs(self.skd.q[i], q[i]).doit()
+
+        M_pin = pinocchio.crba(model, data, q)
+        
+        self.assertTrue(
+            np.allclose(
+                np.asarray(M,dtype=np.double),
+                np.asarray(M_pin, dtype=np.double).reshape(np.asarray(M).shape),
+                atol = 0.0000001
+            )
+        )
+    
+    @unittest.skipIf(pinocchio is None, "Skip test as I cannot import pinocchio")
+    def testC(self):
+        q = np.array([random.random() for _ in range(self.skd.n)])
+        dq = np.array([random.random() for _ in range(self.skd.n)])
+        # setup pinocchio model
+        model = pinocchio.buildModelFromUrdf(self.path)
+        data = model.createData()
+        
+        C = self.skd.C
+        for i in range(self.skd.n):
+            C = C.subs(self.skd.q[i], q[i]).subs(self.skd.qd[i],dq[i]).doit()
+        C_pin = pinocchio.computeCoriolisMatrix(model, data, q, dq)
+        
+        # self.assertTrue(
+        #     np.allclose(
+        #         np.asarray(C,dtype=np.double),
+        #         np.asarray(C_pin, dtype=np.double).reshape(np.asarray(C).shape),
+        #         atol = 0.0000001
+        #     )
+        # )
+
+        self.assertTrue(
+            np.allclose(
+                np.asarray(C,dtype=np.double)@dq,
+                np.asarray(C_pin, dtype=np.double).reshape(np.asarray(C).shape)@dq,
+                atol = 0.0000001
+            )
+        )
+        
+
+    @unittest.skipIf(pinocchio is None, "Skip test as I cannot import pinocchio")
+    def testG(self):
+        q = np.array([random.random() for _ in range(self.skd.n)])
+        
+        # setup pinocchio model
+        model = pinocchio.buildModelFromUrdf(self.path)
+        data = model.createData()
+        
+        G = self.skd.Qgrav
+        for i in range(self.skd.n):
+            G = G.subs(self.skd.q[i], q[i]).doit()
+
+        G_pin = pinocchio.computeGeneralizedGravity(model, data, q)
+        
+        self.assertTrue(
+            np.allclose(
+                np.asarray(G,dtype=np.double),
+                np.asarray(G_pin, dtype=np.double).reshape(np.asarray(G).shape),
+                atol = 0.0000001
+            )
+        )
+    
 
 class MatlabClass():
     _counter = 0
