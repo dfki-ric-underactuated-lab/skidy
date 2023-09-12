@@ -513,9 +513,10 @@ class CodeGenerator_():
         
         # function to modify generated c++ code
         def replace_const_syms(s: str) -> str:
-            # add underscore after constant_syms
-            # s = regex.sub(f"(?<=\W|^)(?={'|'.join([str(i) for i in constant_syms])}(\W|\Z))","_",s)
-            s = regex.sub(f"(?<=(\W|^)({'|'.join([str(i) for i in constant_syms])})(?=\W|\Z))","_",s)
+            if constant_syms:
+                # add underscore after constant_syms
+                # s = regex.sub(f"(?<=\W|^)(?={'|'.join([str(i) for i in constant_syms])}(\W|\Z))","_",s)
+                s = regex.sub(f"(?<=(\W|^)({'|'.join([str(i) for i in constant_syms])})(?=\W|\Z))","_",s)
             # replace integer with floats
             s = regex.sub("(?<=(\W|^)(?<!\.)\d+)(?!\.)(?=\W|\Z)",".0", s) 
             return s
@@ -3430,42 +3431,47 @@ class SymbolicKinDyn(CodeGenerator_):
                     first_non_fixed += 1
                 i += 1
                 continue
-            inertia = Matrix(link.inertial.inertia.to_matrix())
-            mass = link.inertial.mass
-            inertiaorigin = xyz_rpy_to_matrix(link.inertial.origin.xyz+link.inertial.origin.rpy)
-            if symbolic:
-                I_syms = symbols("Ixx_%s Ixy_%s Ixz_%s Iyy_%s Iyz_%s Izz_%s" % (
-                    name, name, name, name, name, name))
-                c_syms = symbols("cx_%s cy_%s cz_%s" % (name, name, name))
-                I = inertia_matrix(*I_syms)
-                m = symbols("m_%s" % name)
-                cg = Matrix([*c_syms])
-                for j in range(3):
-                    if inertiaorigin[j,3] == 0:
-                        cg[j] = 0
-                    else:
-                        self.assignment_dict[cg[j]] = inertiaorigin[j,3]
-                    for k in range(j,3):
-                        if inertia[j,k] == 0:
-                            I[j,k] = 0
+            try:
+                inertia = Matrix(link.inertial.inertia.to_matrix())
+            except AttributeError:
+                inertia = None
+            if inertia is not None:
+                mass = link.inertial.mass
+                inertiaorigin = xyz_rpy_to_matrix(link.inertial.origin.xyz+link.inertial.origin.rpy)
+                if symbolic:
+                    I_syms = symbols("Ixx_%s Ixy_%s Ixz_%s Iyy_%s Iyz_%s Izz_%s" % (
+                        name, name, name, name, name, name))
+                    c_syms = symbols("cx_%s cy_%s cz_%s" % (name, name, name))
+                    I = inertia_matrix(*I_syms)
+                    m = symbols("m_%s" % name)
+                    cg = Matrix([*c_syms])
+                    for j in range(3):
+                        if inertiaorigin[j,3] == 0:
+                            cg[j] = 0
                         else:
-                            self.assignment_dict[I[j,k]] = inertia[j,k]
-                # rpy syms for inertia origin
-                inertiaorig_rpy_syms = [*symbols(" ".join([name+"_%s" % s 
-                                                 for s in ["roll", "pitch", "yar"]]))]
-                rpy = zeros(3)
-                for j in range(3):
-                    if link.inertial.origin.rpy[j] != 0:
-                        self.assignment_dict[inertiaorig_rpy_syms[j]] = link.inertial.origin.rpy[j]
-                        rpy[j] = inertiaorig_rpy_syms[j]
-                inertiaorigin = xyz_rpy_to_matrix([*cg, *rpy])
-            else:
-                I = Matrix(inertia)
-                m = mass
-                cg = Matrix(inertiaorigin[0:3, 3])
-            M = mass_matrix_URDF_data(m, I, cg, inertiaorigin[:3,:3])
-            # M = SE3AdjInvMatrix(inertiaorigin).T* M* SE3AdjInvMatrix(inertiaorigin)
-            
+                            self.assignment_dict[cg[j]] = inertiaorigin[j,3]
+                        for k in range(j,3):
+                            if inertia[j,k] == 0:
+                                I[j,k] = 0
+                            else:
+                                self.assignment_dict[I[j,k]] = inertia[j,k]
+                    # rpy syms for inertia origin
+                    inertiaorig_rpy_syms = [*symbols(" ".join([name+"_%s" % s 
+                                                    for s in ["roll", "pitch", "yar"]]))]
+                    rpy = zeros(3)
+                    for j in range(3):
+                        if link.inertial.origin.rpy[j] != 0:
+                            self.assignment_dict[inertiaorig_rpy_syms[j]] = link.inertial.origin.rpy[j]
+                            rpy[j] = inertiaorig_rpy_syms[j]
+                    inertiaorigin = xyz_rpy_to_matrix([*cg, *rpy])
+                else:
+                    I = Matrix(inertia)
+                    m = mass
+                    cg = Matrix(inertiaorigin[0:3, 3])
+                M = mass_matrix_URDF_data(m, I, cg, inertiaorigin[:3,:3])
+                # M = SE3AdjInvMatrix(inertiaorigin).T* M* SE3AdjInvMatrix(inertiaorigin)
+            else: 
+                M = zeros(6,6)    
             # if link is child of fixed joint
             if name in [x[1] for x in fixed_links]:
                 parent_joint = robot.joint_map[robot.parent_map[name][0]]
