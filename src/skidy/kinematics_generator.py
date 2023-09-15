@@ -152,8 +152,23 @@ class CodeGenerator_():
             return filtered
         return all_expressions
     
+    def _cse_fun(self, exp: sympy.Expr) -> ([(sympy.Expr, sympy.Expr)],sympy.Expr):
+        """Use common subexpression elimination to optimize generated code (no excluded symbols!).
+        
+        Args:
+            exp (Sympy expression): Expression to shorten using cse.
+
+        Returns:
+            ([(name, subexpression)], new_expression).
+        """
+        # cse expression
+        r, e = sympy.cse([exp], self._individual_numbered_symbols(
+            exclude=self.all_symbols), order="canonical")
+        # add subexpressions to dict
+        return r, e[0]
+    
     def generate_python_code(self, name: str="plant", folder: str="./python", 
-                             cache: bool=False, use_global_vars: bool = True):
+                             cache: bool=False, use_global_vars: bool = True, cse: bool = True):
         """Generate python code from generated expressions. 
         Needs 'closed_form_inv_dyn_body_fixed' and/or 
         'closed_form_kinematics_body_fixed' to run first.
@@ -171,6 +186,8 @@ class CodeGenerator_():
                 code. Defaults to False.
             use_global_vars (bool, optional): 
                 Constant vars are class variables. Defaults to True.
+            cse (bool, optional): 
+                Use common subexpressions to fasten code execution. Defaults to True.
         """
         
         names, expressions, _, constant_syms, not_assigned_syms = self._prepare_code_generation(folder, use_global_vars)
@@ -254,19 +271,69 @@ class CodeGenerator_():
 
             else:
                 s.append("\n    def "+names[i]+"(self) -> numpy.ndarray:")
-            
-            if const_syms: # insert self. in front of const_syms
-                s.append("        "
-                        + names[i] 
-                        + " = " 
-                        + regex.sub(f"(?<=\W|^)(?={'|'.join([str(i) for i in const_syms])}(\W|\Z))",
-                                    "self.",
-                                    p.doprint(expressions[i])))
-            else: 
-                s.append("        "
-                        + names[i] 
-                        + " = " 
-                        + p.doprint(expressions[i]))
+            if cse:
+                r, e = self._cse_fun(expressions[i])
+                if const_syms:
+                    for (sym, ex) in r:
+                        s.append("        "
+                            + str(sym) 
+                            + " = " 
+                            + regex.sub(f"(?<=\W|^)(?={'|'.join([str(i) for i in const_syms])}(\W|\Z))",
+                                        "self.",
+                                        p.doprint(ex)))
+                    if sum([1 for element in e if element == 0]) > -1:
+                        s.append(f"        {names[i]} = np.zeros(({e.shape[0]},{e.shape[1]}), dtype=np.float32)")
+                        for row in range(e.shape[0]):
+                            for col in range(e.shape[1]):
+                                if e[row, col] != 0:
+                                    s.append("        "
+                                            + f"{names[i]}[{row}, {col}]" 
+                                            + " = " 
+                                            + regex.sub(f"(?<=\W|^)(?={'|'.join([str(i) for i in const_syms])}(\W|\Z))",
+                                                        "self.",
+                                                        p.doprint(e[row, col])))
+                    else:
+                        s.append("        "
+                                + names[i] 
+                                + " = " 
+                                + regex.sub(f"(?<=\W|^)(?={'|'.join([str(i) for i in const_syms])}(\W|\Z))",
+                                            "self.",
+                                            p.doprint(e)))
+                else:
+                    for (sym, ex) in r:
+                        s.append("        "
+                                + str(sym) 
+                                + " = " 
+                                + p.doprint(ex))
+                    if sum([1 for element in e if element == 0]) > -1:
+                        s.append(f"        {names[i]} = np.zeros(({e.shape[0]},{e.shape[1]}), dtype=np.float32)")
+                        for row in range(e.shape[0]):
+                            for col in range(e.shape[1]):
+                                if e[row, col] != 0:
+                                    s.append("        "
+                                        + f"{names[i]}[{row}, {col}]" 
+                                        + " = " 
+                                        + p.doprint(e[row,col]))
+                    else:
+                        s.append("        "
+                                 + f"{names[i]}" 
+                                 + " = " 
+                                 + p.doprint(e))
+            else:
+                if const_syms: # insert self. in front of const_syms
+                    s.append("        "
+                            + names[i] 
+                            + " = " 
+                            + regex.sub(f"(?<=\W|^)(?={'|'.join([str(i) for i in const_syms])}(\W|\Z))",
+                                        "self.",
+                                        p.doprint(expressions[i])))
+                else: 
+                    s.append("        "
+                            + names[i] 
+                            + " = " 
+                            + p.doprint(expressions[i]))
+                # replace integer with floats
+                s[-1] = regex.sub("(?<=(\W|^)(?<!(\.|e[+-]))\d+)(?!\.)(?=\W|\Z)",".0", s[-1])             
             s.append("        return " + names[i])
 
         if cache:
@@ -295,7 +362,7 @@ class CodeGenerator_():
         print("Done")
     
     def generate_cython_code(self, name: str="plant", folder: str="./cython", 
-                             cache: bool=False, use_global_vars: bool = True):
+                             cache: bool=False, use_global_vars: bool = True, cse: bool = True):
         """Generate cython code from generated expressions. 
         Needs 'closed_form_inv_dyn_body_fixed' and/or 
         'closed_form_kinematics_body_fixed' to run first.
@@ -313,10 +380,13 @@ class CodeGenerator_():
                 code. Defaults to False.
             use_global_vars (bool, optional): 
                 Constant vars are class variables. Defaults to True.
+            cse (bool, optional): 
+                Use common subexpressions to fasten code execution. Defaults to True.
         """
         
         names, expressions, _, constant_syms, not_assigned_syms = self._prepare_code_generation(folder, use_global_vars)
-        
+        if cse:
+            expressions = list(expressions)
         print("Generate Cython code")
         # create folder
         if not os.path.exists(folder):
@@ -328,6 +398,7 @@ class CodeGenerator_():
         s = ["import numpy"]
         s.append("cimport numpy\n")
         s.append("cimport cython\n")
+        s.append("from libc.math cimport sin, cos\n")
         if cache:
             s.append("from functools import lru_cache\n")
         s.append("")
@@ -340,12 +411,13 @@ class CodeGenerator_():
         s.append("@cython.boundscheck(False)")
         s.append("@cython.wraparound(False)")
         s.append("cdef class "+regex.sub("^\w",lambda x: x.group().upper(),name)+"():")
-        s.append("    cdef public double %s\n"%(
-            ", ".join(
-                [str(not_assigned_syms[i]) 
-                    for i in range(len(not_assigned_syms))] 
-                + [str(i) 
-                    for i in self.assignment_dict])))
+        if not_assigned_syms or self.assignment_dict:
+            s.append("    cdef public double %s\n"%(
+                ", ".join(
+                    [str(not_assigned_syms[i]) 
+                        for i in range(len(not_assigned_syms))] 
+                    + [str(i) 
+                        for i in self.assignment_dict])))
         if self.subex_dict:
             s.append("    cdef double %s\n"%(
                 ", ".join(
@@ -388,7 +460,7 @@ class CodeGenerator_():
                                 reverse=1):
                     modstring = regex.sub(
                         str(j), "self."+str(j), modstring)
-                    modstring = regex.sub("(?<=(\W|^)(?<!\.)\d+)(?!\.)(?=\W|\Z)",".0", modstring) # replace integer with floats
+                    modstring = regex.sub("(?<=(\W|^)(?<!(\.|e[+-]))\d+)(?!\.)(?=\W|\Z)",".0", modstring) # replace integer with floats
                     # remove double self
                     modstring = regex.sub("self.self.", "self.", modstring)
                 s.append("        self."+str(i)+" = " + modstring)
@@ -424,31 +496,46 @@ class CodeGenerator_():
             else:
                 s.append(f"    cpdef numpy.ndarray[double, ndim={len(expressions[i].shape)}] "+names[i]+"(self):")
             
+            if cse:
+                r, expressions[i] = self._cse_fun(expressions[i])
+                for (sym, ex) in r:
+                    if const_syms:
+                        # add self before const_syms
+                        ex_string = regex.sub(f"(?<=\W|^)(?={'|'.join([str(i) for i in const_syms])}(\W|\Z))","self.",p.doprint(ex))
+                    else:
+                        ex_string = p.doprint(ex)
+                    # replace integer with floats
+                    ex_string = regex.sub("(?<=(\W|^)(?<!(\.|e[+-]))\d+)(?!\.)(?=\W|\Z)",".0", ex_string) 
+                            
+                    s.append(f"        cdef double {sym} = {ex_string}") 
+            
             # s.append(f"        cdef double[:,::1] {names[i]} = numpy.empty({expressions[i].shape}, dtype=double)")
-            s.append(f"        cdef numpy.ndarray[double, ndim={len(expressions[i].shape)}] {names[i]} = numpy.empty({expressions[i].shape}, dtype=np.double)")
+            s.append(f"        cdef numpy.ndarray[double, ndim={len(expressions[i].shape)}] {names[i]} = numpy.zeros({expressions[i].shape}, dtype=np.double)")
             for j in range(expressions[i].shape[0]):
                 for k in range(expressions[i].shape[1]):
                     if const_syms:
-                        # add self before const_syms
-                        ex_string = regex.sub(f"(?<=\W|^)(?={'|'.join([str(i) for i in const_syms])}(\W|\Z))","self.",p.doprint(expressions[i][j,k]))
-                        # replace integer with floats
-                        ex_string = regex.sub("(?<=(\W|^)(?<!\.)\d+)(?!\.)(?=\W|\Z)",".0", ex_string) 
-                        s.append("        "
-                                + names[i]
-                                + f"[{j}, {k}]" 
-                                + " = " 
-                                + ex_string)
-                                #  + regex.sub("(?<=((?<=[^\.])\W)\d+)(?=\W)(?!\.)",".0",regex.sub(f"(?<=\W|^)(?={'|'.join([str(i) for i in const_syms])}(\W|\Z))","self.",p.doprint(expressions[i]))))
+                        if expressions[i][j,k] != 0:
+                            # add self before const_syms
+                            ex_string = regex.sub(f"(?<=\W|^)(?={'|'.join([str(i) for i in const_syms])}(\W|\Z))","self.",p.doprint(expressions[i][j,k]))
+                            # replace integer with floats
+                            ex_string = regex.sub("(?<=(\W|^)(?<!(\.|e[+-]))\d+)(?!\.)(?=\W|\Z)",".0", ex_string) 
+                            s.append("        "
+                                    + names[i]
+                                    + f"[{j}, {k}]" 
+                                    + " = " 
+                                    + ex_string)
+                                    #  + regex.sub("(?<=((?<=[^\.])\W)\d+)(?=\W)(?!\.)",".0",regex.sub(f"(?<=\W|^)(?={'|'.join([str(i) for i in const_syms])}(\W|\Z))","self.",p.doprint(expressions[i]))))
                     else:
-                        ex_string = p.doprint(expressions[i])
-                        # replace integer with floats
-                        ex_string = regex.sub("(?<=(\W|^)(?<!\.)\d+)(?!\.)(?=\W|\Z)",".0", ex_string) 
-                        s.append("        "
-                                + names[i] 
-                                + f"[{j}, {k}]" 
-                                + " = " 
-                                + ex_string)
-                        
+                        if expressions[i][j,k] != 0:
+                            ex_string = p.doprint(expressions[i][j,k])
+                            # replace integer with floats
+                            ex_string = regex.sub("(?<=(\W|^)(?<!(\.|e[+-]))\d+)(?!\.)(?=\W|\Z)",".0", ex_string) 
+                            s.append("        "
+                                    + names[i] 
+                                    + f"[{j}, {k}]" 
+                                    + " = " 
+                                    + ex_string)
+                            
             s.append("        return " + names[i])
 
         if cache:
@@ -463,7 +550,10 @@ class CodeGenerator_():
             s.append("@lru_cache(maxsize=128)")
             s.append("def cached_cos(double x):")
             s.append("    return numpy.cos(x)")
-        
+        else:
+            s = list(map(lambda x: x.replace("numpy.sin", "sin"), s))
+            s = list(map(lambda x: x.replace("numpy.cos", "cos"), s))
+            
         # replace numpy with np for better readability
         s = list(map(lambda x: x.replace("numpy.", "np."), s))
         s[0] = "import numpy as np"
@@ -518,7 +608,7 @@ class CodeGenerator_():
                 # s = regex.sub(f"(?<=\W|^)(?={'|'.join([str(i) for i in constant_syms])}(\W|\Z))","_",s)
                 s = regex.sub(f"(?<=(\W|^)({'|'.join([str(i) for i in constant_syms])})(?=\W|\Z))","_",s)
             # replace integer with floats
-            s = regex.sub("(?<=(\W|^)(?<!\.)\d+)(?!\.)(?=\W|\Z)",".0", s) 
+            s = regex.sub("(?<=(\W|^)(?<!(\.|e[+-]))\d+)(?!\.)(?=\W|\Z)",".0", s) 
             return s
         
         # function to find row of symbol in matrix
@@ -2193,7 +2283,7 @@ class SymbolicKinDyn(CodeGenerator_):
 
         # Mass inertia matrix in joint space (n x n)
         M = J.T*Mb*J
-        M = self.simplify(M, cse, simplify)
+        M = self.simplify(M, cse, simplify, True)
         
         # Coriolis-Centrifugal matrix in joint space (n x n)
         C = J.T * Cb * J
@@ -2262,7 +2352,7 @@ class SymbolicKinDyn(CodeGenerator_):
             # First time derivative of Mass inertia matrix in joint space (n x n)
             Mbd = -Mb*A*a - (Mb*A*a).T
             Md = J.T * Mbd * J
-            Md = self.simplify(Md, cse, simplify)
+            Md = self.simplify(Md, cse, simplify, True)
             
             # First time derivative of Coriolis-Centrifugal matrix in joint space (n x n)
             Cbd = Mb*A*a*A*a - Mb*A*a*a - Mb*A*ad - bd.T * Mb - Cb*A*a - a.T*A.T*Cb
@@ -2305,7 +2395,7 @@ class SymbolicKinDyn(CodeGenerator_):
             Mb2d = (- Mb*A*ad - (Mb*A*ad).T + 2*Mb*A*a*A*a + 2*(Mb*A*a*A*a).T 
                     + 2*a.T*A.T*Mb*A*a - Mb*A*a*a - (Mb*A*a*a).T)
             M2d = J.T*Mb2d*J
-            M2d = self.simplify(M2d, cse, simplify)
+            M2d = self.simplify(M2d, cse, simplify, True)
             
             # Second time derivative of Coriolis-Centrifugal matrix in joint space (n x n)
             Cddot = (- Mb*A*a2d - 3*Mb*A*a*ad - Mb*A*a*a*a - b2d.T*Mb 
@@ -2792,7 +2882,7 @@ class SymbolicKinDyn(CodeGenerator_):
         # Mass inertia matrix in joint space (n x n)
         self._set_value_as_process(
             "M", lambda: self._get_value("J").T*Mb*self._get_value("J"))
-        self._start_simplification_process("M", cse, simplify)
+        self._start_simplification_process("M", cse, simplify,True)
         
         # Coriolis-Centrifugal matrix in joint space (n x n)
         self._set_value_as_process("C", lambda: self._get_value(
@@ -2883,7 +2973,7 @@ class SymbolicKinDyn(CodeGenerator_):
             self._set_value_as_process(
                 "Md",
                 lambda: self._get_value("J").T * Mbd * self._get_value("J"))
-            self._start_simplification_process("Md", cse, simplify)
+            self._start_simplification_process("Md", cse, simplify, True)
             
             # First time derivative of Coriolis-Centrifugal matrix in joint space (n x n)
             self._set_value_as_process(
@@ -2942,7 +3032,7 @@ class SymbolicKinDyn(CodeGenerator_):
             self._set_value_as_process(
                 "M2d",
                 lambda: self._get_value("J").T*Mb2d*self._get_value("J"))
-            self._start_simplification_process("M2d", cse, simplify)
+            self._start_simplification_process("M2d", cse, simplify, True)
             
             # Second time derivative of Coriolis-Centrifugal matrix in joint space (n x n)
             self._set_value_as_process(
@@ -3101,7 +3191,7 @@ class SymbolicKinDyn(CodeGenerator_):
                 ex = ex.expand().collect(key).subs(key,terms[key])
         return ex
     
-    def simplify(self, exp: sympy.Expr, cse: bool=False, simplify: bool=True) -> sympy.Expr:
+    def simplify(self, exp: sympy.Expr, cse: bool = False, simplify: bool = True, symmetric: bool = False) -> sympy.Expr:
         """Faster simplify implementation for sympy expressions.
         Expressions can be different simplified as with sympy.simplify.
 
@@ -3113,27 +3203,28 @@ class SymbolicKinDyn(CodeGenerator_):
             simplify (bool, optional): 
                 deactivate simplification by setting simplify to False. 
                 Defaults to True.
+            symmetric (bool, optional): Consider matrix as symmetric and 
+                copy symmetric values, to fasten simplificaton. 
+                Defaults to False.
 
         Returns:
             sympy expression: Simplified expression.
         """
-        if cse:
-            exp = self._cse_expression(exp)
         if simplify:
             if (type(exp) == sympy.matrices.immutable.ImmutableDenseMatrix
-                    or type(exp) == sympy.matrices.dense.MutableDenseMatrix):
+                    or type(exp) == sympy.matrices.dense.MutableDenseMatrix) or symmetric:
                 # fasten simplification of symmetric matrices
-                if exp.is_square:
+                if exp.is_square or symmetric:
                     # test if matrix is symmetric
                     # numeric test is faster than is_symmetric method  for 
                     # long expressions
-                    
-                    # create matrix with randon values
-                    num = lambdify(list(exp.free_symbols), exp, "numpy")(
-                        *(random.random() for i in exp.free_symbols))
+                    if not symmetric:                    
+                        # create matrix with randon values
+                        num = lambdify(list(exp.free_symbols), exp, "numpy")(
+                            *(random.random() for i in exp.free_symbols))
                     # if (random) matrix is symmetric, we have to simplify 
                     # less values
-                    if numpy.allclose(num, num.T):
+                    if symmetric or numpy.allclose(num, num.T, atol=1e-12):
                         shape = exp.shape
                         m_exp = exp.as_mutable()
                         # simplify values only once in symmetric matrices
@@ -3141,7 +3232,7 @@ class SymbolicKinDyn(CodeGenerator_):
                             for j in range(i):
                                 m_exp[i, j] = self.simplify(exp[i, j])
                                 if i != j:
-                                    m_exp[j, i] = exp[j, i]
+                                    m_exp[j, i] = m_exp[i, j]
                         return Matrix(m_exp)
             if type(exp) == sympy.matrices.dense.MutableDenseMatrix:
                 exp = exp.as_immutable()
@@ -3151,6 +3242,8 @@ class SymbolicKinDyn(CodeGenerator_):
             exp = powsimp(exp)
             exp = self.partial_factor(exp)
             exp = exp.doit()
+        if cse:
+            exp = self._cse_expression(exp)
         return exp
 
     def _create_topology_lists(self,robot: URDF) -> None:
@@ -3604,7 +3697,7 @@ class SymbolicKinDyn(CodeGenerator_):
         self.queue_dict[name].put(var)
 
     def _start_simplification_process(
-        self, name: str, cse: bool=False, simplify: bool=True) -> None:
+        self, name: str, cse: bool = False, simplify: bool = True, symmetric: bool = False) -> None:
         """Start Process, which simplifies and overwrites value in 
         queue from self.queue_dict.
 
@@ -3615,6 +3708,9 @@ class SymbolicKinDyn(CodeGenerator_):
             simplify (bool, optional): 
                 deactivate simplification by setting simplify to False. 
                 Defaults to True.
+            symmetric (bool, optional): Consider matrix as symmetric and 
+                copy symmetric values, to fasten simplificaton. 
+                Defaults to False.
         """
         if not simplify: 
             if not cse:
@@ -3626,7 +3722,7 @@ class SymbolicKinDyn(CodeGenerator_):
             self.queue_dict[name] = Queue()
         self.process_dict[name+"_simplify"] = Process(
             target=self._simplify_parallel, 
-            args=(name, cse,), 
+            args=(name, cse, symmetric), 
             name=name+"_simplify")
         self.process_dict[name+"_simplify"].start()
         return
@@ -3659,7 +3755,7 @@ class SymbolicKinDyn(CodeGenerator_):
         self.queue_dict[name].put(value)
         return value
 
-    def _simplify_parallel(self, name: str, cse: bool=False) -> None:
+    def _simplify_parallel(self, name: str, cse: bool=False, symmetric: bool = False) -> None:
         """Take value from self.queue_dict, simplify it and put it in 
         again.
 
@@ -3667,8 +3763,12 @@ class SymbolicKinDyn(CodeGenerator_):
             name (str): Identifier
             cse (bool, optional): 
                 Use common subexpression elimination. Defaults to False.
+            symmetric (bool, optional): Consider matrix as symmetric and 
+                copy symmetric values, to fasten simplificaton. 
+                Defaults to False.
+
         """
-        value = self.simplify(self.queue_dict[name].get(), cse)
+        value = self.simplify(self.queue_dict[name].get(), cse, True, symmetric)
         self.queue_dict[name].put(value)
         
     def _cse_parallel(self, name: str) -> None:
