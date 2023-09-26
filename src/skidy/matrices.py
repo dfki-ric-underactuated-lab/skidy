@@ -270,11 +270,12 @@ def transformation_matrix(r: MutableDenseMatrix=Matrix(Identity(3)),
 def mass_matrix_mixed_data(m: float | Expr, Theta: MutableDenseMatrix, 
                         COM: MutableDenseMatrix) -> MutableDenseMatrix:
     """Build mass-inertia matrix in SE(3) from mass, inertia and 
-    center of mass information.
+    center of mass information w.r.t. the body fixed frame.
+    If the inertia is w.r.t. the COM use `mass_matrix_URDF_data` instead.
 
     Args:
         m (float | sympy.Expr): Mass.
-        Theta (array_like): Inertia (3,3).
+        Theta (array_like): (3,3) Inertia tensor with respect to body-fixed frame.
         COM (array_like): Center of mass (3,1).
 
     Returns:
@@ -291,13 +292,17 @@ def mass_matrix_mixed_data(m: float | Expr, Theta: MutableDenseMatrix,
 def mass_matrix_URDF_data(m: float | Expr, Inertia: MutableDenseMatrix, 
                         COM: MutableDenseMatrix, R: MutableDenseMatrix = Matrix(Identity(3))) -> MutableDenseMatrix:
     """Build mass-inertia matrix in SE(3) from mass, inertia and 
-    center of mass information, as written in URDF.
+    center of mass information, as written in URDF. This means, that 
+    the Inertia tensor is with respect to the COM.
+    If your inertia tensor is w.r.t. the body fixed frame, use
+    `mass_matrix_mixed_data` instead.
 
     Args:
         m (float | sympy.Expr): Mass.
-        Inertia (array_like): Inertia (3,3).
+        Inertia (array_like): (3,3) Inertia tensor with respect to COM.
         COM (array_like): Center of mass (3,1).
-        R (array_like): SO3 rotation matrix (3,3). Defaults to Identity.
+        R (array_like): (3,3) SO3 rotation matrix of the COM frame to
+            the body frame. Defaults to Identity.
 
     Returns:
         sympy.Matrix: Mass-inertia matrix (6,6).
