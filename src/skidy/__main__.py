@@ -47,7 +47,7 @@ def main() -> None:
     generate_template.add_argument("--urdf",action="store_true", help="use urdf in generated python file")
     generate_template.add_argument("--yaml",action="store_true", help="enforce yaml file generation")
     generate_template.add_argument("--json",action="store_true", help="enforce json file generation")
-    generate_template.add_argument("--convert", metavar="URDF_PATH", type=str, default=None, help="Convert URDF to YAML or JSON.")
+    generate_template.add_argument("--convert", metavar="URDF_PATH", type=str, default=None, help="Convert URDF to YAML or JSON. Use -s option to round numbers if close to 0 or 1 (recommended)")
     # generate_template.add_argument("--python", action="store_true", help="enforce python file generation")
 
 
@@ -70,7 +70,7 @@ def main() -> None:
                 exit()
             if args.convert:
                 urdf_to_yaml(args.convert,path,symbolic=False, cse=args.cse,
-                                  simplify_numbers=True,tolerance=0.0001, 
+                                  simplify_numbers=args.simplify,tolerance=0.0001, 
                                   max_denominator=9)
             else:
                 generate_template_yaml(path,structure,dof)    
@@ -84,7 +84,7 @@ def main() -> None:
                 exit()
             if args.convert:
                 urdf_to_json(args.convert,path,symbolic=False, cse=args.cse,
-                                  simplify_numbers=True,tolerance=0.0001, 
+                                  simplify_numbers=args.simplify,tolerance=0.0001, 
                                   max_denominator=9)
             else:
                 generate_template_json(path,structure,dof)
@@ -159,6 +159,7 @@ def main() -> None:
                               cython=args.cython, 
                               julia=args.julia, 
                               latex=args.latex, 
+                              cse=args.cse,
                               cache=args.cache,
                               folder=args.folder, 
                               use_global_vars=True, 

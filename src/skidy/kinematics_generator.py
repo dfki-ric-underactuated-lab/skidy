@@ -168,7 +168,8 @@ class CodeGenerator_():
         return r, e[0]
     
     def generate_python_code(self, name: str="plant", folder: str="./python", 
-                             cache: bool=False, use_global_vars: bool = True, cse: bool = True):
+                             cache: bool=False, use_global_vars: bool = True, cse: bool = True,
+                             vector_input: bool = True):
         """Generate python code from generated expressions. 
         Needs 'closed_form_inv_dyn_body_fixed' and/or 
         'closed_form_kinematics_body_fixed' to run first.
@@ -187,7 +188,11 @@ class CodeGenerator_():
             use_global_vars (bool, optional): 
                 Constant vars are class variables. Defaults to True.
             cse (bool, optional): 
-                Use common subexpressions to fasten code execution. Defaults to True.
+                Use common subexpressions to fasten code execution. 
+                Defaults to True.
+            vector_input (bool. optional): 
+                Use q, qd and q2d vector as function arg instead
+                of unique joint values. Defaults to True.
         """
         
         names, expressions, _, constant_syms, not_assigned_syms = self._prepare_code_generation(folder, use_global_vars)
@@ -262,15 +267,37 @@ class CodeGenerator_():
             const_syms = self._sort_variables(
                 set(constant_syms).intersection(
                     expressions[i].free_symbols))
+            # return_obj = f"{names[i]}: np.ndarray = np.empty(({expressions[i].shape[0]},{expressions[i].shape[1]}))"
             if len(var_syms) > 0 or len(optional_var_syms) > 0:
-                s.append("\n    def "+names[i]+"(self, %s) -> numpy.ndarray:" % (
-                    ", ".join([str(var_syms[i])+": float" 
-                                for i in range(len(var_syms))]
-                                + [str(optional_var_syms[i])+": float=0" 
-                                for i in range(len(optional_var_syms))])))
+                if vector_input:
+                    q_dict, opt_dict = self._args_to_vectors(var_syms, optional_var_syms)
+                    s.append(f"\n    def {names[i]}"+"(self, %s) -> np.ndarray:" % (
+                             ", ".join([f"{str(i)}: np.ndarray" 
+                                for i in q_dict]
+                                + [f"{str(i)}: np.ndarray = np.zeros((6,), dtype=np.float64)" 
+                                    for i in opt_dict]), 
+                            #  return_obj
+                             ))
+                    for q in q_dict:
+                        for q_i in q_dict[q]:
+                            s.append(f"        {q_i} = {q}[{q_dict[q][q_i]}]")
+                    for opt in opt_dict:
+                        for opt_i in opt_dict[opt]:
+                            s.append(f"        {opt_i} = {opt}[{opt_dict[opt][opt_i]}]")
+                
+                else:    
+                    s.append("\n    def "+names[i]+"(self, %s) -> numpy.ndarray:" % (
+                        ", ".join([str(var_syms[i])+": float" 
+                                    for i in range(len(var_syms))]
+                                    + [str(optional_var_syms[i])+": float = 0.0" 
+                                    for i in range(len(optional_var_syms))]),
+                        # return_obj
+                        ))
 
             else:
-                s.append("\n    def "+names[i]+"(self) -> numpy.ndarray:")
+                # s.append(f"\n    def {names[i]}(self, {return_obj}) -> numpy.ndarray:")
+                s.append(f"\n    def {names[i]}(self) -> numpy.ndarray:")
+            # s.append(f"        assert {names[i]}.shape == ({expressions[i].shape[0]}, {expressions[i].shape[1]})\n")
             if cse:
                 r, e = self._cse_fun(expressions[i])
                 if const_syms:
@@ -281,44 +308,40 @@ class CodeGenerator_():
                             + regex.sub(f"(?<=\W|^)(?={'|'.join([str(i) for i in const_syms])}(\W|\Z))",
                                         "self.",
                                         p.doprint(ex)))
-                    if sum([1 for element in e if element == 0]) > -1:
-                        s.append(f"        {names[i]} = np.zeros(({e.shape[0]},{e.shape[1]}), dtype=np.float32)")
-                        for row in range(e.shape[0]):
-                            for col in range(e.shape[1]):
-                                if e[row, col] != 0:
-                                    s.append("        "
-                                            + f"{names[i]}[{row}, {col}]" 
-                                            + " = " 
-                                            + regex.sub(f"(?<=\W|^)(?={'|'.join([str(i) for i in const_syms])}(\W|\Z))",
-                                                        "self.",
-                                                        p.doprint(e[row, col])))
-                    else:
-                        s.append("        "
-                                + names[i] 
-                                + " = " 
-                                + regex.sub(f"(?<=\W|^)(?={'|'.join([str(i) for i in const_syms])}(\W|\Z))",
-                                            "self.",
-                                            p.doprint(e)))
+                    if sum([1 for element in e if element == 0]) > 0: # at least one zero in result
+                        # s.append(f"        {names[i]} = np.zeros(({e.shape[0]},{e.shape[1]}), dtype=np.float64)")
+                        s.append(f"        {names[i]}.fill(0)")
+                    # else:
+                    #     s.append(f"        {names[i]} = np.empty(({e.shape[0]},{e.shape[1]}), dtype=np.float64)")    
+                    for row in range(e.shape[0]):
+                        for col in range(e.shape[1]):
+                            if e[row, col] != 0:
+                                s.append("        "
+                                        + f"{names[i]}[{row}, {col}]" 
+                                        + " = " 
+                                        + regex.sub(f"(?<=\W|^)(?={'|'.join([str(i) for i in const_syms])}(\W|\Z))",
+                                                    "self.",
+                                                    p.doprint(e[row, col])))
+
                 else:
                     for (sym, ex) in r:
                         s.append("        "
                                 + str(sym) 
                                 + " = " 
                                 + p.doprint(ex))
-                    if sum([1 for element in e if element == 0]) > -1:
-                        s.append(f"        {names[i]} = np.zeros(({e.shape[0]},{e.shape[1]}), dtype=np.float32)")
-                        for row in range(e.shape[0]):
-                            for col in range(e.shape[1]):
-                                if e[row, col] != 0:
-                                    s.append("        "
-                                        + f"{names[i]}[{row}, {col}]" 
-                                        + " = " 
-                                        + p.doprint(e[row,col]))
-                    else:
-                        s.append("        "
-                                 + f"{names[i]}" 
-                                 + " = " 
-                                 + p.doprint(e))
+                    if sum([1 for element in e if element == 0]) > 0: # at least one zero in result
+                        # s.append(f"        {names[i]} = np.zeros(({e.shape[0]},{e.shape[1]}), dtype=np.float64)")
+                        s.append(f"        {names[i]}.fill(0)")
+                    # else:
+                    #     s.append(f"        {names[i]} = np.empty(({e.shape[0]},{e.shape[1]}), dtype=np.float64)")
+                    for row in range(e.shape[0]):
+                        for col in range(e.shape[1]):
+                            if e[row, col] != 0:
+                                s.append("        "
+                                    + f"{names[i]}[{row}, {col}]" 
+                                    + " = " 
+                                    + p.doprint(e[row,col]))
+                    
             else:
                 if const_syms: # insert self. in front of const_syms
                     s.append("        "
@@ -362,7 +385,8 @@ class CodeGenerator_():
         print("Done")
     
     def generate_cython_code(self, name: str="plant", folder: str="./cython", 
-                             cache: bool=False, use_global_vars: bool = True, cse: bool = True):
+                             cache: bool=False, use_global_vars: bool = True, 
+                             cse: bool = True, vector_input: bool = True):
         """Generate cython code from generated expressions. 
         Needs 'closed_form_inv_dyn_body_fixed' and/or 
         'closed_form_kinematics_body_fixed' to run first.
@@ -381,7 +405,12 @@ class CodeGenerator_():
             use_global_vars (bool, optional): 
                 Constant vars are class variables. Defaults to True.
             cse (bool, optional): 
-                Use common subexpressions to fasten code execution. Defaults to True.
+                Use common subexpressions to fasten code execution. 
+                Defaults to True.
+            vector_input (bool. optional): 
+                Use q, qd and q2d vector as function arg instead
+                of unique joint values. Defaults to True.
+            
         """
         
         names, expressions, _, constant_syms, not_assigned_syms = self._prepare_code_generation(folder, use_global_vars)
@@ -484,14 +513,34 @@ class CodeGenerator_():
             s.append("") # empty line
             s.append("    @cython.boundscheck(False)")
             s.append("    @cython.wraparound(False)")
+            # s.append("    @cython.nogil(True)")
             if len(var_syms) > 0 or len(optional_var_syms) > 0:
-                # s.append(f"    cpdef double[:,::1] "+names[i]+"(self, %s):" % (
-                s.append(f"    cpdef numpy.ndarray[double, ndim={len(expressions[i].shape)}] "+names[i]+"(self, %s):" % (
-                # s.append(f"\n    cpdef np.ndarray[DTYPE_t,ndim={len(expressions[i].shape)}] "+names[i]+"(self, %s):" % (
-                    ", ".join(["double "+str(var_syms[i]) 
-                                for i in range(len(var_syms))]
-                                + ["double "+str(optional_var_syms[i])+"=0.0" 
-                                    for i in range(len(optional_var_syms))])))
+                if vector_input:
+                    q_dict, opt_dict = self._args_to_vectors(var_syms, optional_var_syms)
+                    s.append(f"    cpdef numpy.ndarray[double, ndim={len(expressions[i].shape)}] "+names[i]+"(self, %s):" % (
+                             ", ".join(["double[:] "+str(i) 
+                                for i in q_dict]
+                                + ["double[:] "+str(i)+"=np.zeros((6,), dtype=np.double)" 
+                                    for i in opt_dict])))
+                    cond = " or ".join([f"{q}.shape[0] != {self.n}" for q in q_dict]
+                                      +[f"{opt}.shape[0] != {6}" for opt in opt_dict])
+                    s.append(f"        if {cond}:")
+                    s.append(f"            raise ValueError('Wrong input shape.')")
+                    for q in q_dict:
+                        for q_i in q_dict[q]:
+                            s.append(f"        cdef double {q_i} = {q}[{q_dict[q][q_i]}]")
+                    for opt in opt_dict:
+                        for opt_i in opt_dict[opt]:
+                            s.append(f"        cdef double {opt_i} = {opt}[{opt_dict[opt][opt_i]}]")
+                    
+                else:
+                    # s.append(f"    cpdef double[:,::1] "+names[i]+"(self, %s):" % (
+                    s.append(f"    cpdef numpy.ndarray[double, ndim={len(expressions[i].shape)}] "+names[i]+"(self, %s):" % (
+                    # s.append(f"\n    cpdef np.ndarray[DTYPE_t,ndim={len(expressions[i].shape)}] "+names[i]+"(self, %s):" % (
+                        ", ".join(["double "+str(var_syms[i]) 
+                                    for i in range(len(var_syms))]
+                                    + ["double "+str(optional_var_syms[i])+"=0.0" 
+                                        for i in range(len(optional_var_syms))])))
 
             else:
                 s.append(f"    cpdef numpy.ndarray[double, ndim={len(expressions[i].shape)}] "+names[i]+"(self):")
@@ -510,7 +559,10 @@ class CodeGenerator_():
                     s.append(f"        cdef double {sym} = {ex_string}") 
             
             # s.append(f"        cdef double[:,::1] {names[i]} = numpy.empty({expressions[i].shape}, dtype=double)")
-            s.append(f"        cdef numpy.ndarray[double, ndim={len(expressions[i].shape)}] {names[i]} = numpy.zeros({expressions[i].shape}, dtype=np.double)")
+            if sum([1 for element in expressions[i] if element == 0]) > 0: # at least one zero in result
+                s.append(f"        cdef numpy.ndarray[double, ndim={len(expressions[i].shape)}] {names[i]} = numpy.zeros({expressions[i].shape}, dtype=np.double)")
+            else:
+                s.append(f"        cdef numpy.ndarray[double, ndim={len(expressions[i].shape)}] {names[i]} = numpy.empty({expressions[i].shape}, dtype=np.double)")
             for j in range(expressions[i].shape[0]):
                 for k in range(expressions[i].shape[1]):
                     if const_syms:
@@ -586,7 +638,60 @@ class CodeGenerator_():
         
         print("Done")
  
-    def generate_cpp_code(self, name: str = "plant", folder: str = "./cpp") -> None:
+    def _args_to_vectors(self, var_syms, optional_var_syms):
+        def find_row(sym, mat):
+                for i in range(len(mat)):
+                    if sym == mat[i]: 
+                        return i
+                else:
+                    raise Exception("Symbol not found")
+        q = {}
+        qd = {}
+        q2d = {}
+        q3d = {}
+        q4d = {}
+        for sym in var_syms:
+            if sym in self.q:
+                q[sym] = find_row(sym, self.q)
+            if sym in self.qd:
+                qd[sym] = find_row(sym, self.qd)
+            if sym in self.q2d:
+                q2d[sym] = find_row(sym, self.q2d)
+            if self.q3d and sym in self.q3d:
+                q3d[sym] = find_row(sym, self.q3d)
+            if self.q4d and sym in self.q4d:
+                q4d[sym] = find_row(sym, self.q4d)
+        WEE = {}
+        WDEE = {}
+        W2DEE = {}
+        for sym in optional_var_syms:
+            if sym in self.WEE:
+                WEE[sym] = find_row(sym, self.WEE)
+            if sym in self.WDEE:
+                WDEE[sym] = find_row(sym, self.WDEE)
+            if sym in self.W2DEE:
+                W2DEE[sym] = find_row(sym, self.W2DEE)
+        q_dict = {}
+        opt_dict = {}
+        if q:
+            q_dict["q"] = q
+        if qd:
+            q_dict["qd"] = qd
+        if q2d:
+            q_dict["q2d"] = q2d
+        if q3d:
+            q_dict["q3d"] = q3d
+        if q4d:
+            q_dict["q4d"] = q4d
+        if WEE:
+            opt_dict["WEE"] = WEE
+        if WDEE:
+            opt_dict["WDEE"] = WDEE
+        if W2DEE:
+            opt_dict["W2DEE"] = W2DEE
+        return q_dict, opt_dict
+    
+    def generate_cpp_code(self, name: str = "plant", folder: str = "./cpp", cse: bool = True) -> None:
         """Generate C++ code from generated expressions. 
         Needs 'closed_form_inv_dyn_body_fixed' and/or 
         'closed_form_kinematics_body_fixed' to run first.
@@ -599,6 +704,9 @@ class CodeGenerator_():
             folder (str, optional): 
                 Folder where to save code. 
                 Defaults to "./cpp".
+            cse (bool, optional): 
+                Use common subexpressions to fasten code execution. 
+                Defaults to True.
         """
         
         # function to modify generated c++ code
@@ -620,6 +728,8 @@ class CodeGenerator_():
                     raise Exception("Symbol not found")
             
         names, expressions, _, constant_syms, not_assigned_syms = self._prepare_code_generation(folder, True)
+        if cse:
+            expressions = list(expressions)
         
         # create folder
         if not os.path.exists(folder):
@@ -712,10 +822,12 @@ class CodeGenerator_():
                                      for i in not_assigned_syms] 
                                  + [f"{str(i)}_({str(i)})" 
                                      for i in self.assignment_dict])
+        if assignments:
+            assignments = ": "+assignments
         if not self.subex_dict:
-            cpp.append(f"    : {assignments} {{}}\n\n")
+            cpp.append(f"    {assignments} {{}}\n\n")
         else: # add subexpressions
-            cpp.append(f"    : {assignments} " + "{\n")
+            cpp.append(f"    {assignments} " + "{\n")
             for i in sorted([str(j) for j in self.subex_dict], key=lambda x: int(regex.findall("(?<=sub)\d*",x)[0])):
                 cpp.append(f"    {i}_ = {replace_const_syms(cxxcode(self.subex_dict[symbols(i)]))};\n")
             cpp.append("}\n\n")
@@ -734,6 +846,12 @@ class CodeGenerator_():
             symstr = ', '.join([f"double {str(s)}" for s in var_syms+optional_var_syms])
             arguments = ', '.join([f"{str(s)}" for s in var_syms+optional_var_syms])
             cpp.append(f"void {name}::{names[i]}(Eigen::Matrix<double, {r}, {c}>& {names[i]}{', ' if symstr else ''}{symstr}) const"+"{\n")
+            
+            if cse:
+                rep, expressions[i] = self._cse_fun(expressions[i])
+                for (sym, ex) in rep:
+                    cpp.append(f"    double {sym} = {replace_const_syms(cxxcode(ex))};\n") 
+
             indent = " " * (len(names[i]) + 8)
             for j in range(r):
                 exp = ", ".join([replace_const_syms(cxxcode(expressions[i][j,k])) for k in range(c)])
@@ -826,7 +944,8 @@ class CodeGenerator_():
             project (str, optional): 
                 Project name in C header. Defaults to "project".
             use_global_vars (bool, optional): 
-                Constant vars like mass etc are global variables. Defaults to True.
+                Constant vars like mass etc are global variables. 
+                Defaults to True.
         """
         names, expressions, all_expressions, constant_syms, not_assigned_syms = self._prepare_code_generation(folder, use_global_vars)
         
@@ -945,7 +1064,8 @@ class CodeGenerator_():
                 Folder where to save code. 
                 Defaults to "./julia".
             use_global_vars (bool, optional): 
-                Constant vars like mass etc are global variables. Defaults to True.
+                Constant vars like mass etc are global variables. 
+                Defaults to True.
         """
         names, expressions, _, constant_syms, not_assigned_syms = self._prepare_code_generation(folder, use_global_vars)
         print("Generate julia code")
@@ -1006,6 +1126,32 @@ class CodeGenerator_():
         # ensure operator ^ instead of **
         j_code = j_code.replace("**","^")
         
+        # overload functions with array args:
+        for i in range(len(expressions)):
+            var_syms = self._sort_variables(self.var_syms.intersection(
+                expressions[i].free_symbols))
+            optional_var_syms = self._sort_variables(self.optional_var_syms.intersection(
+                expressions[i].free_symbols))
+            
+            if len(var_syms) > 0 or len(optional_var_syms) > 0:
+                q_dict, opt_dict = self._args_to_vectors(var_syms, optional_var_syms)
+                
+                    # for q in q_dict:
+                    #     for q_i in q_dict[q]:
+                    #         s.append(f"        {q_i} = {q}[{q_dict[q][q_i]}]")
+                    # for opt in opt_dict:
+                    #     for opt_i in opt_dict[opt]:
+                    #         s.append(f"        {opt_i} = {opt}[{opt_dict[opt][opt_i]}]")
+            
+                j_code += "\n"
+                argstr = ", ".join([f"{str(i)}::AbstractArray" for i in q_dict]
+                                 + [f"{str(i)}::AbstractArray = zeros(Float64, 6)" for i in opt_dict])
+                j_code +=f"function {names[i]}({argstr})\n\n"
+                mapstr = ", ".join([f"{q}[{q_dict[q][q_i]+1}]" for q in q_dict for q_i in q_dict[q]]
+                                   +[f"{opt}[{opt_dict[opt][opt_i]+1}]" for opt in opt_dict for opt_i in opt_dict[opt]])
+                j_code +=f"    return {names[i]}({mapstr})\n"
+                j_code +="end\n"
+
         # write code files
         with open(os.path.join(folder, j_name), "w+") as f:
             f.write(j_code)
@@ -1013,7 +1159,8 @@ class CodeGenerator_():
         print("Done")
 
     def generate_matlab_code(self, name: str="plant", 
-                             folder: str="./matlab"):
+                             folder: str="./matlab",
+                             vector_input: bool = True):
         """Generate matlab / octave code from generated expressions. 
         Needs 'closed_form_inv_dyn_body_fixed' and/or 
         'closed_form_kinematics_body_fixed' to run first.
@@ -1026,6 +1173,9 @@ class CodeGenerator_():
             folder (str, optional): 
                 Folder where to save code. 
                 Defaults to "./matlab".
+            vector_input (bool. optional): 
+                Use q, qd and q2d vector as function arg instead
+                of unique joint values. Defaults to True.
         """
         names, expressions, _, _, not_assigned_syms = self._prepare_code_generation(folder, True)
         
@@ -1088,6 +1238,11 @@ class CodeGenerator_():
         
         # Add generated functions
         for i in range(len(expressions)):
+            var_syms = self._sort_variables(self.var_syms.intersection(
+                expressions[i].free_symbols))
+            optional_var_syms = self._sort_variables(self.optional_var_syms.intersection(
+                expressions[i].free_symbols))
+            
             # generate function
             [(m_name, m_code)] = codegen(
                 (names[i], expressions[i]), "Octave", 
@@ -1097,18 +1252,43 @@ class CodeGenerator_():
             # remove already set variables
             m_func = m_code.splitlines(True)
             m_func = [f"\t\t{line}" for line in m_func]
-            m_func[0] = m_func[0].replace("(","(obj, ")
-            m_func[0] = regex.sub(
-                "(" + '|'.join([f', {str(v)}(?=\W)' for v in m_properties])+")",
-                "", m_func[0])
-            # remove unused variable symbols
-            m_func[0] = regex.sub(
-                "(" + '|'.join([f', {str(v)}(?=\W)' for v in self.var_syms.union(self.optional_var_syms).difference(expressions[i].free_symbols)])+")",
-                "", m_func[0])
+            # rewrite first line
+            if var_syms or optional_var_syms:
+                if vector_input:
+                    q_dict, opt_dict = self._args_to_vectors(var_syms, optional_var_syms)
+                    argstr = ", ".join([f"{str(i)}" for i in q_dict]+
+                                       [f"{str(i)} = zeros(6,1)" for i in opt_dict])
+                else:
+                    argstr = ", ".join([f"{str(i)}" for i in var_syms]+
+                                       [f"{str(i)} = 0.0" for i in optional_var_syms])
+                m_func[0] = f"\t\tfunction out1 = {names[i]}(obj, {argstr})\n"
+            else:
+                m_func[0] = f"\t\tfunction out1 = {names[i]}(obj)\n"
+            
+            # m_func[0] = m_func[0].replace("(","(obj, ")
+            # m_func[0] = regex.sub(
+            #     "(" + '|'.join([f', {str(v)}(?=\W)' for v in m_properties])+")",
+            #     "", m_func[0])
+            # # remove unused variable symbols
+            # m_func[0] = regex.sub(
+            #     "(" + '|'.join([f', {str(v)}(?=\W)' for v in self.var_syms.union(self.optional_var_syms).difference(expressions[i].free_symbols)])+")",
+            #     "", m_func[0])
             # use obj.variables defined in class parameters
-            for i in range(1, len(m_func)):
-                m_func[i] = regex.sub(f"(?<=\W|^)(?=({'|'.join([str(s) for s in m_properties])})\W)","obj.",m_func[i])        
+            if m_properties:
+                for i in range(1, len(m_func)):
+                    m_func[i] = regex.sub(f"(?<=\W|^)(?=({'|'.join([str(s) for s in m_properties])})\W)","obj.",m_func[i])        
             m_func.append("\n")
+            j = 1
+            if vector_input:
+                    for q in q_dict:
+                        for q_i in q_dict[q]:
+                            j += 1
+                            m_func.insert(j,f"\t\t  {q_i} = {q}({q_dict[q][q_i]+1});\n")
+                    for opt in opt_dict:
+                        for opt_i in opt_dict[opt]:
+                            j += 1
+                            m_func.insert(j,f"\t\t  {opt_i} = {opt}({opt_dict[opt][opt_i]+1});\n")
+                
             m_class.extend(m_func)
         
         m_class.append("\tend\n")
@@ -1224,8 +1404,8 @@ class CodeGenerator_():
 
     
     def generate_code(self, python: bool=False, cpp: bool=False, C: bool=False, Matlab: bool=False, 
-                      cython: bool=False, julia: bool=False, latex: bool=False, 
-                      cache: bool=False, landscape: bool=False,
+                      cython: bool=False, julia: bool=False, latex: bool=False, cse: bool=True,
+                      vector_input: bool = True, cache: bool=False, landscape: bool=False,
                       folder: str="./generated_code", use_global_vars: bool=True, 
                       name: str="plant", project: str="Project") -> None:
         """Generate code from generated expressions. 
@@ -1250,6 +1430,11 @@ class CodeGenerator_():
             latex (bool, optional):
                 Generate latex code with all equations and generate pdf from it. 
                 Defaults to False.
+            cse (bool, optional): 
+                Use common subexpressions to fasten code execution for supported languages. 
+                Defaults to True.
+            vector_input (bool. optional): Use q, qd and q2d vector as function arg instead
+                of unique joint values. Only for Python, Cython and Matlab. Defaults to True.
             cache (bool, optional):
                 Cache results sin and cos function in generated python 
                 and cython code. Defaults to False.
@@ -1273,17 +1458,17 @@ class CodeGenerator_():
             os.mkdir(folder)
             
         if python:
-            self.generate_python_code(name, os.path.join(folder,"python"),cache, use_global_vars)
+            self.generate_python_code(name, os.path.join(folder,"python"),cache, use_global_vars, cse, vector_input)
         if cython:
-            self.generate_cython_code(name, os.path.join(folder,"cython"),cache, use_global_vars)
+            self.generate_cython_code(name, os.path.join(folder,"cython"),cache, use_global_vars, cse, vector_input)
         if C:
             self.generate_C_code(name, os.path.join(folder,"C"), project, use_global_vars)
         if cpp:
-            self.generate_cpp_code(name, os.path.join(folder,"cpp"))
+            self.generate_cpp_code(name, os.path.join(folder,"cpp"), cse)
         if julia:
             self.generate_julia_code(name, os.path.join(folder,"julia"), use_global_vars)
         if Matlab:
-            self.generate_matlab_code(name, os.path.join(folder,"matlab"))
+            self.generate_matlab_code(name, os.path.join(folder,"matlab"), vector_input)
         if latex:
             self.generate_latex_document(name, os.path.join(folder,"latex"), landscape)
 
