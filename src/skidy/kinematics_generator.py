@@ -29,7 +29,7 @@ from urdf_parser_py.urdf import URDF
 import skidy
 from skidy.matrices import (SE3AdjInvMatrix, SE3AdjMatrix, SE3adMatrix, SE3Exp,
                             SE3Inv, SO3Exp, generalized_vectors,
-                            inertia_matrix, mass_matrix_mixed_data, mass_matrix_URDF_data,
+                            inertia_matrix, mass_matrix_mixed_data,
                             matrix_to_xyz_rpy, xyz_rpy_to_matrix,
                             transformation_matrix, mass_matrix_to_parameter_vector)
 
@@ -3746,7 +3746,7 @@ class SymbolicKinDyn(CodeGenerator_):
                     I = Matrix(inertia)
                     m = mass
                     cg = Matrix(inertiaorigin[0:3, 3])
-                M = mass_matrix_URDF_data(m, I, cg, inertiaorigin[:3,:3])
+                M = mass_matrix_mixed_data(m, I, cg, "com", inertiaorigin[:3,:3])
                 # M = SE3AdjInvMatrix(inertiaorigin).T* M* SE3AdjInvMatrix(inertiaorigin)
             else: 
                 M = zeros(6,6)    

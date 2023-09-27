@@ -219,6 +219,7 @@ ee:
 
 mass_inertia:
   - mass: m1
+    frame: body
     inertia:
       Ixx: Ixx1
       Ixy: Ixy1
@@ -229,6 +230,7 @@ mass_inertia:
     com: [0,0,0]
 
   - mass: m2
+    frame: body
     inertia:
       Ixx: Ixx2
       Ixy: Ixy2
@@ -402,6 +404,7 @@ If you have just one end-effector, you can omit the top level list (indicated by
 ```yaml
 mass_inertia:
   - mass: m1
+    frame: body
     inertia:
       Ixx: Ixx1
       Ixy: Ixy1
@@ -412,6 +415,7 @@ mass_inertia:
     com: [0,0,0]
 
   - mass: m2
+    frame: body
     inertia:
       Ixx: Ixx2
       Ixy: Ixy2
@@ -422,7 +426,9 @@ mass_inertia:
     com: [0,0,0]
 ```
 
-Mass-inertia matrices of all links. For the definition you have the following syntax options:
+Mass-inertia matrices of all links. The keyword `frame` defines the frame where the `inertia` is defined in and accepts two values: `frame: body` and `frame: com`. When the inertia is w.r.t. the com frame, there is another keyword `rotation` available, which defines the rotation between the com frame and the body frame. The rotation can be defined like all other rotations above.
+
+For the definition you have the following syntax options:
 
 1. Write down whole matrix:
 
@@ -441,6 +447,7 @@ Mass-inertia matrices of all links. For the definition you have the following sy
     ```yaml
     mass_inertia:
       - mass: m1
+        frame: body
         inertia:
           [[Ixx1,Ixy1,Ixz1],
            [Ixy1,Iyy1,Iyz1],
@@ -454,6 +461,7 @@ Mass-inertia matrices of all links. For the definition you have the following sy
     ```yaml
     mass_inertia:
       - mass: m1
+        frame: body
         inertia: [Ixx1,Ixy1,Ixz1,Iyy1,Iyz1,Izz1]
         com: [cx1,cy1,cz1]
 
@@ -464,6 +472,7 @@ Mass-inertia matrices of all links. For the definition you have the following sy
     ```yaml
     mass_inertia:
       - mass: m1
+        frame: body
         inertia: 
           Ixx: Ixx1
           Iyy: Iyy1
@@ -478,6 +487,7 @@ Mass-inertia matrices of all links. For the definition you have the following sy
     ```yaml
     mass_inertia:
       - mass: m1
+        frame: com
         inertia: m1*L1**2
         com: [cx1,cy1,cz1]
     ```
@@ -487,6 +497,7 @@ Mass-inertia matrices of all links. For the definition you have the following sy
     ```yaml
     mass_inertia:
       - mass: m1
+        frame: body
         inertia:
           index: 1
           pointmass: False
@@ -628,8 +639,8 @@ ee = transformation_matrix(r=SO3Exp(axis=[0,0,1],angle=0),t=[0,0,0])
 
 # mass_inertia parameters (6x6 sympy.Matrix per link)
 Mb = []
-Mb.append(mass_matrix_mixed_data(m1, inertia_matrix(Ixx1,Ixy1,Ixz1,Iyy1,Iyz1,Izz1), sympy.Matrix([0,0,0])))
-Mb.append(mass_matrix_mixed_data(m2, inertia_matrix(Ixx2,Ixy2,Ixz2,Iyy2,Iyz2,Izz2), sympy.Matrix([0,0,0])))
+Mb.append(mass_matrix_mixed_data(m1, inertia_matrix(Ixx1,Ixy1,Ixz1,Iyy1,Iyz1,Izz1), sympy.Matrix([0,0,0]), frame="body"))
+Mb.append(mass_matrix_mixed_data(m2, inertia_matrix(Ixx2,Ixy2,Ixz2,Iyy2,Iyz2,Izz2), sympy.Matrix([0,0,0]), frame="body"))
 
 q, qd, q2d = generalized_vectors(len(body_ref_config), startindex=1)
 WEE = sympy.zeros(6,1)
@@ -859,11 +870,13 @@ For robots with more than one end-effector you can use a list of transforms inst
 ```python
 # mass_inertia parameters (6x6 sympy.Matrix per link)
 Mb = []
-Mb.append(mass_matrix_mixed_data(m1, inertia_matrix(Ixx1,Ixy1,Ixz1,Iyy1,Iyz1,Izz1), sympy.Matrix([0,0,0])))
-Mb.append(mass_matrix_mixed_data(m2, inertia_matrix(Ixx2,Ixy2,Ixz2,Iyy2,Iyz2,Izz2), sympy.Matrix([0,0,0])))
+Mb.append(mass_matrix_mixed_data(m1, inertia_matrix(Ixx1,Ixy1,Ixz1,Iyy1,Iyz1,Izz1), sympy.Matrix([0,0,0]), frame='body'))
+Mb.append(mass_matrix_mixed_data(m2, inertia_matrix(Ixx2,Ixy2,Ixz2,Iyy2,Iyz2,Izz2), sympy.Matrix([0,0,0]), frame='body'))
 ```
 
-Mass-inertia matrices of all links. For the definition you have the following syntax options:
+Mass-inertia matrices of all links. The mass inertia matrix has to be w.r.t. the body-fixed frame. But with the argument `frame = 'com'` you can define the inertia matrix w.r.t. the center of mass frame instead. In this case, there  is another argument `R` in the function `mass_matrix_mixed_data` which defines the rotation matrix of the COM frame to the body-fixed frame.
+
+For the definition you have the following syntax options:
 
 1. Write down whole matrix:
 

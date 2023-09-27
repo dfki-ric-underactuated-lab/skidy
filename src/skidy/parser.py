@@ -208,19 +208,44 @@ def dict_parser(d: dict) -> SymbolicKinDyn:
     
     
     Mb = []
+    inertia_frame = "body" # default
+    
     if "mass_inertia" in d:
         for mb in d["mass_inertia"]:
             if type(mb) is list:
                 Mb.append(Matrix(mb))
             elif type(mb) is dict:
                 if "mass" in mb and "inertia" in mb and "com" in mb:
+                    if "frame" in mb:
+                        if mb["frame"] in {"com", "body"}:
+                            inertia_frame = mb["frame"]
+                        else: 
+                            raise ValueError(f"Unknown frame '{mb['inertia']}'")
+                    # get rotation of inertia
+                    if inertia_frame == "com" and "rotation" in mb:
+                        if type(mb["rotation"]) is dict:
+                            if "Q" in mb["rotation"]:
+                                r = quaternion_to_matrix(mb["rotation"]["Q"])
+                            elif "rpy" in mb["rotation"]:
+                                r = rpy_to_matrix(mb["rotation"]["rpy"])
+                            elif "axis" in mb["rotation"]:
+                                axis = mb["rotation"]["axis"] if "axis" in mb["rotation"] else [0,0,1]
+                                angle = mb["rotation"]["angle"] if "angle" in mb["rotation"] else 0
+                                r = SO3Exp(Matrix(axis),angle)
+                        else:
+                            r = Matrix(mb["rotation"])
+                    else:
+                        r = Matrix(Identity(3))    
+                        
                     if type(mb["inertia"]) is list:
                         if len(mb["inertia"]) == 6:
                             Mb.append(
                                 mass_matrix_mixed_data(
                                     mb["mass"],
                                     inertia_matrix(*mb["inertia"]),
-                                    Matrix(mb["com"])
+                                    Matrix(mb["com"]),
+                                    inertia_frame,
+                                    r
                                 )
                             )
                         else:    
@@ -228,7 +253,9 @@ def dict_parser(d: dict) -> SymbolicKinDyn:
                                 mass_matrix_mixed_data(
                                     mb["mass"],
                                     Matrix(mb["inertia"]),
-                                    Matrix(mb["com"])
+                                    Matrix(mb["com"]),
+                                    inertia_frame,
+                                    r
                                 )
                             )
                     elif type(mb["inertia"]) is dict and "index" in mb["inertia"]:
@@ -237,26 +264,34 @@ def dict_parser(d: dict) -> SymbolicKinDyn:
                                 mb["mass"], 
                                 symbolic_inertia_matrix(mb["inertia"]["index"],
                                                     mb["inertia"]["pointmass"]),
-                                Matrix(mb["com"])
-                                )
+                                Matrix(mb["com"]),
+                                inertia_frame,
+                                r
                             )
+                        )
                     elif type(mb["inertia"]) is dict:
                         Mb.append(
                             mass_matrix_mixed_data(
                                 mb["mass"], 
                                 inertia_matrix(**mb["inertia"]),
-                                Matrix(mb["com"])
-                                )
+                                Matrix(mb["com"]),
+                                inertia_frame,
+                                r
                             )
+                        )
                     else:
                         Mb.append(
                             mass_matrix_mixed_data(
                                 mb["mass"], 
                                 mb["inertia"]*Identity(3),
-                                Matrix(mb["com"])
-                                )
+                                Matrix(mb["com"]),
+                                inertia_frame,
+                                r
                             )
+                        )
                         # raise ValueError(f"Inertia {mb['inertia']} not supported.")
+                else:
+                    raise ValueError("Unable to process mass_inertia.")
             else:
                 raise ValueError("Unable to process mass_inertia.")
     
@@ -396,6 +431,7 @@ def generate_template_yaml(path: str="edit_me.yaml", structure: Optional[str]=No
     y.append("mass_inertia:")
     for i in range(dof):
         y.append(f"  - mass: m{i+1}")
+        y.append( "    frame: body")
         y.append( "    inertia:")
         y.append(f"      Ixx: Ixx{i+1}")
         y.append(f"      Ixy: Ixy{i+1}")
@@ -568,7 +604,7 @@ def generate_template_python(path: str="edit_me.py",
         p.append("# mass_inertia parameters (6x6 sympy.Matrix per link)")
         p.append("Mb = []")
         for i in range(dof):
-            p.append(f"Mb.append(mass_matrix_mixed_data(m{i+1}, inertia_matrix(Ixx{i+1},Ixy{i+1},Ixz{i+1},Iyy{i+1},Iyz{i+1},Izz{i+1}), sympy.Matrix([0,0,0])))")
+            p.append(f"Mb.append(mass_matrix_mixed_data(m{i+1}, inertia_matrix(Ixx{i+1},Ixy{i+1},Ixz{i+1},Iyy{i+1},Iyz{i+1},Izz{i+1}), sympy.Matrix([0,0,0]), frame='body'))")
         p.append("")
         
         p.append(f"q, qd, q2d = generalized_vectors(len(body_ref_config), startindex=1)")
@@ -738,6 +774,7 @@ def skd_to_yaml(skd: SymbolicKinDyn, path: str="robot.yaml", **kwargs) -> None |
                 y.append("")
             else:
                 y.append(f"  - mass: {str(i[3,3])}")
+                y.append( "    frame: body")
                 y.append( "    inertia:")
                 y.append(f"      Ixx: {str(i[0,0])}")
                 y.append(f"      Ixy: {str(i[0,1])}")

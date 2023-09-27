@@ -315,6 +315,7 @@ To generate your robot template use</p>
 
 <span class="nt">mass_inertia</span><span class="p">:</span>
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">mass</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">m1</span>
+<span class="w">    </span><span class="nt">frame</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">body</span>
 <span class="w">    </span><span class="nt">inertia</span><span class="p">:</span>
 <span class="w">      </span><span class="nt">Ixx</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Ixx1</span>
 <span class="w">      </span><span class="nt">Ixy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Ixy1</span>
@@ -325,6 +326,7 @@ To generate your robot template use</p>
 <span class="w">    </span><span class="nt">com</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">0</span><span class="p p-Indicator">,</span><span class="nv">0</span><span class="p p-Indicator">,</span><span class="nv">0</span><span class="p p-Indicator">]</span>
 
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">mass</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">m2</span>
+<span class="w">    </span><span class="nt">frame</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">body</span>
 <span class="w">    </span><span class="nt">inertia</span><span class="p">:</span>
 <span class="w">      </span><span class="nt">Ixx</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Ixx2</span>
 <span class="w">      </span><span class="nt">Ixy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Ixy2</span>
@@ -509,6 +511,7 @@ If you have just one end-effector, you can omit the top level list (indicated by
 <div class="pdoc-code codehilite">
 <pre><span></span><code><span class="nt">mass_inertia</span><span class="p">:</span>
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">mass</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">m1</span>
+<span class="w">    </span><span class="nt">frame</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">body</span>
 <span class="w">    </span><span class="nt">inertia</span><span class="p">:</span>
 <span class="w">      </span><span class="nt">Ixx</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Ixx1</span>
 <span class="w">      </span><span class="nt">Ixy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Ixy1</span>
@@ -519,6 +522,7 @@ If you have just one end-effector, you can omit the top level list (indicated by
 <span class="w">    </span><span class="nt">com</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">0</span><span class="p p-Indicator">,</span><span class="nv">0</span><span class="p p-Indicator">,</span><span class="nv">0</span><span class="p p-Indicator">]</span>
 
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">mass</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">m2</span>
+<span class="w">    </span><span class="nt">frame</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">body</span>
 <span class="w">    </span><span class="nt">inertia</span><span class="p">:</span>
 <span class="w">      </span><span class="nt">Ixx</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Ixx2</span>
 <span class="w">      </span><span class="nt">Ixy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Ixy2</span>
@@ -530,7 +534,9 @@ If you have just one end-effector, you can omit the top level list (indicated by
 </code></pre>
 </div>
 
-<p>Mass-inertia matrices of all links. For the definition you have the following syntax options:</p>
+<p>Mass-inertia matrices of all links. The keyword <code>frame</code> defines the frame where the <code>inertia</code> is defined in and accepts two values: <code>frame: body</code> and <code>frame: com</code>. When the inertia is w.r.t. the com frame, there is another keyword <code>rotation</code> available, which defines the rotation between the com frame and the body frame. The rotation can be defined like all other rotations above.</p>
+
+<p>For the definition you have the following syntax options:</p>
 
 <ol>
 <li><p>Write down whole matrix:</p>
@@ -550,6 +556,7 @@ If you have just one end-effector, you can omit the top level list (indicated by
 <div class="pdoc-code codehilite">
 <pre><span></span><code><span class="nt">mass_inertia</span><span class="p">:</span>
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">mass</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">m1</span>
+<span class="w">    </span><span class="nt">frame</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">body</span>
 <span class="w">    </span><span class="nt">inertia</span><span class="p">:</span>
 <span class="w">      </span><span class="p p-Indicator">[[</span><span class="nv">Ixx1</span><span class="p p-Indicator">,</span><span class="nv">Ixy1</span><span class="p p-Indicator">,</span><span class="nv">Ixz1</span><span class="p p-Indicator">],</span>
 <span class="w">       </span><span class="p p-Indicator">[</span><span class="nv">Ixy1</span><span class="p p-Indicator">,</span><span class="nv">Iyy1</span><span class="p p-Indicator">,</span><span class="nv">Iyz1</span><span class="p p-Indicator">],</span>
@@ -562,6 +569,7 @@ If you have just one end-effector, you can omit the top level list (indicated by
 <div class="pdoc-code codehilite">
 <pre><span></span><code><span class="nt">mass_inertia</span><span class="p">:</span>
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">mass</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">m1</span>
+<span class="w">    </span><span class="nt">frame</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">body</span>
 <span class="w">    </span><span class="nt">inertia</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">Ixx1</span><span class="p p-Indicator">,</span><span class="nv">Ixy1</span><span class="p p-Indicator">,</span><span class="nv">Ixz1</span><span class="p p-Indicator">,</span><span class="nv">Iyy1</span><span class="p p-Indicator">,</span><span class="nv">Iyz1</span><span class="p p-Indicator">,</span><span class="nv">Izz1</span><span class="p p-Indicator">]</span>
 <span class="w">    </span><span class="nt">com</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">cx1</span><span class="p p-Indicator">,</span><span class="nv">cy1</span><span class="p p-Indicator">,</span><span class="nv">cz1</span><span class="p p-Indicator">]</span>
 </code></pre>
@@ -571,6 +579,7 @@ If you have just one end-effector, you can omit the top level list (indicated by
 <div class="pdoc-code codehilite">
 <pre><span></span><code><span class="nt">mass_inertia</span><span class="p">:</span>
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">mass</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">m1</span>
+<span class="w">    </span><span class="nt">frame</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">body</span>
 <span class="w">    </span><span class="nt">inertia</span><span class="p">:</span><span class="w"> </span>
 <span class="w">      </span><span class="nt">Ixx</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Ixx1</span>
 <span class="w">      </span><span class="nt">Iyy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Iyy1</span>
@@ -585,6 +594,7 @@ If you have just one end-effector, you can omit the top level list (indicated by
 <div class="pdoc-code codehilite">
 <pre><span></span><code><span class="nt">mass_inertia</span><span class="p">:</span>
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">mass</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">m1</span>
+<span class="w">    </span><span class="nt">frame</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">com</span>
 <span class="w">    </span><span class="nt">inertia</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">m1*L1**2</span>
 <span class="w">    </span><span class="nt">com</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">cx1</span><span class="p p-Indicator">,</span><span class="nv">cy1</span><span class="p p-Indicator">,</span><span class="nv">cz1</span><span class="p p-Indicator">]</span>
 </code></pre>
@@ -594,6 +604,7 @@ If you have just one end-effector, you can omit the top level list (indicated by
 <div class="pdoc-code codehilite">
 <pre><span></span><code><span class="nt">mass_inertia</span><span class="p">:</span>
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">mass</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">m1</span>
+<span class="w">    </span><span class="nt">frame</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">body</span>
 <span class="w">    </span><span class="nt">inertia</span><span class="p">:</span>
 <span class="w">      </span><span class="nt">index</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span>
 <span class="w">      </span><span class="nt">pointmass</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">False</span>
@@ -745,8 +756,8 @@ To generate your robot template use</p>
 
 <span class="c1"># mass_inertia parameters (6x6 sympy.Matrix per link)</span>
 <span class="n">Mb</span> <span class="o">=</span> <span class="p">[]</span>
-<span class="n">Mb</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">mass_matrix_mixed_data</span><span class="p">(</span><span class="n">m1</span><span class="p">,</span> <span class="n">inertia_matrix</span><span class="p">(</span><span class="n">Ixx1</span><span class="p">,</span><span class="n">Ixy1</span><span class="p">,</span><span class="n">Ixz1</span><span class="p">,</span><span class="n">Iyy1</span><span class="p">,</span><span class="n">Iyz1</span><span class="p">,</span><span class="n">Izz1</span><span class="p">),</span> <span class="n">sympy</span><span class="o">.</span><span class="n">Matrix</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">])))</span>
-<span class="n">Mb</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">mass_matrix_mixed_data</span><span class="p">(</span><span class="n">m2</span><span class="p">,</span> <span class="n">inertia_matrix</span><span class="p">(</span><span class="n">Ixx2</span><span class="p">,</span><span class="n">Ixy2</span><span class="p">,</span><span class="n">Ixz2</span><span class="p">,</span><span class="n">Iyy2</span><span class="p">,</span><span class="n">Iyz2</span><span class="p">,</span><span class="n">Izz2</span><span class="p">),</span> <span class="n">sympy</span><span class="o">.</span><span class="n">Matrix</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">])))</span>
+<span class="n">Mb</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">mass_matrix_mixed_data</span><span class="p">(</span><span class="n">m1</span><span class="p">,</span> <span class="n">inertia_matrix</span><span class="p">(</span><span class="n">Ixx1</span><span class="p">,</span><span class="n">Ixy1</span><span class="p">,</span><span class="n">Ixz1</span><span class="p">,</span><span class="n">Iyy1</span><span class="p">,</span><span class="n">Iyz1</span><span class="p">,</span><span class="n">Izz1</span><span class="p">),</span> <span class="n">sympy</span><span class="o">.</span><span class="n">Matrix</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">]),</span> <span class="n">frame</span><span class="o">=</span><span class="s2">&quot;body&quot;</span><span class="p">))</span>
+<span class="n">Mb</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">mass_matrix_mixed_data</span><span class="p">(</span><span class="n">m2</span><span class="p">,</span> <span class="n">inertia_matrix</span><span class="p">(</span><span class="n">Ixx2</span><span class="p">,</span><span class="n">Ixy2</span><span class="p">,</span><span class="n">Ixz2</span><span class="p">,</span><span class="n">Iyy2</span><span class="p">,</span><span class="n">Iyz2</span><span class="p">,</span><span class="n">Izz2</span><span class="p">),</span> <span class="n">sympy</span><span class="o">.</span><span class="n">Matrix</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">]),</span> <span class="n">frame</span><span class="o">=</span><span class="s2">&quot;body&quot;</span><span class="p">))</span>
 
 <span class="n">q</span><span class="p">,</span> <span class="n">qd</span><span class="p">,</span> <span class="n">q2d</span> <span class="o">=</span> <span class="n">generalized_vectors</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">body_ref_config</span><span class="p">),</span> <span class="n">startindex</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
 <span class="n">WEE</span> <span class="o">=</span> <span class="n">sympy</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">6</span><span class="p">,</span><span class="mi">1</span><span class="p">)</span>
@@ -994,12 +1005,14 @@ For robots with more than one end-effector you can use a list of transforms inst
 <div class="pdoc-code codehilite">
 <pre><span></span><code><span class="c1"># mass_inertia parameters (6x6 sympy.Matrix per link)</span>
 <span class="n">Mb</span> <span class="o">=</span> <span class="p">[]</span>
-<span class="n">Mb</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">mass_matrix_mixed_data</span><span class="p">(</span><span class="n">m1</span><span class="p">,</span> <span class="n">inertia_matrix</span><span class="p">(</span><span class="n">Ixx1</span><span class="p">,</span><span class="n">Ixy1</span><span class="p">,</span><span class="n">Ixz1</span><span class="p">,</span><span class="n">Iyy1</span><span class="p">,</span><span class="n">Iyz1</span><span class="p">,</span><span class="n">Izz1</span><span class="p">),</span> <span class="n">sympy</span><span class="o">.</span><span class="n">Matrix</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">])))</span>
-<span class="n">Mb</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">mass_matrix_mixed_data</span><span class="p">(</span><span class="n">m2</span><span class="p">,</span> <span class="n">inertia_matrix</span><span class="p">(</span><span class="n">Ixx2</span><span class="p">,</span><span class="n">Ixy2</span><span class="p">,</span><span class="n">Ixz2</span><span class="p">,</span><span class="n">Iyy2</span><span class="p">,</span><span class="n">Iyz2</span><span class="p">,</span><span class="n">Izz2</span><span class="p">),</span> <span class="n">sympy</span><span class="o">.</span><span class="n">Matrix</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">])))</span>
+<span class="n">Mb</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">mass_matrix_mixed_data</span><span class="p">(</span><span class="n">m1</span><span class="p">,</span> <span class="n">inertia_matrix</span><span class="p">(</span><span class="n">Ixx1</span><span class="p">,</span><span class="n">Ixy1</span><span class="p">,</span><span class="n">Ixz1</span><span class="p">,</span><span class="n">Iyy1</span><span class="p">,</span><span class="n">Iyz1</span><span class="p">,</span><span class="n">Izz1</span><span class="p">),</span> <span class="n">sympy</span><span class="o">.</span><span class="n">Matrix</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">]),</span> <span class="n">frame</span><span class="o">=</span><span class="s1">&#39;body&#39;</span><span class="p">))</span>
+<span class="n">Mb</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">mass_matrix_mixed_data</span><span class="p">(</span><span class="n">m2</span><span class="p">,</span> <span class="n">inertia_matrix</span><span class="p">(</span><span class="n">Ixx2</span><span class="p">,</span><span class="n">Ixy2</span><span class="p">,</span><span class="n">Ixz2</span><span class="p">,</span><span class="n">Iyy2</span><span class="p">,</span><span class="n">Iyz2</span><span class="p">,</span><span class="n">Izz2</span><span class="p">),</span> <span class="n">sympy</span><span class="o">.</span><span class="n">Matrix</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">]),</span> <span class="n">frame</span><span class="o">=</span><span class="s1">&#39;body&#39;</span><span class="p">))</span>
 </code></pre>
 </div>
 
-<p>Mass-inertia matrices of all links. For the definition you have the following syntax options:</p>
+<p>Mass-inertia matrices of all links. The mass inertia matrix has to be w.r.t. the body-fixed frame. But with the argument <code>frame = 'com'</code> you can define the inertia matrix w.r.t. the center of mass frame instead. In this case, there  is another argument <code>R</code> in the function <code>mass_matrix_mixed_data</code> which defines the rotation matrix of the COM frame to the body-fixed frame.</p>
+
+<p>For the definition you have the following syntax options:</p>
 
 <ol>
 <li><p>Write down whole matrix:</p>
@@ -1504,14 +1517,13 @@ The results are shown in the following table:</p>
 </span><span id="L-3"><a href="#L-3"><span class="linenos"> 3</span></a>    <span class="n">SE3AdjInvMatrix</span><span class="p">,</span> <span class="n">SE3AdjMatrix</span><span class="p">,</span> <span class="n">SE3adMatrix</span><span class="p">,</span> <span class="n">SE3Exp</span><span class="p">,</span> 
 </span><span id="L-4"><a href="#L-4"><span class="linenos"> 4</span></a>    <span class="n">SE3Inv</span><span class="p">,</span> <span class="n">SO3Exp</span><span class="p">,</span> <span class="n">inertia_matrix</span><span class="p">,</span> <span class="n">transformation_matrix</span><span class="p">,</span> 
 </span><span id="L-5"><a href="#L-5"><span class="linenos"> 5</span></a>    <span class="n">mass_matrix_mixed_data</span><span class="p">,</span> <span class="n">mass_matrix_mixed_data_identification</span><span class="p">,</span>
-</span><span id="L-6"><a href="#L-6"><span class="linenos"> 6</span></a>    <span class="n">mass_matrix_URDF_data</span><span class="p">,</span>
-</span><span id="L-7"><a href="#L-7"><span class="linenos"> 7</span></a>    <span class="n">rpy_to_matrix</span><span class="p">,</span> <span class="n">xyz_rpy_to_matrix</span><span class="p">,</span> <span class="n">generalized_vectors</span><span class="p">,</span> 
-</span><span id="L-8"><a href="#L-8"><span class="linenos"> 8</span></a>    <span class="n">symbolic_inertia_matrix</span><span class="p">,</span> <span class="n">joint_screw</span><span class="p">,</span> <span class="n">quaternion_to_matrix</span><span class="p">)</span>
-</span><span id="L-9"><a href="#L-9"><span class="linenos"> 9</span></a><span class="kn">from</span> <span class="nn">skidy.parser</span> <span class="kn">import</span> <span class="p">(</span>
-</span><span id="L-10"><a href="#L-10"><span class="linenos">10</span></a>    <span class="n">robot_from_yaml</span><span class="p">,</span> <span class="n">robot_from_json</span><span class="p">,</span> <span class="n">robot_from_urdf</span><span class="p">,</span>
-</span><span id="L-11"><a href="#L-11"><span class="linenos">11</span></a>    <span class="n">generate_template_yaml</span><span class="p">,</span> <span class="n">generate_template_json</span><span class="p">,</span> <span class="n">generate_template_python</span><span class="p">,</span>
-</span><span id="L-12"><a href="#L-12"><span class="linenos">12</span></a>    <span class="n">skd_to_yaml</span><span class="p">,</span> <span class="n">skd_to_json</span><span class="p">,</span> <span class="n">urdf_to_json</span><span class="p">,</span> <span class="n">urdf_to_yaml</span><span class="p">)</span>
-</span><span id="L-13"><a href="#L-13"><span class="linenos">13</span></a><span class="n">__version__</span> <span class="o">=</span> <span class="s2">&quot;0.0.1&quot;</span>
+</span><span id="L-6"><a href="#L-6"><span class="linenos"> 6</span></a>    <span class="n">rpy_to_matrix</span><span class="p">,</span> <span class="n">xyz_rpy_to_matrix</span><span class="p">,</span> <span class="n">generalized_vectors</span><span class="p">,</span> 
+</span><span id="L-7"><a href="#L-7"><span class="linenos"> 7</span></a>    <span class="n">symbolic_inertia_matrix</span><span class="p">,</span> <span class="n">joint_screw</span><span class="p">,</span> <span class="n">quaternion_to_matrix</span><span class="p">)</span>
+</span><span id="L-8"><a href="#L-8"><span class="linenos"> 8</span></a><span class="kn">from</span> <span class="nn">skidy.parser</span> <span class="kn">import</span> <span class="p">(</span>
+</span><span id="L-9"><a href="#L-9"><span class="linenos"> 9</span></a>    <span class="n">robot_from_yaml</span><span class="p">,</span> <span class="n">robot_from_json</span><span class="p">,</span> <span class="n">robot_from_urdf</span><span class="p">,</span>
+</span><span id="L-10"><a href="#L-10"><span class="linenos">10</span></a>    <span class="n">generate_template_yaml</span><span class="p">,</span> <span class="n">generate_template_json</span><span class="p">,</span> <span class="n">generate_template_python</span><span class="p">,</span>
+</span><span id="L-11"><a href="#L-11"><span class="linenos">11</span></a>    <span class="n">skd_to_yaml</span><span class="p">,</span> <span class="n">skd_to_json</span><span class="p">,</span> <span class="n">urdf_to_json</span><span class="p">,</span> <span class="n">urdf_to_yaml</span><span class="p">)</span>
+</span><span id="L-12"><a href="#L-12"><span class="linenos">12</span></a><span class="n">__version__</span> <span class="o">=</span> <span class="s2">&quot;0.0.1&quot;</span>
 </span></pre></div>
 
 

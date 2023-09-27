@@ -268,54 +268,39 @@ def transformation_matrix(r: MutableDenseMatrix=Matrix(Identity(3)),
     return T
 
 def mass_matrix_mixed_data(m: float | Expr, Theta: MutableDenseMatrix, 
-                        COM: MutableDenseMatrix) -> MutableDenseMatrix:
+                        COM: MutableDenseMatrix, frame: str = "body",
+                        R: MutableDenseMatrix = Matrix(Identity(3)),
+                        ) -> MutableDenseMatrix:
     """Build mass-inertia matrix in SE(3) from mass, inertia and 
-    center of mass information w.r.t. the body fixed frame.
-    If the inertia is w.r.t. the COM use `mass_matrix_URDF_data` instead.
+    center of mass information.
 
     Args:
         m (float | sympy.Expr): Mass.
-        Theta (array_like): (3,3) Inertia tensor with respect to body-fixed frame.
+        Theta (array_like): (3,3) Inertia tensor with respect to body-fixed
+            or center of mass frame, depending on value of `frame`.
         COM (array_like): Center of mass (3,1).
-
-    Returns:
-        sympy.Matrix: Mass-inertia matrix (6,6).
-    """
-    M = Matrix([[Theta[0, 0], Theta[0, 1], Theta[0, 2], 0, (-COM[2])*m, COM[1]*m],
-                [Theta[0, 1], Theta[1, 1], Theta[1, 2], COM[2]*m, 0, (-COM[0])*m],
-                [Theta[0, 2], Theta[1, 2], Theta[2, 2], (-COM[1])*m, COM[0]*m, 0],
-                [0, COM[2]*m, (-COM[1])*m, m, 0, 0],
-                [(-COM[2])*m, 0, COM[0]*m, 0, m, 0],
-                [COM[1]*m, (-COM[0])*m, 0, 0, 0, m]])
-    return M
-
-def mass_matrix_URDF_data(m: float | Expr, Inertia: MutableDenseMatrix, 
-                        COM: MutableDenseMatrix, R: MutableDenseMatrix = Matrix(Identity(3))) -> MutableDenseMatrix:
-    """Build mass-inertia matrix in SE(3) from mass, inertia and 
-    center of mass information, as written in URDF. This means, that 
-    the Inertia tensor is with respect to the COM.
-    If your inertia tensor is w.r.t. the body fixed frame, use
-    `mass_matrix_mixed_data` instead.
-
-    Args:
-        m (float | sympy.Expr): Mass.
-        Inertia (array_like): (3,3) Inertia tensor with respect to COM.
-        COM (array_like): Center of mass (3,1).
+        frame (str, optional): 
+            reference frame of inertia tensor. Has to be "body" or "com".
+            Defaults to "body". 
         R (array_like): (3,3) SO3 rotation matrix of the COM frame to
-            the body frame. Defaults to Identity.
+            the body frame. Only if frame == "com". Defaults to Identity.
 
     Returns:
         sympy.Matrix: Mass-inertia matrix (6,6).
     """
-    Inertia = R * Inertia * R.T
-    Inertia -= Matrix([
+    assert frame in {"com", "body", "COM", "BODY"}
+    if frame in {"com", "COM"}:
+        R = Matrix(R)
+        Theta = Matrix(Theta)
+        Theta = R * Theta * R.T
+        Theta -= Matrix([
             [-m * (COM[1]**2 + COM[2]**2), m * COM[0] * COM[1], m * COM[0] * COM[2]],
             [m * COM[0] * COM[1], -m * (COM[0]**2 + COM[2]**2), m * COM[1] * COM[2]],
             [m * COM[0] * COM[2], m * COM[1] * COM[2], -m * (COM[0]**2 + COM[1]**2)]
         ])
-    M = Matrix([[Inertia[0, 0], Inertia[0, 1], Inertia[0, 2], 0, (-COM[2])*m, COM[1]*m],
-                [Inertia[0, 1], Inertia[1, 1], Inertia[1, 2], COM[2]*m, 0, (-COM[0])*m],
-                [Inertia[0, 2], Inertia[1, 2], Inertia[2, 2], (-COM[1])*m, COM[0]*m, 0],
+    M = Matrix([[Theta[0, 0], Theta[0, 1], Theta[0, 2], 0, (-COM[2])*m, COM[1]*m],
+                [Theta[0, 1], Theta[1, 1], Theta[1, 2], COM[2]*m, 0, (-COM[0])*m],
+                [Theta[0, 2], Theta[1, 2], Theta[2, 2], (-COM[1])*m, COM[0]*m, 0],
                 [0, COM[2]*m, (-COM[1])*m, m, 0, 0],
                 [(-COM[2])*m, 0, COM[0]*m, 0, m, 0],
                 [COM[1]*m, (-COM[0])*m, 0, 0, 0, m]])
