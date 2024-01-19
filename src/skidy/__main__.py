@@ -48,6 +48,7 @@ def main() -> None:
     generate_template.add_argument("--yaml",action="store_true", help="enforce yaml file generation")
     generate_template.add_argument("--json",action="store_true", help="enforce json file generation")
     generate_template.add_argument("--convert", metavar="URDF_PATH", type=str, default=None, help="Convert URDF to YAML or JSON. Use -s option to round numbers if close to 0 or 1 (recommended)")
+    generate_template.add_argument("--symbolify", action="store_true", help="Symbolify numbers during conversion. Defaults to False.")
     # generate_template.add_argument("--python", action="store_true", help="enforce python file generation")
 
 
@@ -69,7 +70,7 @@ def main() -> None:
                 print("Abort execution.")
                 exit()
             if args.convert:
-                urdf_to_yaml(args.convert,path,symbolic=False, cse=args.cse,
+                urdf_to_yaml(args.convert,path,symbolic=args.symbolify, cse=args.cse,
                                   simplify_numbers=args.simplify,tolerance=0.0001, 
                                   max_denominator=9)
             else:
@@ -83,7 +84,7 @@ def main() -> None:
                 print("Abort execution.")
                 exit()
             if args.convert:
-                urdf_to_json(args.convert,path,symbolic=False, cse=args.cse,
+                urdf_to_json(args.convert,path,symbolic=args.symbolify, cse=args.cse,
                                   simplify_numbers=args.simplify,tolerance=0.0001, 
                                   max_denominator=9)
             else:
