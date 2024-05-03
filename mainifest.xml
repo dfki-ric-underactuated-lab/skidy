@@ -1,0 +1,44 @@
+<package>
+  <name>skidy</name>
+  <description brief="Symbolic kinematics and dynamics model generation using Equations of Motion in closed form.">
+    Skidy is a symbolic code generation tool, which can calculate the kinematics and dynamics of open chain robots in closed form, to provide code for the control of such robots. The individual parameters stay therby symbolic, so that they can be adapted in the finished code. This enables efficient implementations of adaptive control algorithms and parameter optimization. By supporting a wide range of programming languages for code generation (python, C, C++, matlab/octave, julia, latex), skidy also facilitates efficient work on a wide range of systems without the need to learn a new tool. 
+  </description>
+  <author>Hannah Isermann/hannah.isermann@dfki.de</author>
+  <maintainer>Hannah Isermann/hannah.isermann@dfki.de</maintainer>
+  <license>BSD-3-Clause</license>
+  <url>...</url>
+  <logo>...</logo>
+
+  <depend package="python"/> 
+  <depend package="python-pip"/>
+  <depend package="numpy"/>
+  <depend package="sympy"/>
+  <depend package="urdf_parser_py"/>
+  <depend package="regex"/>
+  <depend package="PyYAML"/>
+  <depend package="pylatex"/>
+  <depend package="pydot"/>
+
+  <keywords>
+    <keyword>mechanics</keyword>
+  </keywords>
+
+  <stage>0</stage>
+  <!-- <use>single project</use> -->
+  <use>multi project</use>
+  <!-- <use>external</use> -->
+  <activity>active</activity>
+  <!-- <activity>pending</activity> -->
+  <!-- <activity>discontinued</activity> -->
+  <classifiers> <!--optional -->
+    <classifier>python</classifier>
+    <!-- <classifier>c++</classifier> -->
+    <!-- <classifier>c</classifier> -->
+    <!-- <classifier>matlab</classifier> -->
+    <!-- <classifier>julia</classifier> -->
+    <!-- <classifier>latex</classifier> -->
+    <classifier>windows</classifier>
+    <classifier>ubuntu</classifier>
+    <classifier>macos</classifier>
+  </classifiers>
+</package>
