@@ -1282,7 +1282,7 @@ Note that this can take time, especially for non-simplified equations and comple
 To run the unit tests use:
 
 ```bash
-python3 ./unit_testing/unit_testing.py
+python3 ./test/unit_testing.py
 ```
 
 ## 4. Benchmarking
