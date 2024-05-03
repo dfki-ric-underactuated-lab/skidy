@@ -6,8 +6,8 @@
   <author>Hannah Isermann/hannah.isermann@dfki.de</author>
   <maintainer>Hannah Isermann/hannah.isermann@dfki.de</maintainer>
   <license>BSD-3-Clause</license>
-  <url>...</url>
-  <logo>...</logo>
+  <!-- <url>...</url> -->
+  <!-- <logo>...</logo> -->
 
   <depend package="python"/> 
   <depend package="python-pip"/>
