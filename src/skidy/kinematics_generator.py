@@ -311,8 +311,8 @@ class CodeGenerator_():
                     if sum([1 for element in e if element == 0]) > 0: # at least one zero in result
                         s.append(f"        {names[i]} = np.zeros(({e.shape[0]},{e.shape[1]}), dtype=np.float64)")
                         # s.append(f"        {names[i]}.fill(0)")
-                    # else:
-                    #     s.append(f"        {names[i]} = np.empty(({e.shape[0]},{e.shape[1]}), dtype=np.float64)")    
+                    else:
+                        s.append(f"        {names[i]} = np.empty(({e.shape[0]},{e.shape[1]}), dtype=np.float64)")    
                     for row in range(e.shape[0]):
                         for col in range(e.shape[1]):
                             if e[row, col] != 0:
@@ -332,8 +332,8 @@ class CodeGenerator_():
                     if sum([1 for element in e if element == 0]) > 0: # at least one zero in result
                         s.append(f"        {names[i]} = np.zeros(({e.shape[0]},{e.shape[1]}), dtype=np.float64)")
                         # s.append(f"        {names[i]}.fill(0)")
-                    # else:
-                    #     s.append(f"        {names[i]} = np.empty(({e.shape[0]},{e.shape[1]}), dtype=np.float64)")
+                    else:
+                        s.append(f"        {names[i]} = np.empty(({e.shape[0]},{e.shape[1]}), dtype=np.float64)")
                     for row in range(e.shape[0]):
                         for col in range(e.shape[1]):
                             if e[row, col] != 0:
