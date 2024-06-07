@@ -48,10 +48,6 @@ testing = ["cython", "oct2py", "kinpy", "pin"]
 skidy = "skidy.__main__:main"
 
 [project.urls]
-# TODO: update 
-"Homepage" = "https://git.hb.dfki.de/underactuated-robotics/python_symbolic_kinematics_and_dynamics"
-
-[project.urls]
 Repository = "https://github.com/dfki-ric-underactuated-lab/skidy"
 
 # use `python -m bumpver update --patch` to update and commit version number in all files
