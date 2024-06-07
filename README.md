@@ -18,6 +18,10 @@ Symbolic kinematics and dynamics model generation using Equations of Motion in c
 
 ## 1. Installation
 
+```bash
+python3 -m pip install skidy
+```
+
 ### Install package from source
 
 To install the package from source go to the root folder of the package:

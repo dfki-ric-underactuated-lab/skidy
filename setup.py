@@ -29,7 +29,6 @@ setup(
     classifiers=[
         'Development Status :: 4 - Beta',
         'Environment :: Console',
-        'Intended Audience :: Academic Usage',
         'Programming Language :: Python',
         "Operating System :: OS Independent",
     ],

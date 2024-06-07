@@ -26,7 +26,6 @@ license = {file = "LICENSE"}
 # license = {text = "BSD-3-Clause"}
 classifiers = [
     "Development Status :: 4 - Beta",
-    "Intended Audience :: Academic Usage",
     "License :: OSI Approved :: BSD License",
     "Programming Language :: Python :: 3",
     "Operating System :: OS Independent",
@@ -51,6 +50,9 @@ skidy = "skidy.__main__:main"
 [project.urls]
 # TODO: update 
 "Homepage" = "https://git.hb.dfki.de/underactuated-robotics/python_symbolic_kinematics_and_dynamics"
+
+[project.urls]
+Repository = "https://github.com/dfki-ric-underactuated-lab/skidy"
 
 # use `python -m bumpver update --patch` to update and commit version number in all files
 [tool.bumpver]
