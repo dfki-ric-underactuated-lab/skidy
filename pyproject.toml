@@ -43,12 +43,14 @@ dependencies = [
 
 [project.optional-dependencies]
 testing = ["cython", "oct2py", "kinpy", "pin"]
+testing_required = ["kinpy"]
 
 [project.scripts]
 skidy = "skidy.__main__:main"
 
 [project.urls]
 Repository = "https://github.com/dfki-ric-underactuated-lab/skidy"
+Changelog = "https://github.com/dfki-ric-underactuated-lab/skidy/blob/main/CHANGELOG.md"
 
 # use `python -m bumpver update --patch` to update and commit version number in all files
 [tool.bumpver]

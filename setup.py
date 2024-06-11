@@ -25,7 +25,8 @@ setup(
         "pylatex",
         "pydot",
     ],
-    extras_require={"testing": ["cython","oct2py","kinpy","pin"]},
+    extras_require={"testing": ["cython","oct2py","kinpy","pin"],
+                    "testing_required": ["kinpy"]},
     classifiers=[
         'Development Status :: 4 - Beta',
         'Environment :: Console',
