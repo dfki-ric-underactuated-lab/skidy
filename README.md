@@ -12,7 +12,8 @@
     - [2.3. URDF](#23-urdf)
   - [3. Unit testing](#3-unit-testing)
   - [4. Benchmarking](#4-benchmarking)
-  - [5. License](#5-license)
+  - [5. Authors](#5-authors)
+  - [6. License](#6-license)
 
 Symbolic kinematics and dynamics model generation using Equations of Motion in closed form.
 
@@ -1313,6 +1314,11 @@ simplify + cse|![1 dof: 0.56 s; 2 dof: 2.22 s; 3 dof: 12.86 s; 4 dof: 84.28 s](/
 no simplify|![1 dof: 0.74 s; 2 dof: 2.65 s; 3 dof: 11.29 s; 4 dof: 47.14 s](/benchmarking/parallel_without_simplification_without_cse.png) | ![1 dof: 0.08 s; 2 dof: 1.57 s; 3 dof: 9.51 s; 4 dof: 44.57 s](/benchmarking/serial_without_simplification_without_cse.png)
 no simplify + cse|![1 dof: 0.80 s; 2 dof: 4.50 s; 3 dof: 29.13 s; 4 dof: 161.01 s](/benchmarking/parallel_without_simplification_with_cse.png) |![1 dof: 0.08 s; 2 dof: 4.49 s; 3 dof: 37.74 s; 4 dof: 201.11 s](/benchmarking/serial_without_simplification_with_cse.png)
 
-## 5. License
+## 5. Authors
+
+- [Hannah Isermann](https://www.linkedin.com/in/hisermann/) (DFKI): main developer of the project.
+- [Shivesh Kumar](https://www.linkedin.com/in/shivesh-kumar-09044218/) (Chalmers University of Technology & DFKI): project instructor.
+
+## 6. License
 
 This work has been released under the BSD 3-Clause License. Details and terms of use are specified in the LICENSE file within this repository. Note that we do not publish third-party software, hence software packages from other developers are released under their very own terms and conditions. If you install third-party software packages along with this repo ensure that you follow each individual license agreement.
